@@ -222,7 +222,7 @@ function clockAt(now, run) {
   }
 }
 
-// Where codex-ui and ChatGPT should agree in every time zone; the rest only match in UTC.
+// Where better-codex and ChatGPT should agree in every time zone; the rest only match in UTC.
 const anyZone = (rule) => !rule.dtstart && (
   (rule.count && !(rule.byhour && rule.byminute))
   || (rule.interval === 1 && (rule.freq === "DAILY" || rule.freq === "WEEKLY") && rule.byhour && rule.byminute && [...rule.keys].every((key) => ["FREQ", "INTERVAL", "BYDAY", "BYHOUR", "BYMINUTE", "BYSECOND", "COUNT"].includes(key)))

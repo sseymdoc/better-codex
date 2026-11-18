@@ -8,7 +8,7 @@ import { createWorktree } from "./git.mjs";
 import { createStorage } from "./storage.mjs";
 
 function repo(t) {
-  const home = mkdtempSync(path.join(tmpdir(), "codex-ui-storage-"));
+  const home = mkdtempSync(path.join(tmpdir(), "better-codex-storage-"));
   t.after(() => rmSync(home, { recursive: true, force: true }));
   const main = path.join(home, "project");
   mkdirSync(main);

@@ -12,7 +12,7 @@ import { cloudAllowed } from "./cloud.mjs";
 import { createOrchestrator } from "./orchestrator.mjs";
 
 const TOKEN = ["e30", Buffer.from(JSON.stringify({ "https://api.openai.com/auth": { chatgpt_account_id: "acct-1" } })).toString("base64url"), "sig"].join(".");
-const fakeCodex = path.join(mkdtempSync(path.join(tmpdir(), "codex-ui-cloud-")), "fake-codex.mjs");
+const fakeCodex = path.join(mkdtempSync(path.join(tmpdir(), "better-codex-cloud-")), "fake-codex.mjs");
 writeFileSync(fakeCodex, `import { createInterface } from "node:readline";
 createInterface({ input: process.stdin }).on("line", (line) => {
   const { id, method } = JSON.parse(line);

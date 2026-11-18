@@ -16,7 +16,7 @@ test("show_widget and read_me are desktop tools with closed schemas and no appro
 
 test("read_me: the preamble, then each module's sections once, within Codex's tool-output cut", () => {
   const bare = visualGuide();
-  assert.match(bare, /^# Inline visuals in Codex UI/);
+  assert.match(bare, /^# Inline visuals in Better Codex/);
   const all = visualGuide([...VISUAL_MODULES], "desktop");
   // 10,000 tokens is about 40,000 bytes of English; stay well under.
   assert.ok(all.length < 24_000, `${all.length}`);

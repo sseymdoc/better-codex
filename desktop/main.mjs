@@ -36,11 +36,17 @@ import { claudeFontCss } from "../server/claude-fonts.mjs";
 import { serve } from "../server/serve.mjs";
 import { createDesktopBrowser } from "./browser.mjs";
 import { isBrowserServiceUrl } from "../server/browser-policy.mjs";
+import { renamedDir } from "../server/automations.mjs";
+
+// Renamed from Codex UI: its profile (settings, backends, page storage) moves over once. A profile set
+// elsewhere (the smoke tests') is left alone.
+const profile = app.getPath("userData");
+if (path.basename(profile) === app.getName()) app.setPath("userData", renamedDir(profile, path.join(path.dirname(profile), "codex-ui")));
 
 const THEMES = ["light", "dark", "system"];
 const MAC = process.platform === "darwin";
 // Windows / Linux: the page draws the 36px chrome bar ([data-wco], shell.css) and the system
-// caption buttons float over its right end. ponytail: on macOS codex-ui keeps the native frame;
+// caption buttons float over its right end. ponytail: on macOS better-codex keeps the native frame;
 // Claude Desktop hides it (titleBarStyle hidden, trafficLightPosition round(22.5 × zoom − 6),
 // the sidebar's title row dragging the window) — port that if the native title bar ever grates.
 const customTitleBar = !MAC;
@@ -81,7 +87,7 @@ const JUMP_FOLDERS = 3;
 const JUMP_WAITING = 5;
 // The installer's appId (package.json build.appId): its Start menu shortcut carries it, and
 // Windows shows a packaged app's notifications under that id only.
-const APP_ID = "dev.codex-ui.desktop";
+const APP_ID = "dev.better-codex.desktop";
 // An unpackaged run starts Electron with the app path first; tasks and the login item repeat it.
 const APP_ARGS = app.isPackaged ? [] : [path.resolve(process.argv[1])];
 const ICON = path.join(import.meta.dirname, "icon.ico");
@@ -176,7 +182,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on("will-quit", () => globalShortcut.unregisterAll());
   start().catch((error) => {
     orchestrator?.close();
-    dialog.showErrorBox("Codex UI", error.message);
+    dialog.showErrorBox("Better Codex", error.message);
     app.exit(1);
   });
 }
@@ -1264,7 +1270,7 @@ function savedZoom() {
 
 // ---------------------------------------------------------------------------
 // window-state.json (lzaSYO3Q Yxe): bounds, maximized and whether the last session ended signed
-// in; codex-ui also keeps the zoom level, theme and the desktop settings here (Claude Desktop's
+// in; better-codex also keeps the zoom level, theme and the desktop settings here (Claude Desktop's
 // SPA remembers the zoom in localStorage, desktop-frame.mainViewZoomFactor.v1). Writes are
 // debounced 1s (Xxe) and atomic.
 

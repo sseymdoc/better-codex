@@ -37,9 +37,9 @@ export const DESKTOP_TOOLS = [
     inputSchema: { type: "object", additionalProperties: false, properties: {} },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
   // Claude 4.29 ccd_session start_session (lS / uS) with its "Starting other sessions" rules folded in:
-  // the host context has no room for them (8 KiB). Places Codex UI lacks (SSH hosts, presets, other
+  // the host context has no room for them (8 KiB). Places Better Codex lacks (SSH hosts, presets, other
   // repositories) are left out.
-  { name: "start_session", description: `Start a separate Codex UI session for a task while you stay with the user. \`initiation\` says who wants it: "user_asked" starts it now and returns its id; "offer" is for a task the user named in their latest message (new work here, or "suggest / split off / make a task or session for X"): called with a title alone, it shows a "New session" / "Do it here" card and WAITS for their answer, so it must be the only call in that message; the result then tells you to carry on here, or to send the brief with proposal_id so the session starts; "own_initiative" is for work you propose yourself that the user has not told you to do \u2014 something you noticed, or the follow-up your own answer or work turned up (when your reply calls work a follow-up or a separate PR, propose it here rather than only saying so, unless it acts on what this session just found and so stays here); the user sees a card and nothing runs until they start it, by clicking it or by telling you (then call this again with just proposal_id).
+  { name: "start_session", description: `Start a separate Better Codex session for a task while you stay with the user. \`initiation\` says who wants it: "user_asked" starts it now and returns its id; "offer" is for a task the user named in their latest message (new work here, or "suggest / split off / make a task or session for X"): called with a title alone, it shows a "New session" / "Do it here" card and WAITS for their answer, so it must be the only call in that message; the result then tells you to carry on here, or to send the brief with proposal_id so the session starts; "own_initiative" is for work you propose yourself that the user has not told you to do \u2014 something you noticed, or the follow-up your own answer or work turned up (when your reply calls work a follow-up or a separate PR, propose it here rather than only saying so, unless it acts on what this session just found and so stays here); the user sees a card and nothing runs until they start it, by clicking it or by telling you (then call this again with just proposal_id).
 "user_asked" and "own_initiative" both need a \`prompt\` \u2014 the brief: the task, the files or area, what done looks like \u2014 and the call is refused without it; \`background\` does not stand in for it. Only an "offer" is a title alone.
 context: "fork" = this whole conversation + your \`prompt\`. "fresh" (default) = your \`prompt\` + \`background\` only, so \`background\` is required too, at least 80 characters.
 Checkout here ("fresh" only): use_worktree false = shares this checkout and can edit it; true = its own git worktree (the default when this session is in one).
@@ -85,7 +85,7 @@ DESKTOP_TOOLS.push(
 );
 
 // Claude 4.29 ccd_turn wrap_up (Hn with the closing message after the call / Wn / Un). The app
-// actions are the three Codex UI draws; turn.mjs refuses the others as Claude refuses one that does
+// actions are the three Better Codex draws; turn.mjs refuses the others as Claude refuses one that does
 // not hold.
 const wrapUpAction = { type: "object", properties: {
   action: { type: "string", enum: [...OFFERED_ACTIONS], description: "An app action, only while it holds: commit (uncommitted changes in a checkout without a GitHub remote), create_pr (a GitHub branch with changes and no pull request yet) or archive (this session's pull request is open or merged). Anything else is refused with what holds now, and one that stops holding later is dropped (as actions[0], with your ask and the other answers), so do not guess. Omit for a reply." },
@@ -121,7 +121,7 @@ DESKTOP_TOOLS.push(
       remaining_plan: { type: "string", description: "What is left to do: steps, files, what done looks like." },
     } },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } },
-  // Claude 4.29 list_start_targets (hS), for the places Codex UI has: folders and Codex Cloud.
+  // Claude 4.29 list_start_targets (hS), for the places Better Codex has: folders and Codex Cloud.
   { name: "list_start_targets", description: "List where start_session can put a session for this user: this session's folder, the folders of their saved local environments, and their Codex Cloud environments (which one is for this repository). Call it before a start_session that names a folder (cwd) or a cloud environment, so the name you pass is one of these; never guess one. Read-only; names, ids and folders only.",
     inputSchema: { type: "object", additionalProperties: false, properties: {} },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },

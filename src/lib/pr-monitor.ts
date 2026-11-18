@@ -14,7 +14,7 @@ import { getState, readJson, writeJson } from "./store";
 interface Watch extends PrWatch { url: string }
 
 /** Watched PRs by session, then by attachment key, kept across restarts. */
-const KEY = "codex-ui:pr-monitor";
+const KEY = "better-codex:pr-monitor";
 let watches: Record<string, Record<string, Watch>> = (readJson(KEY) as Record<string, Record<string, Watch>> | null) ?? {};
 const listeners = new Set<() => void>();
 let version = 0;

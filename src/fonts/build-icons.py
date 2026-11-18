@@ -136,7 +136,7 @@ def main(phosphor):
             "familyName": "Codex Icons",
             "styleName": "Regular",
             "copyright": "Copyright (c) 2023 Phosphor Icons",
-            "description": "Phosphor Icons at the Anthropicons codepoints codex-ui draws.",
+            "description": "Phosphor Icons at the Anthropicons codepoints better-codex draws.",
             "licenseDescription": "MIT License",
             "licenseInfoURL": "https://github.com/phosphor-icons/core/blob/main/LICENSE",
         }

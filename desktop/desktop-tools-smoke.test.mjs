@@ -19,8 +19,8 @@ writeFileSync(path.join(work, "sample.txt"), "one\ntwo\nthree\n");
 const fake = path.join(work, "backend.mjs");
 writeFileSync(fake, `import {createInterface} from 'node:readline';createInterface({input:process.stdin}).on('line',line=>{
 const {id,method,params={}}=JSON.parse(line);let result={};
-if(method==='initialize')result={codexUiHostContext:true,codexUiDesktopContext:true,codexUiDesktopTools:true};
-if(method==='thread/start')result={token:process.env.CODEX_UI_DESKTOP_TOKEN,thread:{id:params.cwd?.endsWith('other')?'other':'main',cwd:params.cwd||process.cwd(),parentThreadId:null,source:'cli'}};
+if(method==='initialize')result={betterCodexHostContext:true,betterCodexDesktopContext:true,betterCodexDesktopTools:true};
+if(method==='thread/start')result={token:process.env.BETTER_CODEX_DESKTOP_TOKEN,thread:{id:params.cwd?.endsWith('other')?'other':'main',cwd:params.cwd||process.cwd(),parentThreadId:null,source:'cli'}};
 if(id!==undefined)console.log(JSON.stringify({id,result}));});`);
 
 const fixture = `
@@ -42,7 +42,7 @@ const threads={};for(const cwd of [${JSON.stringify(work)},${JSON.stringify(path
 const response=await client.request('thread/start',{cwd});window.token=response.token;
 const thread=emptyThreadState({...response.thread,gitInfo:{sha:'a'.repeat(40)},status:{type:'idle'}});thread.subscribed=true;thread.loaded=true;
 thread.turns=[{id:'turn',status:'completed',items:[{id:'edit',type:'fileChange',status:'completed',changes:[{path:'sample.txt',kind:{type:'update',move_path:null},diff:'@@ -1 +1 @@\\n-one\\n+two\\n'}]},{id:'task',type:'commandExecution',command:'token=PRIVATE_COMMAND',description:'Fixture task',backgrounded:true,processId:'123',status:'completed',exitCode:0,aggregatedOutput:'PRIVATE_OUTPUT',durationMs:1}],plan:[{step:'Fixture plan',status:'completed'}],error:null}];
-threads[thread.meta.id]=thread;await client.request('thread/settings/update',{threadId:thread.meta.id,codexUiContext:hostContext(cwd,true,{desktopContext:true,desktopTools:true})});}
+threads[thread.meta.id]=thread;await client.request('thread/settings/update',{threadId:thread.meta.id,betterCodexContext:hostContext(cwd,true,{desktopContext:true,desktopTools:true})});}
 setState({threads,activeId:'main',conn:{status:'ready'},server:{...getState().server,info:{platformOs:'windows'}}});window.ready=true;
 }});
 Object.assign(window,{getState,setState,fileTargets,openFileTab,terminalTargets,openTerminalTab,closePane,toggleExpanded,layoutOf,openChanges,displayRequest});
@@ -84,7 +84,7 @@ async function run() {
     assert.ok(session);
     let sequence = 0;
     const invoke = async (name, args = {}, threadId = "main") => {
-      const response = await fetch(`${base}/api/desktop-mcp?c=${auth.connection}`, { method: "POST", headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json", "Mcp-Session-Id": session }, body: JSON.stringify({ id: ++sequence, method: "tools/call", params: { name, arguments: args, _meta: { threadId, codexUiDesktopCwd: threadId === "main" ? work : path.join(work, "other") } } }) });
+      const response = await fetch(`${base}/api/desktop-mcp?c=${auth.connection}`, { method: "POST", headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json", "Mcp-Session-Id": session }, body: JSON.stringify({ id: ++sequence, method: "tools/call", params: { name, arguments: args, _meta: { threadId, betterCodexDesktopCwd: threadId === "main" ? work : path.join(work, "other") } } }) });
       const result = (await response.json()).result;
       return { error: result.isError === true, ...JSON.parse(result.content[0].text) };
     };
@@ -149,7 +149,7 @@ async function run() {
     checks.push("bounded metadata pagination");
     assert.deepEqual(errors, []);
     writeFileSync(path.join(work, "panes.png"), (await win.webContents.capturePage()).toPNG());
-    if (process.env.CODEX_UI_TEST_APP_SERVER) await verifyNativeDesktop(win, work, process.env.CODEX_UI_TEST_APP_SERVER);
+    if (process.env.BETTER_CODEX_TEST_APP_SERVER) await verifyNativeDesktop(win, work, process.env.BETTER_CODEX_TEST_APP_SERVER);
     console.log("DESKTOP_TOOLS_SMOKE " + JSON.stringify({ ok: true, work, checks, chromium: process.versions.chrome }));
   } catch (error) { console.error("DESKTOP_TOOLS_FAILED", work, error.stack, errors); process.exitCode = 1; }
   finally { clearTimeout(timer); win?.destroy(); service?.close(); server?.closeAllConnections(); server?.close(); app.exit(process.exitCode ?? 0); }

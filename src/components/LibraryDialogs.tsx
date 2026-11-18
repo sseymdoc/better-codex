@@ -1,4 +1,4 @@
-// The 资料库's dialogs and its 新建 menu, in codex-ui's Dialog and Popover: the ChatGPT app's
+// The 资料库's dialogs and its 新建 menu, in better-codex's Dialog and Popover: the ChatGPT app's
 // library-item-dialogs (RenameLibraryItemDialog ze, ConfirmLibraryItemsDialog q with its shared
 // body Qe), library-move-dialog (je), library-create-dialog (A), library-empty-trash (J) and
 // slate-create-menu (Kn, Xn) without what opens a ChatGPT chat. The words are the zh-CN catalogue's,
@@ -165,7 +165,7 @@ export function NewFolderDialog({ parentId, onCreated, onClose }: { parentId: st
 // Confirmations (item-dialogs q / Qe, Ne; empty-trash J)
 
 /**
- * Qe: the title, what happens (under it as a confirmation's description, as codex-ui's other
+ * Qe: the title, what happens (under it as a confirmation's description, as better-codex's other
  * confirmations put it), 取消 and the action (primary to restore, danger otherwise); no ✕, nothing
  * closes it while it runs.
  */

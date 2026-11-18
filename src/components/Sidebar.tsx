@@ -91,8 +91,8 @@ import { Button, Dialog, Icon, Kbd, MenuItem, MenuSection, MenuSep, Popover, Spi
 const DRAG_TYPE = "application/x-codex-thread";
 /** The one session a row drags onto the main area, for split view (App.tsx). */
 export const SESSION_DRAG = "application/x-codex-session";
-const WIDTH_KEY = "codex-ui:sidebar-width";
-const OPEN_KEY = "codex-ui:sidebar";
+const WIDTH_KEY = "better-codex:sidebar-width";
+const OPEN_KEY = "better-codex:sidebar";
 // shared-52 Yu / $u: at least 200 (the title row's own floor), at most 420 and 330 short of the window.
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 420;
@@ -158,12 +158,12 @@ interface Local {
 }
 
 const PERSIST = {
-  pins: "codex-ui:pinned",
-  collapsed: "codex-ui:collapsed-sections",
-  families: "codex-ui:collapsed-families",
-  detached: "codex-ui:detached",
-  groupBy: "codex-ui:group-by",
-  showEmpty: "codex-ui:show-empty-groups",
+  pins: "better-codex:pinned",
+  collapsed: "better-codex:collapsed-sections",
+  families: "better-codex:collapsed-families",
+  detached: "better-codex:detached",
+  groupBy: "better-codex:group-by",
+  showEmpty: "better-codex:show-empty-groups",
 } satisfies Partial<Record<keyof Local, string>>;
 
 const strings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []);
@@ -1115,7 +1115,7 @@ function SessionMenu({ row, pinIndex, archived, close, rename }: { row: Row; pin
   // Split view: beside the open session, when it is neither of the two on screen.
   const splittable = useStore((s) => !!s.activeId && !isShown(s, id) && !meta.parentThreadId);
   // ce4f4374c He / Pe: 打开方式 ▸ 拆分视图, the installed editors, 终端 and the file manager, for a
-  // local session's folder (no new window: Codex UI has one). 终端 copies Codex's resume command.
+  // local session's folder (no new window: Better Codex has one). 终端 copies Codex's resume command.
   const [editors, setEditors] = useState<Editor[]>([]);
   useEffect(() => void installedEditors().then(setEditors), []);
   const folder = archived || environmentKind(id) === "ssh" ? null : (thread.settings?.cwd ?? meta.cwd) || null;
@@ -1315,7 +1315,7 @@ function FilterMenu() {
             onClick={() => {
               setOpen(false);
               if (sort === value) return;
-              writePref("codex-ui:sort", value);
+              writePref("better-codex:sort", value);
               setListFilter({ sort: value });
             }}
           />
@@ -2883,7 +2883,7 @@ export function ViewSubmenu({ threadId, close }: { threadId: string; close(): vo
           <MenuItem
             label={`将 ${VIEW_LABELS[view]} 设为默认`}
             onClick={act(() => {
-              writePref("codex-ui:view", view);
+              writePref("better-codex:view", view);
               setState({ defaultView: view });
               toast("neutral", `${VIEW_LABELS[view]} 现在是默认视图。`);
             })}

@@ -17,7 +17,7 @@ import {createRoot} from 'react-dom/client';
 import {Palette,openPalette,useShortcuts} from './src/components/Palette';
 import {Rpc,RpcError} from './src/lib/rpc';
 import {getState,setState,emptyThreadState} from './src/lib/store';
-const titles=['Vite 开发服务器不监听 codex-ui/out','把“远程控制”开关做成记住上次退出时的开关状态','Codex UI 思考动画和 token 计数（fork 2）','Codex UI 右侧空白页禁用右键','Codex UI 更新说明文案','修改模型选择项的最高档警告','努力程度滑块','修复“已压缩会话”的排版问题'];
+const titles=['Vite 开发服务器不监听 better-codex/out','把“远程控制”开关做成记住上次退出时的开关状态','Better Codex 思考动画和 token 计数（fork 2）','Better Codex 右侧空白页禁用右键','Better Codex 更新说明文案','修改模型选择项的最高档警告','努力程度滑块','修复“已压缩会话”的排版问题'];
 const meta=(id,name)=>({id,name,preview:name,cwd:'D:/fixture',path:null,createdAt:1,updatedAt:100,recencyAt:1000-Number(id.replace(/\\D/g,'')),source:'appServer',status:{type:'idle'},modelProvider:'fixture',ephemeral:false,turns:[]});
 const recent=titles.map((name,i)=>meta('recent'+i,name));
 const archive=meta('archive1','已归档的验收会话');

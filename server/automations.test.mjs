@@ -9,7 +9,7 @@ import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { DEFAULT_RRULE } from "../context/rrule.mjs";
 import { chatgptOracle } from "../context/fixtures/chatgpt-oracle.mjs";
-import { automationToml, codexHome, computeNext, createAutomations, parseAutomationToml, parseToml } from "./automations.mjs";
+import { automationToml, codexHome, computeNext, createAutomations, parseAutomationToml, parseToml, renamedDir } from "./automations.mjs";
 
 process.env.TZ = "UTC";
 const oracle = await chatgptOracle();
@@ -20,7 +20,7 @@ const T0 = Date.UTC(2026, 9, 29, 8, 0); // a Thursday
 const WORK = path.resolve("/work");
 
 function setup(t) {
-  const home = mkdtempSync(path.join(tmpdir(), "codex-ui-automations-"));
+  const home = mkdtempSync(path.join(tmpdir(), "better-codex-automations-"));
   t.after(() => rmSync(home, { recursive: true, force: true }));
   const clock = { now: T0 };
   const store = createAutomations({ home, now: () => clock.now });
@@ -163,13 +163,13 @@ test("automation.toml is checked as ChatGPT checks it", () => {
 });
 
 test("a CODEX_HOME through a junction keeps the task folders under the path the app-server reports (find_codex_home canonicalizes it)", (t) => {
-  const base = mkdtempSync(path.join(tmpdir(), "codex-ui-home-"));
+  const base = mkdtempSync(path.join(tmpdir(), "better-codex-home-"));
   t.after(() => rmSync(base, { recursive: true, force: true }));
   const real = path.join(base, "real"), link = path.join(base, "link");
   mkdirSync(real);
   fs.symlinkSync(real, link, "junction");
   const store = createAutomations({ home: codexHome(link), now: () => T0 });
-  assert.equal(store.root, path.join(fs.realpathSync.native(real), "codex-ui", "automations"));
+  assert.equal(store.root, path.join(fs.realpathSync.native(real), "better-codex", "automations"));
   assert.equal(codexHome(path.join(base, "missing")), path.join(base, "missing"));
   assert.equal(codexHome(""), path.join(homedir(), ".codex")); // codex leaves its default as is
 });
@@ -511,7 +511,7 @@ test("a claim file that cannot be removed does not lose the claims already made"
 });
 
 test("next runs and their jitter match the installed ChatGPT's", { skip }, () => {
-  // In UTC, where codex-ui's wall-clock rules and ChatGPT's UTC ones agree.
+  // In UTC, where better-codex's wall-clock rules and ChatGPT's UTC ones agree.
   const RULES = [DEFAULT_RRULE, "FREQ=MINUTELY;INTERVAL=30", "FREQ=MINUTELY;INTERVAL=90", "FREQ=MINUTELY;INTERVAL=7;BYMINUTE=0", "FREQ=HOURLY;INTERVAL=2;BYMINUTE=15",
     "RRULE:FREQ=HOURLY;INTERVAL=3;BYMINUTE=0;BYDAY=SU,MO,TU,WE,TH,FR,SA", "FREQ=HOURLY;BYMINUTE=0,30", "RRULE:FREQ=WEEKLY;BYHOUR=9;BYMINUTE=0;BYDAY=MO,TU,WE,TH,FR",
     "FREQ=DAILY;BYHOUR=9,15;BYMINUTE=0", "FREQ=DAILY;BYHOUR=9;BYMINUTE=0,30", "RRULE:FREQ=MONTHLY;INTERVAL=1;BYHOUR=9;BYMINUTE=0;BYMONTHDAY=1",
@@ -529,7 +529,7 @@ test("next runs and their jitter match the installed ChatGPT's", { skip }, () =>
 });
 
 test("four processes claiming at once start each of 20 due tasks once", async (t) => {
-  const home = mkdtempSync(path.join(tmpdir(), "codex-ui-automations-"));
+  const home = mkdtempSync(path.join(tmpdir(), "better-codex-automations-"));
   t.after(() => rmSync(home, { recursive: true, force: true }));
   const past = createAutomations({ home, now: () => Date.now() - 2 * DAY }); // made two days ago: all due
   for (let n = 0; n < 20; n += 1) past.create({ name: `task ${n}`, prompt: "p" });
@@ -549,4 +549,28 @@ process.stdout.write(JSON.stringify(ids));`;
   });
   const claimed = await Promise.all([run(), run(), run(), run()]);
   assert.deepEqual(claimed.flat().sort(), Array.from({ length: 20 }, (_, n) => `task-${n}`).sort(), JSON.stringify(claimed));
+});
+
+test("Codex UI's folder moves to its new name once, a junction keeping its old paths; one in use stays", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-renamed-"));
+  try {
+    const [dir, legacy] = [path.join(root, "better-codex"), path.join(root, "codex-ui")];
+    mkdirSync(path.join(legacy, "automations"), { recursive: true });
+    writeFileSync(path.join(legacy, "automations", "task.toml"), "x");
+    mkdirSync(dir); // empty: made before the move
+    assert.equal(renamedDir(dir, legacy), dir);
+    assert.equal(readFileSync(path.join(dir, "automations", "task.toml"), "utf8"), "x");
+    assert.equal(readFileSync(path.join(legacy, "automations", "task.toml"), "utf8"), "x");
+    assert.equal(renamedDir(dir, legacy), dir);
+    const [used, old] = [path.join(root, "used"), path.join(root, "old")];
+    mkdirSync(used);
+    writeFileSync(path.join(used, "a"), "new");
+    mkdirSync(old);
+    writeFileSync(path.join(old, "a"), "old");
+    assert.equal(renamedDir(used, old), used);
+    assert.equal(readFileSync(path.join(old, "a"), "utf8"), "old");
+    assert.equal(renamedDir(path.join(root, "fresh"), path.join(root, "missing")), path.join(root, "fresh"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

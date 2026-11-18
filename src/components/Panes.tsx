@@ -510,7 +510,7 @@ interface DiffPrefs {
   side: "left" | "right";
 }
 
-const DIFF_KEY = "codex-ui:diff-view";
+const DIFF_KEY = "better-codex:diff-view";
 let diffPrefs = { files: false, split: false, wrap: true, ws: false, list: 220, tree: false, kinds: false, words: true, side: "left", ...record(readJson(DIFF_KEY)) } as DiffPrefs;
 
 /** 标记为已查看, by session: a file's path and the diff it was viewed at (a changed diff is unviewed again). */
@@ -610,8 +610,8 @@ function DiffPane({ thread }: { thread: ThreadState }) {
     let live = true;
     setScoped({ key: scopeKey, remote: null });
     const read = scope.kind === "commit"
-      ? callExperimental<{ sha: string; diff: string }>("codexUi/git/show", { cwd, sha: scope.sha })
-      : callExperimental<{ sha: string; diff: string }>("codexUi/git/diff", { cwd, against: scope.kind === "branch" ? scope.against : "HEAD" });
+      ? callExperimental<{ sha: string; diff: string }>("betterCodex/git/show", { cwd, sha: scope.sha })
+      : callExperimental<{ sha: string; diff: string }>("betterCodex/git/diff", { cwd, against: scope.kind === "branch" ? scope.against : "HEAD" });
     read.then(
       (result) => live && setScoped({ key: scopeKey, remote: { status: "ready", sha: result.sha, files: splitUnifiedDiff(result.diff) } }),
       (error) => live && setScoped({ key: scopeKey, remote: { status: "error", message: errorMessage(error) } }),
@@ -721,11 +721,11 @@ function DiffPane({ thread }: { thread: ThreadState }) {
   // The branches and commits the menu offers, read as it opens.
   useEffect(() => {
     if (!scopeOpen || !git) return;
-    void callExperimental<{ head: string | null; defaultBranch: string | null; branches: string[] }>("codexUi/git/branches", { cwd }).then(
+    void callExperimental<{ head: string | null; defaultBranch: string | null; branches: string[] }>("betterCodex/git/branches", { cwd }).then(
       (result) => setBranches({ list: result.branches.filter((branch) => branch !== result.head), base: result.defaultBranch }),
       () => setBranches({ list: [], base: null }),
     );
-    void callExperimental<{ commits: Commit[] }>("codexUi/git/log", { cwd }).then((result) => setCommits(result.commits), () => setCommits([]));
+    void callExperimental<{ commits: Commit[] }>("betterCodex/git/log", { cwd }).then((result) => setCommits(result.commits), () => setCommits([]));
   }, [scopeOpen, git, cwd]);
   const fingerprint = (file: FileDiff) => `${file.diff.length}:${file.diff.slice(0, 64)}:${file.diff.slice(-64)}`;
   const isViewed = (file: FileDiff) => viewed.get(file.movePath ?? file.path) === fingerprint(file);

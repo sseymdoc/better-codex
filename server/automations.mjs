@@ -1,4 +1,4 @@
-// Scheduled tasks on this machine, kept apart from ChatGPT's own: <CODEX_HOME>/codex-ui/automations/
+// Scheduled tasks on this machine, kept apart from ChatGPT's own: <CODEX_HOME>/better-codex/automations/
 // holds a folder per task with automation.toml in ChatGPT 26.1023's format (src-tOjGKoT3.js tl, read
 // back with its checks, $c), the schedule state (state.json), the run records (runs.json) and the
 // model's memory.md. Pages claim due runs here every 30 seconds; claim files make each run start once
@@ -6,7 +6,7 @@
 // Sync fs throughout, as ChatGPT: nothing interleaves inside a process.
 // ponytail: sync reads of a few small files per task block the bridge briefly; go async if task counts grow.
 import { createHash, randomUUID } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { unreadRun } from "../context/automations.mjs";
@@ -49,7 +49,7 @@ export function automationToml(a) {
     if (a.pluginTemplateId != null) lines.push(`plugin_template_id = ${quote(a.pluginTemplateId)}`);
     lines.push(`execution_environment = ${quote(a.executionEnvironment)}`);
     if (a.localEnvironmentConfigPath != null) lines.push(`local_environment_config_path = ${quote(a.localEnvironmentConfigPath)}`);
-    // ponytail: codex-ui never writes a project target (ChatGPT would look its own project id up and skip the task); one read in stays.
+    // ponytail: better-codex never writes a project target (ChatGPT would look its own project id up and skip the task); one read in stays.
     if (a.target?.type === "project") lines.push(`target = { type = "project", project_id = ${quote(a.target.projectId)} }`);
     else if (a.target?.type === "projectless") lines.push("target = { type = \"projectless\" }");
     lines.push(`cwds = [${a.cwds.map(quote).join(", ")}]`);
@@ -226,7 +226,7 @@ function advance(automation, state, now, salt) {
     if (next != null && next > now && nominal != null && nominal > now) return { nextRunAt: next, nextRunNominalAt: nominal };
     if (next == null && nominal != null && state.last_run_at != null) return null;
   }
-  // ponytail: ChatGPT ends only a cron one-shot here; codex-ui ends a heartbeat one too ("at 9 tomorrow" would repeat daily).
+  // ponytail: ChatGPT ends only a cron one-shot here; better-codex ends a heartbeat one too ("at 9 tomorrow" would repeat daily).
   if (next != null && next <= now && rule && oneShot(rule)) return null;
   return computeNext({ automation, salt, now, afterNominalRunAt: next != null && next <= now ? nominal : undefined });
 }
@@ -313,8 +313,29 @@ export function codexHome(value = process.env.CODEX_HOME) {
   try { return realpathSync.native(value); } catch { return value; }
 }
 
+/**
+ * `dir`, after moving `legacy` (Codex UI's folder before the rename) there once: a junction left at the old
+ * path keeps the paths sessions and tasks recorded working. A `dir` already in use stays as it is; a move
+ * refused (another process holds the folder) keeps using `legacy`, so nothing reads as gone.
+ */
+export function renamedDir(dir, legacy) {
+  if (!lstatSync(legacy, { throwIfNoEntry: false })?.isDirectory()) return dir;
+  try {
+    // Only an empty one goes: something made it before the move.
+    if (existsSync(dir)) rmdirSync(dir);
+    renameSync(legacy, dir);
+  } catch {
+    return existsSync(dir) ? dir : legacy;
+  }
+  try { symlinkSync(dir, legacy, "junction"); } catch {}
+  return dir;
+}
+
+/** <CODEX_HOME>/better-codex: scheduled tasks and scratch workspaces. */
+export const appHome = (home = codexHome()) => renamedDir(path.join(home, "better-codex"), path.join(home, "codex-ui"));
+
 export function createAutomations({ home = codexHome(), now = Date.now } = {}) {
-  const root = path.join(home, "codex-ui", "automations");
+  const root = path.join(appHome(home), "automations");
   const file = (id, name) => path.join(root, id, name);
   const json = (where) => { try { return JSON.parse(readFileSync(where, "utf8")); } catch { return null; } };
   // nl: write beside the file and rename over it; the temporary name is unique, as two processes may write at once.

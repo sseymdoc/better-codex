@@ -10,7 +10,7 @@ import { createScratch } from "./scratch.mjs";
 const HOUR = 3_600_000, DAY = 24 * HOUR;
 
 function fixture(t) {
-  const home = mkdtempSync(path.join(tmpdir(), "codex-ui-scratch-"));
+  const home = mkdtempSync(path.join(tmpdir(), "better-codex-scratch-"));
   t.after(() => rmSync(home, { recursive: true, force: true }));
   const now = Date.now();
   return { home, now, scratch: createScratch({ home, now: () => now }) };
@@ -33,12 +33,12 @@ function workspace(root, name, files, folderAge) {
   return dir;
 }
 
-test("create makes a fresh dated folder under CODEX_HOME/codex-ui/scratch-workspaces each time", async (t) => {
+test("create makes a fresh dated folder under CODEX_HOME/better-codex/scratch-workspaces each time", async (t) => {
   const { home, scratch } = fixture(t);
   const a = (await scratch.create()).cwd, b = (await scratch.create()).cwd;
   assert.notEqual(a, b);
   for (const dir of [a, b]) {
-    assert.equal(path.dirname(dir), path.join(home, "codex-ui", "scratch-workspaces"));
+    assert.equal(path.dirname(dir), path.join(home, "better-codex", "scratch-workspaces"));
     assert.match(path.basename(dir), /^scratch-\d{4}-\d{2}-\d{2}-[0-9a-f]{6}$/);
     assert.ok(existsSync(dir));
   }

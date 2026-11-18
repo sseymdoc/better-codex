@@ -1,6 +1,6 @@
 // Claude 4.29 side sessions, the app's half: start_session proposals and offers on their cards,
 // the sessions they start, and what those leave for the session that started them. The model's
-// half is codex_ui_desktop (context/sessions.mjs, components/DesktopTools.ts); Codex keeps none
+// half is better_codex_desktop (context/sessions.mjs, components/DesktopTools.ts); Codex keeps none
 // of it, so it lives in the store and on this machine (side-sessions.ts).
 
 import type { StartArgs } from "../../context/desktop-tools.mjs";
@@ -67,7 +67,7 @@ export function sweepProposals(now = Date.now()): void {
 const reminders = new Map<string, string[]>();
 
 /** Notes by parent (at most 32 kept) and wakes since the user last wrote there, kept across restarts. */
-const NOTES_KEY = "codex-ui:side-session-notes";
+const NOTES_KEY = "better-codex:side-session-notes";
 const NOTES_CAP = 32;
 const WAKES_CAP = 10;
 const notes: { notes: Record<string, string[]>; wakes: Record<string, number> } = (() => {
@@ -95,8 +95,8 @@ export function sideContext(threadId: string): SideContext | null {
   const application = [...pending, ...(status ? [status] : [])];
   return {
     entries: {
-      ...(application.length && { "codex-ui.linked-sessions": { kind: "application" as const, value: application.join("\n\n") } }),
-      ...(left.length && { "codex-ui.side-sessions": { kind: "untrusted" as const, value: left.join("\n\n") } }),
+      ...(application.length && { "better-codex.linked-sessions": { kind: "application" as const, value: application.join("\n\n") } }),
+      ...(left.length && { "better-codex.side-sessions": { kind: "untrusted" as const, value: left.join("\n\n") } }),
     },
     reminders: pending,
     notes: left,
@@ -301,7 +301,7 @@ async function launch(parentId: string, source: { title: string; prompt: string;
   const taken = new Set(Object.values(getState().links).filter((entry) => entry.parentId === parentId).map((entry) => entry.name));
   const name = sessionName(source.name, title, (candidate) => taken.has(candidate));
   link(id, { parentId, ...(source.taskId && { taskId: source.taskId }), title, name, kind: source.kind, at: Date.now(), ...(source.wake && { wake: true as const }) });
-  await renameThread(id, title, "tool").catch((error) => console.warn("codex-ui: naming the session failed", errorMessage(error)));
+  await renameThread(id, title, "tool").catch((error) => console.warn("better-codex: naming the session failed", errorMessage(error)));
   startsSinceMessage.set(parentId, (startsSinceMessage.get(parentId) ?? 0) + 1);
   remind(id, startedFromText({ parentId, shared: checkout !== "own" }));
   if (source.prompt) await brief(id, briefMessage({ prompt: source.prompt, background: source.background, context: spec.context }));
@@ -573,7 +573,7 @@ export async function sendPeerMessage(fromId: string, to: string, message: strin
 
 /** Settings → Codex → 当您请求无关的任务时, and the offer card's 不再询问 menu. */
 export function setNewTaskPrompt(value: NewTaskPrompt): void {
-  writePref("codex-ui:new-task-prompt", value);
+  writePref("better-codex:new-task-prompt", value);
   setState({ newTaskPrompt: value });
 }
 

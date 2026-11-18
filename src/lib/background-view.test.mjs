@@ -6,7 +6,7 @@ globalThis.localStorage = { getItem: (key) => saved.get(key) ?? null, setItem: (
 globalThis.requestAnimationFrame = () => 1;
 const { backgroundDismissalKey, backgroundOutputPosition, openBackgroundTask, openFinishedBackground, toggleBackgroundTask, updateBackgroundView } = await import("./background-view.ts");
 const { getState } = await import("./store.ts");
-const views = () => JSON.parse(saved.get("codex-ui:background-views"));
+const views = () => JSON.parse(saved.get("better-codex:background-views"));
 
 test("background folds, rows and finished sections remain per-session and clearing retains task records", () => {
   updateBackgroundView("a", { open: ["shell:a:one"], finished: true });

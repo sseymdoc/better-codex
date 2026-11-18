@@ -6,7 +6,7 @@
 git grep --no-index --exclude-standard -nE '(#|//|/[*]|<!--|--) ?(shortcut|ponytail):'
 ```
 
-全部标记都在 `codex-ui/` 下，`codex-rs/` 里没有。路径相对于 `codex-ui/`。`no-trigger` 表示注释里没写升级路径或触发条件。
+全部标记都在 `better-codex/` 下，`codex-rs/` 里没有。路径相对于 `better-codex/`。`no-trigger` 表示注释里没写升级路径或触发条件。
 
 ## 本轮已修复（16 处，标记已删除）
 
@@ -15,7 +15,7 @@ git grep --no-index --exclude-standard -nE '(#|//|/[*]|<!--|--) ?(shortcut|ponyt
 - [server/context-usage.mjs](server/context-usage.mjs)：rollout 改为从上次读到的整行末尾接着读；文件变小或 inode 变了才从头读。有测试。
 - [server/files.mjs](server/files.mjs)：已安装的编辑器每分钟重新探测一次。
 - [server/process.mjs](server/process.mjs) `spawnArgs`：经 cmd.exe 启动 npm 的 `.cmd` shim 时，参数按 CommandLineToArgvW 规则加引号；orchestrator、title、executor 三处 spawn 都改用它。有测试；**没在 Windows 上实跑**。
-- [server/orchestrator.mjs](server/orchestrator.mjs)：没有数据目录（CLI、Vite）时，statsig stable id 存到 `CODEX_HOME/codex-ui/`，不再每次启动都换。
+- [server/orchestrator.mjs](server/orchestrator.mjs)：没有数据目录（CLI、Vite）时，statsig stable id 存到 `CODEX_HOME/better-codex/`，不再每次启动都换。
 - [src/components/Rail.tsx](src/components/Rail.tsx)：已关闭的变更行只保留最新 500 条。
 - [src/lib/codex.ts](src/lib/codex.ts) `removePullRequest`：移除的 PR 按会话保留最近 200 个。有测试。
 - [src/lib/cloud-automations.ts](src/lib/cloud-automations.ts) `listAll`：云端任务读到游标用完为止（游标重复就停），不再最多读 10 页。有测试。

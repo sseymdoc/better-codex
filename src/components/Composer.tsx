@@ -271,13 +271,13 @@ export function readAsDataUrl(file: Blob): Promise<string> {
   });
 }
 
-const DRAFT_IMAGES = "codex-ui:draft-images:";
+const DRAFT_IMAGES = "better-codex:draft-images:";
 let imageDb: Promise<IDBDatabase> | undefined;
 
-/** One request on codex-ui's IndexedDB key-value store (idb-keyval's shape, where Claude keeps draft images). */
+/** One request on better-codex's IndexedDB key-value store (idb-keyval's shape, where Claude keeps draft images). */
 function imageStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   imageDb ??= new Promise((resolve, reject) => {
-    const open = indexedDB.open("codex-ui");
+    const open = indexedDB.open("better-codex");
     open.onupgradeneeded = () => open.result.createObjectStore("keyval");
     open.onsuccess = () => resolve(open.result);
     open.onerror = () => reject(open.error);
@@ -295,12 +295,12 @@ function imageStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) =>
 // An install (every one bumps the version) starts with empty composers: what was typed into the
 // version before it is not offered again, nor what was pasted, nor the library files attached.
 // ponytail: those files' copies stay under CODEX_HOME/attachments (no connection to DELETE them
-// yet); a sweep of codex-ui's own attachment folders would take them.
+// yet); a sweep of better-codex's own attachment folders would take them.
 let draftsWiped: Promise<unknown> = Promise.resolve();
 try {
-  if (localStorage.getItem("codex-ui:draft-version") !== VERSION) {
-    for (const key of Object.keys(localStorage)) if (key.startsWith("codex-ui:draft:") || key.startsWith(DRAFT_FILES)) localStorage.removeItem(key);
-    localStorage.setItem("codex-ui:draft-version", VERSION);
+  if (localStorage.getItem("better-codex:draft-version") !== VERSION) {
+    for (const key of Object.keys(localStorage)) if (key.startsWith("better-codex:draft:") || key.startsWith(DRAFT_FILES)) localStorage.removeItem(key);
+    localStorage.setItem("better-codex:draft-version", VERSION);
     draftsWiped = imageStore("readonly", (store) => store.getAllKeys())
       .then((keys) =>
         Promise.all(keys.filter((key) => typeof key === "string" && key.startsWith(DRAFT_IMAGES)).map((key) => imageStore("readwrite", (store) => store.delete(key)))),
@@ -2434,7 +2434,7 @@ export function Composer({ threadId, form, autoFocus }: { threadId: string | nul
   useStore((s) => s.allowFullAccess);
   const cwd = useStore((s) => (thread ? (thread.settings?.cwd ?? thread.meta.cwd) : s.prefs.cwd));
   const draftId = threadId ?? "new";
-  const draftKey = `codex-ui:draft:${draftId}`;
+  const draftKey = `better-codex:draft:${draftId}`;
   const [text, setText] = useState(() => readDraft(draftKey));
   // The text as last rendered, for a send that returns after more was typed.
   const drafted = useRef(text);
@@ -2498,7 +2498,7 @@ export function Composer({ threadId, form, autoFocus }: { threadId: string | nul
   const model = [...models, ...hiddenModels].find((m) => m.id === effective.model || m.model === effective.model);
   const acceptsImages = !model || model.inputModalities.includes("image");
   const planAvailable = modes.some((mode) => mode.mode === "plan");
-  const workflowsOffered = useStore((s) => s.server.info?.codexUiWorkflows === true);
+  const workflowsOffered = useStore((s) => s.server.info?.betterCodexWorkflows === true);
   // c2319015e Wa ultracodeAvailable: dynamic workflows offered and switched on in settings.
   const workflowsOn = useWorkflowsEnabled();
   const ultracodeOffered = workflowsOffered && workflowsOn;
@@ -3226,7 +3226,7 @@ export function Composer({ threadId, form, autoFocus }: { threadId: string | nul
     let echoed = false;
     try {
       // The files' block ahead of the words, and each image file as a localImage too (a model
-      // without image input: neither; codex-ui's choice, libraryMessage).
+      // without image input: neither; better-codex's choice, libraryMessage).
       const message = libraryMessage(ready, body, acceptsImages);
       const inputs: UserInput[] = [
         ...attachments.map((a): UserInput => ({ type: "image", url: a.url })),

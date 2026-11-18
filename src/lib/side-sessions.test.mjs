@@ -6,7 +6,7 @@ import { cronMessage, heartbeatEnvelope } from "../../context/automations.mjs";
 import { cappedEffort, cappedPermission, cardState, claimOf, doHereText, enqueue, notesParent, remember, sessionCall, sessionMeta, turnOrigin } from "./side-sessions.ts";
 
 const proposal = (id, extra = {}) => ({ id, title: id, prompt: "do it", context: "fresh", target: "local", createdAt: 0, expiresAt: 1000, ...extra });
-const call = (args, extra = {}) => ({ type: "mcpToolCall", id: "c1", server: "codex_ui_desktop", tool: "start_session", status: "completed", arguments: args, result: null, error: null, ...extra });
+const call = (args, extra = {}) => ({ type: "mcpToolCall", id: "c1", server: "better_codex_desktop", tool: "start_session", status: "completed", arguments: args, result: null, error: null, ...extra });
 const said = (text) => ({ type: "userMessage", id: "u", clientId: null, content: [{ type: "text", text, text_elements: [] }] });
 
 test("the queue holds 20, the oldest leaving first unless it is being started or waits on its card", () => {

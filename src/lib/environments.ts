@@ -27,7 +27,7 @@ export interface EnvironmentConfig {
   cloud?: { environmentId: string; branch?: string };
 }
 
-export const ENVIRONMENT_KEY = "codexUi.environment";
+export const ENVIRONMENT_KEY = "betterCodex.environment";
 
 const blank = (): EnvironmentConfig => ({ version: 1, kind: "local", settings: {}, folderSettings: {}, env: {} });
 
@@ -105,7 +105,7 @@ function unparsed(text: string, allowTrailingBareKey?: boolean): string | undefi
 const MANAGED = ["PATH", "CODEX_HOME", "CODEX_SANDBOX", "CODEX_SANDBOX_NETWORK_DISABLED", "CODEX_PERMISSION_PROFILE", "CODEX_SESSION_ID", "CODEX_THREAD_ID", "CODEX_TOOL_CALL_ID"];
 
 /**
- * Why the text can't be saved, or undefined. Claude shows these in English; codex-ui says them in
+ * Why the text can't be saved, or undefined. Claude shows these in English; better-codex says them in
  * Chinese. `allowTrailingBareKey` lets the line being typed stay a bare key.
  */
 export function envError(text: string, options?: { allowTrailingBareKey?: boolean }): string | undefined {

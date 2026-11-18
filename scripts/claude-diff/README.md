@@ -1,6 +1,6 @@
 # Claude Desktop 版本差异比对
 
-对齐 Claude Desktop 新版本时用：比较两个版本的 ion-dist 打包代码，检查 codex-ui 源码注释里引用过的 Claude 函数在新版里有没有变化（类名、文案、常量、数组条目），再决定要不要移植。
+对齐 Claude Desktop 新版本时用：比较两个版本的 ion-dist 打包代码，检查 better-codex 源码注释里引用过的 Claude 函数在新版里有没有变化（类名、文案、常量、数组条目），再决定要不要移植。
 
 脚本只读安装目录，输出全部写到临时目录，不会写进仓库。
 
@@ -33,18 +33,18 @@ export CLAUDE_DIFF_A='F:/REA/Claude_2.42304.0.0_x64__pzs8sxrjxfjjc/app/resources
 export CLAUDE_DIFF_B='F:/REA/Claude_3.1623.0.0_x64__pzs8sxrjxfjjc/app/resources/ion-dist/assets/v1'
 ```
 
-下文的命令都在 `codex-ui/` 目录下运行，`$OUT` 指输出目录。
+下文的命令都在 `better-codex/` 目录下运行，`$OUT` 指输出目录。
 
 ## 名词
 
 - **chunk**：`assets/v1` 里去掉 8 位哈希后的文件名，如 `c227f4d5e-DhqumBwo.js` → `c227f4d5e`，`shared-5-DXoxd-Km.js` → `shared-5`（哈希里也可能有 `-`）。不同版本的哈希不一样，但 chunk 名通常保持不变。
-- **引用**：codex-ui 注释里写的 `c227f4d5e bQ`、`shared-5 Kd / wg`、`` cc43287c9 `kP`, `Lp` ``，即 chunk 名后面跟顶层绑定名（压缩后的名字）。大部分引用是按 2.42304 写的；按 3.1623 重建的部分（侧栏、框架、开始卡片等）引用的是 3.1623 的名字，以 2.42304 为 A 时，这类引用在 A 列显示为 `-` 或 `nochunk`，B 列却有值。以后以 3.1623 为 A 比对更新的版本时，按 2.42304 写的引用要先用 2.42304 → 3.1623 的配对结果换算成 3.1623 的名字。
+- **引用**：better-codex 注释里写的 `c227f4d5e bQ`、`shared-5 Kd / wg`、`` cc43287c9 `kP`, `Lp` ``，即 chunk 名后面跟顶层绑定名（压缩后的名字）。大部分引用是按 2.42304 写的；按 3.1623 重建的部分（侧栏、框架、开始卡片等）引用的是 3.1623 的名字，以 2.42304 为 A 时，这类引用在 A 列显示为 `-` 或 `nochunk`，B 列却有值。以后以 3.1623 为 A 比对更新的版本时，按 2.42304 写的引用要先用 2.42304 → 3.1623 的配对结果换算成 3.1623 的名字。
 
 ## 脚本
 
 | 脚本 | 用法 | 作用 |
 | --- | --- | --- |
-| `cites.mjs` | `node cites.mjs <文件...>` | 从 codex-ui 源码里抽出全部引用，去重后按「chunk 名字」每行一条输出。会混进少量英文单词（如 `shell`、`up`），`exists` 那一步会把它们筛出来 |
+| `cites.mjs` | `node cites.mjs <文件...>` | 从 better-codex 源码里抽出全部引用，去重后按「chunk 名字」每行一条输出。会混进少量英文单词（如 `shell`、`up`），`exists` 那一步会把它们筛出来 |
 | `exists.mjs` | `node exists.mjs <引用清单>` | 判断每个名字在 A、B 同名 chunk 里是不是顶层绑定，属于哪一种：`fn`、`class`，或常量初始值的节点类型（`Call`、`ArrowFunction`、`lit`、`Templatelit`、`Object`、`Array` 等），导出别名显示为 `export→本地名:种类`；`-` 表示不是顶层绑定，`nochunk` 表示该版本没有这个 chunk |
 | `fnmatch.mjs` | `node fnmatch.mjs <chunk>[:<chunkB>] <名字...>` | 在 B 的同名 chunk 里（写成 `chunkA:chunkB` 时在另一个 chunk 里），按字符串字面量的 Jaccard 重合度给每个 A 函数找最像的 B 函数，并列出只在一侧出现的字符串。两边的函数体写到 `$OUT/<chunk>.<名字>.{A,B}.txt` |
 | `anymatch.mjs` | `node anymatch.mjs <chunk> <名字...>` | 同上，但在 B 的全部 chunk 里找：先挑出含该函数文案 id 和长字符串最多的 3 个 chunk，再在其中配对。函数体同样写到 `$OUT` |

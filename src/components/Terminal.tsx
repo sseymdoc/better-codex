@@ -54,10 +54,10 @@ const CURSORS: [CursorStyle, string][] = [
 ];
 const SCROLLBACKS = ["1000", "5000", "10000"] as const;
 const settings = {
-  cursor: readPref<CursorStyle>("codex-ui:terminal-cursor", ["block", "bar", "underline"], "block"),
-  blink: readPref("codex-ui:terminal-blink", ["on", "off"], "on") === "on",
-  copyOnSelect: readPref("codex-ui:terminal-copy-on-select", ["on", "off"], "off") === "on",
-  scrollback: Number(readPref("codex-ui:terminal-scrollback", SCROLLBACKS, "10000")),
+  cursor: readPref<CursorStyle>("better-codex:terminal-cursor", ["block", "bar", "underline"], "block"),
+  blink: readPref("better-codex:terminal-blink", ["on", "off"], "on") === "on",
+  copyOnSelect: readPref("better-codex:terminal-copy-on-select", ["on", "off"], "off") === "on",
+  scrollback: Number(readPref("better-codex:terminal-scrollback", SCROLLBACKS, "10000")),
 };
 
 const lines = (n: number) => `${n.toLocaleString("zh-CN")} 行`;
@@ -124,7 +124,7 @@ function tabId(): string {
 }
 
 /** 默认 shell (c9bd7af9c EylgvFSXJc): a path from listShells, or "" for the system's ($SHELL, PowerShell). */
-const SHELL_PREF = "codex-ui:terminal-shell";
+const SHELL_PREF = "better-codex:terminal-shell";
 const defaultShell = (): string | null => {
   try {
     return localStorage.getItem(SHELL_PREF) || null;
@@ -247,10 +247,10 @@ function applyOptions(term: Terminal, reduce: boolean) {
 
 function setSettings(patch: Partial<typeof settings>) {
   Object.assign(settings, patch);
-  writePref("codex-ui:terminal-cursor", settings.cursor);
-  writePref("codex-ui:terminal-blink", settings.blink ? "on" : "off");
-  writePref("codex-ui:terminal-copy-on-select", settings.copyOnSelect ? "on" : "off");
-  writePref("codex-ui:terminal-scrollback", String(settings.scrollback));
+  writePref("better-codex:terminal-cursor", settings.cursor);
+  writePref("better-codex:terminal-blink", settings.blink ? "on" : "off");
+  writePref("better-codex:terminal-copy-on-select", settings.copyOnSelect ? "on" : "off");
+  writePref("better-codex:terminal-scrollback", String(settings.scrollback));
   emit();
 }
 
@@ -380,7 +380,7 @@ function attach(shell: Shell, container: HTMLElement, cwd: string, reduce: boole
 }
 
 // ---------------------------------------------------------------------------
-// The terminal tools (codex_ui_desktop, DesktopTools.ts) and #terminal/<tab_id> links: only the
+// The terminal tools (better_codex_desktop, DesktopTools.ts) and #terminal/<tab_id> links: only the
 // tabs of the chat that asks; a tab of another chat reads as missing.
 
 const stateOf = (shell: Shell): TerminalTabInfo["state"] => (shell.proc ? "running" : shell.exited !== null ? "exited" : "not_started");

@@ -12,7 +12,7 @@ test("browser HTTP endpoint needs its child token and rejects malformed, cross-o
   const fake = path.join(work, "codex.mjs");
   writeFileSync(
     fake,
-    `import {createInterface} from "node:readline"; createInterface({input:process.stdin}).on("line",line=>{const message=JSON.parse(line); console.log(JSON.stringify({id:message.id,result:{thread:{id:"bound-thread",cwd:process.cwd()},token:process.env.CODEX_UI_BROWSER_TOKEN,args:process.argv}}));});`,
+    `import {createInterface} from "node:readline"; createInterface({input:process.stdin}).on("line",line=>{const message=JSON.parse(line); console.log(JSON.stringify({id:message.id,result:{thread:{id:"bound-thread",cwd:process.cwd()},token:process.env.BETTER_CODEX_BROWSER_TOKEN,args:process.argv}}));});`,
   );
   const calls = [];
   const browser = {
@@ -26,7 +26,7 @@ test("browser HTTP endpoint needs its child token and rejects malformed, cross-o
   const server = http.createServer((req, res) => bridge.handle(req, res, () => res.writeHead(404).end()));
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}`,
-    cookie = `codex_ui_${server.address().port}=ui-token`;
+    cookie = `better_codex_${server.address().port}=ui-token`;
   const abort = new AbortController();
   let reader;
   try {
@@ -61,7 +61,7 @@ test("browser HTTP endpoint needs its child token and rejects malformed, cross-o
     } while (response.id !== 1);
     const endpoint = JSON.parse(
       response.result.args
-        .find((arg) => arg.startsWith("mcp_servers.codex_ui_browser.url="))
+        .find((arg) => arg.startsWith("mcp_servers.better_codex_browser.url="))
         .split("=")
         .slice(1)
         .join("="),
@@ -101,7 +101,7 @@ test("browser HTTP endpoint needs its child token and rejects malformed, cross-o
 test("browser declarations, direct MCP requests and automatic verification require the experimental backend", async () => {
   const work = mkdtempSync(path.join(tmpdir(), "codex-browser-gate-"));
   const fake = path.join(work, "codex.mjs");
-  writeFileSync(fake, `import {createInterface} from "node:readline"; createInterface({input:process.stdin}).on("line",line=>{const m=JSON.parse(line); console.log(JSON.stringify({id:m.id,result:{thread:{id:"gate-thread",cwd:process.cwd()},args:process.argv,params:m.params,token:process.env.CODEX_UI_BROWSER_TOKEN,enabled:process.env.CODEX_UI_EXPERIMENTAL_BACKEND}}));});`);
+  writeFileSync(fake, `import {createInterface} from "node:readline"; createInterface({input:process.stdin}).on("line",line=>{const m=JSON.parse(line); console.log(JSON.stringify({id:m.id,result:{thread:{id:"gate-thread",cwd:process.cwd()},args:process.argv,params:m.params,token:process.env.BETTER_CODEX_BROWSER_TOKEN,enabled:process.env.BETTER_CODEX_EXPERIMENTAL_BACKEND}}));});`);
   for (const experimentalBackend of [undefined, false, true]) {
     let scheduled = 0, calls = 0;
     const browser = { verificationInstructions() { scheduled++; return "browser auto-verify"; }, tool() { calls++; return { content: [] }; } };
@@ -109,7 +109,7 @@ test("browser declarations, direct MCP requests and automatic verification requi
     const bridge = createBridge(orchestrator, { token: "gate-token" });
     const server = http.createServer((req, res) => bridge.handle(req, res));
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-    const base = `http://127.0.0.1:${server.address().port}`, headers = { Cookie: `codex_ui_${server.address().port}=gate-token` };
+    const base = `http://127.0.0.1:${server.address().port}`, headers = { Cookie: `better_codex_${server.address().port}=gate-token` };
     const abort = new AbortController();
     let reader;
     try {
@@ -131,7 +131,7 @@ test("browser declarations, direct MCP requests and automatic verification requi
       await fetch(`${base}/api/send?c=${hello.connectionId}`, { method: "POST", headers, body: JSON.stringify({ id: 1, method: "thread/start", params: { cwd: work } }) });
       let reply; do { reply = await frame(); } while (reply.id !== 1);
       const enabled = experimentalBackend === true;
-      assert.equal(reply.result.args.some((arg) => arg.startsWith("mcp_servers.codex_ui_browser.url=")), enabled);
+      assert.equal(reply.result.args.some((arg) => arg.startsWith("mcp_servers.better_codex_browser.url=")), enabled);
       assert.equal(reply.result.params.config?.developer_instructions, enabled ? "browser auto-verify" : undefined);
       assert.equal(scheduled, enabled ? 1 : 0);
       assert.equal(reply.result.enabled, enabled ? "1" : "0");

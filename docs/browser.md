@@ -1,10 +1,10 @@
-# Codex UI 原生桌面浏览器
+# Better Codex 原生桌面浏览器
 
 浏览器由应用自带的 Electron Chromium 与本项目的 `desktop/browser-cdp.mjs` 提供。无需安装 Claude、保留任何版本的原包、选择 `app.asar` 或配置 Claude 路径。旧版保存的原包路径会被忽略，不迁移或删除现有 Cookie。
 
 ## 使用
 
-在仓库根目录运行 `npm --prefix codex-ui run desktop`，进入会话后点击“浏览器”或按 `Ctrl+Shift+B`。开发服务器、标签、浏览数据和站点授权继续使用原有界面。
+在仓库根目录运行 `npm --prefix better-codex run desktop`，进入会话后点击“浏览器”或按 `Ctrl+Shift+B`。开发服务器、标签、浏览数据和站点授权继续使用原有界面。
 
 执行器基于公开的 [Electron Debugger](https://www.electronjs.org/docs/latest/api/debugger) 和 [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/)。界面与 MCP 操作同一个 `WebContentsView` 网页：
 
@@ -16,11 +16,11 @@
 
 按 [Claude 官方桌面说明](https://code.claude.com/docs/en/desktop#approve-claudes-actions-on-a-site)和本地 Claude Desktop 2.42304.0.0 的已观察规则对齐：
 
-- 本机开发预览（`localhost`、`*.localhost`、`127/8`、`::1` 等）无需逐端口授权。私有局域网不按本机预览豁免，Codex UI 内部服务在各本机别名和 WebSocket 地址下仍拒绝访问。
+- 本机开发预览（`localhost`、`*.localhost`、`127/8`、`::1` 等）无需逐端口授权。私有局域网不按本机预览豁免，Better Codex 内部服务在各本机别名和 WebSocket 地址下仍拒绝访问。
 - 外部站点使用输入框上方的会话审批卡，提供拒绝、允许一次、始终允许；共用现有审批卡的快捷键和 400ms 防误触。开发服务器启动确认也进入会话卡片。
 - 允许一次仅覆盖当前工具调用；始终允许立即原子保存到桌面资料目录的 `window-state.json`，保存失败会报错并回滚内存设置。手动打开站点不会自动授予模型读写权限。
 - 同一套站点规则覆盖建标签、导航、重定向、页面读写、鼠标目标框架与模型打开的新窗口。设置中可添加、移除和清空已允许网站；撤销会取消待处理授权，取消或拒绝不会留下空白标签。
-- 模型工具声明、直接运行入口和自动验证指引仅在实验型后端 Release / Preview 启动后开放，使用现有 `CODEX_UI_EXPERIMENTAL_BACKEND` → `Config.experimental_backend` 启动链。禁用时不注入浏览器 MCP、不接受直接工具调用、不追加自动验证指引；手动浏览器保留。
+- 模型工具声明、直接运行入口和自动验证指引仅在实验型后端 Release / Preview 启动后开放，使用现有 `BETTER_CODEX_EXPERIMENTAL_BACKEND` → `Config.experimental_backend` 启动链。禁用时不注入浏览器 MCP、不接受直接工具调用、不追加自动验证指引；手动浏览器保留。
 
 本地原包参考为 `app/resources/app.asar` 的 `.vite/build/index.chunk-lzaSYO3Q.js`，ASAR SHA-256 为 `8f4d3dec5e4f3ddffb150321060b18807d83a40f3a65618fe4f29325379da9db`，该 JS SHA-256 为 `66a2071baf285aaa3d88aeace7344e7941c3df93c1ef3b21bc6cf64205c58d0d`。关注函数为 `cN` / `fN`（本机地址）、`bUn`（会话审批卡）、`dP`（保存网站授权）与 `yUn`（撤销）。REA 整包关系图受内存限制，覆盖不完整；部分未分析的原生附件与 ASAR 声明哈希不符。以上对齐依据为实际 JS 字节和官方文档，不把静态分析当成 Claude 真机运行证据。
 
@@ -43,7 +43,7 @@ Claude 云端安全服务的组织站点策略、风险分类器和 Chrome 扩�
 | Cookie 临时、共享、按会话保存 | 原有 Chromium 分区不变；共享清理影响所有共享会话 |
 | 开发服务器 | 原有配置、检测、启动、日志与进程回收不变 |
 
-网页禁用 Node 和 preload，默认拒绝设备权限；限制私网与本地文件访问，阻止访问 Codex UI 内部服务。模型访问未授权的外部站点须经会话卡片授权；本机开发预览豁免，撤销清除当前调用授权。原生菜单覆盖网页时隐藏视图，登录弹窗存在时暂停该标签的模型操作。鼠标操作核对目标是否仍可见，以及命中框架来源；无法确认时拒绝输入。
+网页禁用 Node 和 preload，默认拒绝设备权限；限制私网与本地文件访问，阻止访问 Better Codex 内部服务。模型访问未授权的外部站点须经会话卡片授权；本机开发预览豁免，撤销清除当前调用授权。原生菜单覆盖网页时隐藏视图，登录弹窗存在时暂停该标签的模型操作。鼠标操作核对目标是否仍可见，以及命中框架来源；无法确认时拒绝输入。
 
 MCP 配置只注入单个 app-server，不修改全局 Codex 配置。模型不能通过参数选择另一会话目录，断线撤销专用令牌及未完成请求。页面内容始终是不可信数据。
 
@@ -58,16 +58,16 @@ MCP 配置只注入单个 app-server，不修改全局 Codex 配置。模型不�
 ## 验证
 
 ```powershell
-npm --prefix codex-ui test
-npm --prefix codex-ui run build
-node codex-ui/desktop/browser-storage.test.mjs
+npm --prefix better-codex test
+npm --prefix better-codex run build
+node better-codex/desktop/browser-storage.test.mjs
 # 通过 Electron 运行；Windows 自动化用 Start-Process -Wait -PassThru 取得真实退出码。
-.\node_modules\electron\dist\electron.exe codex-ui/desktop/browser-permissions.test.mjs
-.\node_modules\electron\dist\electron.exe codex-ui/desktop/browser-smoke.test.mjs
-.\node_modules\electron\dist\electron.exe codex-ui/desktop/browser-ui-smoke.test.mjs
+.\node_modules\electron\dist\electron.exe better-codex/desktop/browser-permissions.test.mjs
+.\node_modules\electron\dist\electron.exe better-codex/desktop/browser-smoke.test.mjs
+.\node_modules\electron\dist\electron.exe better-codex/desktop/browser-ui-smoke.test.mjs
 ```
 
-独立资料目录验收，不替换或停止已安装应用。运行时可将已废弃的 `CODEX_UI_CLAUDE_ASAR` 故意设为不存在的路径，确认完全不参与执行。
+独立资料目录验收，不替换或停止已安装应用。运行时可将已废弃的 `BETTER_CODEX_CLAUDE_ASAR` 故意设为不存在的路径，确认完全不参与执行。
 
 - 全套 307 项测试、类型检查与生产构建通过；没有跳过依赖原包的测试。
 - 原生执行器：真实页面填写/点击/双击、AX、DOM/CSS、开放 Shadow DOM、选择框、编辑区、元素选择与截图、PNG 缩放、响应正文、手机/深色模拟通过。

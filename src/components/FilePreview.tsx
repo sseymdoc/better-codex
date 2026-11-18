@@ -62,15 +62,15 @@ function viewOf(key: string) {
 
 /** 预览标签页 and 自动换行 from the pane's menu (jC), both on by default (cccc2cf0a RE: epitaxy-files-word-wrap). */
 const prefs = {
-  preview: readPref("codex-ui:files-preview-tabs", ["on", "off"], "on") === "on",
-  wrap: readPref("codex-ui:files-wrap", ["on", "off"], "on") === "on",
+  preview: readPref("better-codex:files-preview-tabs", ["on", "off"], "on") === "on",
+  wrap: readPref("better-codex:files-wrap", ["on", "off"], "on") === "on",
   // c9bd7af9c / cd2efac6e Dl / od / VO: the tree off, 自动保存 and Tab 键缩进 on, tabs 4 wide.
-  tree: readPref("codex-ui:files-tree", ["on", "off"], "off") === "on",
-  autoSave: readPref("codex-ui:files-auto-save", ["on", "off"], "on") === "on",
-  tabIndent: readPref("codex-ui:files-tab-indent", ["on", "off"], "on") === "on",
-  tabSize: Number(readPref("codex-ui:files-tab-size", ["2", "4", "8"], "4")),
+  tree: readPref("better-codex:files-tree", ["on", "off"], "off") === "on",
+  autoSave: readPref("better-codex:files-auto-save", ["on", "off"], "on") === "on",
+  tabIndent: readPref("better-codex:files-tab-indent", ["on", "off"], "on") === "on",
+  tabSize: Number(readPref("better-codex:files-tab-size", ["2", "4", "8"], "4")),
 };
-const PREF_KEYS = { preview: "codex-ui:files-preview-tabs", wrap: "codex-ui:files-wrap", tree: "codex-ui:files-tree", autoSave: "codex-ui:files-auto-save", tabIndent: "codex-ui:files-tab-indent", tabSize: "codex-ui:files-tab-size" } as const;
+const PREF_KEYS = { preview: "better-codex:files-preview-tabs", wrap: "better-codex:files-wrap", tree: "better-codex:files-tree", autoSave: "better-codex:files-auto-save", tabIndent: "better-codex:files-tab-indent", tabSize: "better-codex:files-tab-size" } as const;
 
 function setPrefs(patch: Partial<typeof prefs>) {
   Object.assign(prefs, patch);
@@ -257,7 +257,7 @@ export function FilesPane({ thread }: { thread: ThreadState }) {
       </Submenu>
     </>
   );
-  const [treeWidth, setTreeWidth] = useState(() => Number(readPref("codex-ui:files-tree-width", ["180", "220", "260", "300", "340"], "220")));
+  const [treeWidth, setTreeWidth] = useState(() => Number(readPref("better-codex:files-tree-width", ["180", "220", "260", "300", "340"], "220")));
   const treeEl = useRef<HTMLDivElement>(null);
   const treeStart = useRef(0);
   const editable = environmentKind(key) !== "ssh";
@@ -426,7 +426,7 @@ function CodeEditor({ path, cwd, initial, wrap, onDone }: { path: string; cwd: s
     if (value === base.current) return true;
     setStatus("saving");
     try {
-      const result = await callExperimental<{ conflict: boolean }>("codexUi/files/write", { cwd, path, text: value, expected: await hashText(base.current) });
+      const result = await callExperimental<{ conflict: boolean }>("betterCodex/files/write", { cwd, path, text: value, expected: await hashText(base.current) });
       if (result.conflict) {
         setStatus("conflict");
         toast("warning", `您对“${basename(path)}”的更改未保存，因为该文件已在磁盘上更改。请重新打开文件查看最新版本。`);

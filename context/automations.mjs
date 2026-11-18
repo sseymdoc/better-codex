@@ -1,9 +1,9 @@
-// 定时任务 in the transcript: the messages Codex UI's scheduler sends (a heartbeat envelope into an
+// 定时任务 in the transcript: the messages Better Codex's scheduler sends (a heartbeat envelope into an
 // existing session, a cron header opening a fresh one), the guidance that goes with them, and the
 // cleanup of what the model answers with (its <heartbeat> decision block and ::inbox-item line).
 
 /** The additionalContext key the heartbeat guidance rides on, once per heartbeat turn. */
-export const HEARTBEAT_KEY = "codex-ui.heartbeat";
+export const HEARTBEAT_KEY = "better-codex.heartbeat";
 
 /**
  * The heartbeat message, byte for byte what codex-rs history/src/heartbeat.rs parses (LF, two-space
@@ -43,17 +43,17 @@ export function parseCronMessage(text) {
 
 /** Developer instructions for a cron run's session (appended to config.developer_instructions at thread/start). */
 export const CRON_GUIDANCE = `## Scheduled task
-Codex UI started this session for a scheduled task the user set up. Its first message comes from the scheduler, not from the user typing now: the header names the task (Automation), its id (Automation ID), a memory file (Automation memory) and the last run (Last run), and the task follows the blank line. Nobody watches while it runs, so don't wait on answers you can infer; say in your reply what blocked you.
+Better Codex started this session for a scheduled task the user set up. Its first message comes from the scheduler, not from the user typing now: the header names the task (Automation), its id (Automation ID), a memory file (Automation memory) and the last run (Last run), and the task follows the blank line. Nobody watches while it runs, so don't wait on answers you can infer; say in your reply what blocked you.
 
 - Read the memory file first (it may not exist yet) and build on earlier runs instead of repeating them. Before you finish, add a short note to it: when this run happened, what you did and what you decided.
 - Reply briefly: what you found, what you changed and what the user should look at now. Link files with Markdown and absolute paths.
 - When you open a pull request, add the codex-automation label next to the usual ones if the repository has it.
-- End the reply with exactly one line of the form ::inbox-item{title="..." summary="..."} on its own, attributes separated by a space (no comma), nothing after it. Codex UI hides the line and shows it in the task's history: the title says what is now true in about 4-8 words (state and subject, such as "Nightly build fails on Windows"), the summary what the user should do or know next in about 6-14 words. Avoid empty words such as Update, Done or FYI.`;
+- End the reply with exactly one line of the form ::inbox-item{title="..." summary="..."} on its own, attributes separated by a space (no comma), nothing after it. Better Codex hides the line and shows it in the task's history: the title says what is now true in about 4-8 words (state and subject, such as "Nightly build fails on Windows"), the summary what the user should do or know next in about 6-14 words. Avoid empty words such as Update, Done or FYI.`;
 
 /** The heartbeat turn's application context. Only with the scheduling tools does it mention them. */
 export function heartbeatGuidance(tools) {
   return [
-    "A user message wrapped in <heartbeat> comes from a scheduled task the user attached to this session, not from the user typing now. Codex UI sends it at the interval they chose: <instructions> holds what they asked you to keep an eye on and <automation_id> names the task.",
+    "A user message wrapped in <heartbeat> comes from a scheduled task the user attached to this session, not from the user typing now. Better Codex sends it at the interval they chose: <instructions> holds what they asked you to keep an eye on and <automation_id> names the task.",
     'Find out where things stand with your tools, then decide whether the user needs to hear about it now. Stay quiet by default: when nothing changed or nothing can be acted on yet (still pending, queued, running or healthy), choose DONT_NOTIFY. Choose NOTIFY only for a completion, a failure, a meaningful change or something the user has to do. Being woken, having done some work, or instructions that ask for "status" are no reason to notify unless the user asked for regular updates.',
     "End every heartbeat turn with exactly one non-empty final reply whose last part is this block, as plain text, with the task's id and one decision:\n<heartbeat>\n  <automation_id>ID</automation_id>\n  <decision>NOTIFY or DONT_NOTIFY</decision>\n  <message>One sentence for the user.</message>\n</heartbeat>",
     "With NOTIFY, a short update may come before the block and <message> is the notification the user gets. With DONT_NOTIFY, write nothing outside the block, progress notes included; <message> says in a sentence why the user needn't act. Write the message in the user's language. Never end with an empty reply: when nothing changed, the reply is the DONT_NOTIFY block.",

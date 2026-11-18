@@ -26,18 +26,20 @@ registerHooks({
 });
 const { inScratch, sweepScratch } = await import("./scratch.ts");
 
-const ROOT = "C:\\Users\\me\\.codex\\codex-ui\\scratch-workspaces";
-const [held, orphan, archived, paged] = ["held", "orphan", "archived", "paged"].map((name) => `${ROOT}\\scratch-2026-10-20-${name}`);
+const ROOT = "C:\\Users\\me\\.codex\\better-codex\\scratch-workspaces";
+const [held, orphan, archived, paged, renamed] = ["held", "orphan", "archived", "paged", "renamed"].map((name) => `${ROOT}\\scratch-2026-10-20-${name}`);
+// The same workspace as a session from before the rename recorded it.
+const legacy = (path) => path.replace("\\better-codex\\", "\\codex-ui\\");
 
 test("the sweep removes only the stale workspaces no session, archived or on a later page, works in", async (t) => {
   lists.length = 0;
   globalThis.__scratchPages = ({ archived: inArchive, cursor }) =>
-    inArchive ? { data: [{ cwd: archived }], nextCursor: null }
+    inArchive ? { data: [{ cwd: archived }, { cwd: legacy(renamed) }], nextCursor: null }
     : cursor === "p2" ? { data: [{ cwd: paged }], nextCursor: null }
     : { data: [{ cwd: held.replaceAll("\\", "/").toUpperCase() }], nextCursor: "p2" };
   const removed = [];
   t.mock.method(globalThis, "fetch", async (url, init) => {
-    if (url === "/api/scratch?c=conn-1" && init.method === "GET") return Response.json({ paths: [held, orphan, archived, paged] });
+    if (url === "/api/scratch?c=conn-1" && init.method === "GET") return Response.json({ paths: [held, orphan, archived, paged, renamed] });
     const match = /^\/api\/scratch\/remove\?c=conn-1&path=(.+)$/.exec(url);
     assert.ok(match && init.method === "POST", url);
     removed.push(decodeURIComponent(match[1]));
@@ -48,7 +50,8 @@ test("the sweep removes only the stale workspaces no session, archived or on a l
   // Every provider and source, both archive states, every page.
   assert.deepEqual(lists.map(({ archived: a, cursor }) => [a, cursor]), [[false, null], [false, "p2"], [true, null]]);
   for (const params of lists) {
-    assert.deepEqual(params.cwd, [held, orphan, archived, paged]);
+    const paths = [held, orphan, archived, paged, renamed];
+    assert.deepEqual(params.cwd, [...paths, ...paths.map(legacy)]);
     assert.deepEqual(params.modelProviders, []);
     assert.ok(params.sourceKinds.includes("cli") && params.sourceKinds.includes("subAgent"));
   }
@@ -69,7 +72,8 @@ test("the sweep asks nothing of Codex when no workspace is stale, and removes no
 test("inScratch knows the scratch root under CODEX_HOME, whatever the separators or case", () => {
   const home = "C:\\Users\\me\\.codex";
   assert.equal(inScratch(orphan, home), true);
-  assert.equal(inScratch("c:/users/ME/.codex/codex-ui/scratch-workspaces/scratch-x", home), true);
-  for (const path of [ROOT, `${home}\\codex-ui\\automations\\a`, "D:\\work", "", null]) assert.equal(inScratch(path, home), false);
+  assert.equal(inScratch("c:/users/ME/.codex/better-codex/scratch-workspaces/scratch-x", home), true);
+  assert.equal(inScratch(legacy(orphan), home), true);
+  for (const path of [ROOT, `${home}\\better-codex\\automations\\a`, "D:\\work", "", null]) assert.equal(inScratch(path, home), false);
   assert.equal(inScratch(orphan, null), false);
 });

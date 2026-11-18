@@ -1,7 +1,7 @@
 // A dot's local computer, run as the Codex desktop app runs its local Work executor: this
 // installation registers under the ChatGPT login (/flora/cca/executor), then
 // `codex exec-server --remote` holds a relay to ChatGPT's environment registry so the dot's cloud
-// threads can work on this machine. Off until the user turns it on; it ends with codex-ui.
+// threads can work on this machine. Off until the user turns it on; it ends with better-codex.
 import { spawn as spawnChild } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -85,7 +85,7 @@ export function createExecutor({ dir, launch, register, reportReady, spawn = spa
       environmentId = id;
       const proc = spawn(plan.command, spawnArgs(plan, [...plan.args, "-c", 'forced_login_method="chatgpt"', "exec-server", "--remote", remote, "--environment-id", id]), {
         cwd: homedir(),
-        // It exits once our end of its stdin closes, so it never outlives codex-ui; its login is
+        // It exits once our end of its stdin closes, so it never outlives better-codex; its login is
         // codex's own (CODEX_HOME), never a token of ours.
         env: { ...plan.env, CODEX_EXEC_SERVER_EXIT_ON_STDIN_CLOSE: "true", RUST_LOG: "error,codex_exec_server::remote=info" },
         shell: plan.shell ?? false,

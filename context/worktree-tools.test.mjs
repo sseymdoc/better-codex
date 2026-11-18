@@ -29,7 +29,7 @@ test("receipts answer their call", () => {
 test("results say what to do next; entering carries the mark the transcript reads", () => {
   const entered = worktreeResult("enter_worktree", {}, { outcome: "entered", worktree: "C:/w/ab12/repo", base: "main" });
   assert.match(entered.content[0].text, /end this turn now with one short sentence and no further tool calls/);
-  assert.deepEqual(entered._meta, { codexUiWorktree: "entered" });
+  assert.deepEqual(entered._meta, { betterCodexWorktree: "entered" });
   assert.equal(worktreeResult("enter_worktree", {}, { outcome: "not_deferred" })._meta, undefined);
   assert.match(worktreeResult("sync_with_base_branch", {}, { outcome: "conflicts", target: "origin/main", fetched: true, files: ["a.txt", "b.txt"] }).content[0].text, /conflicts in: a\.txt, b\.txt\. The merge is still under way/);
   assert.match(worktreeResult("sync_with_base_branch", {}, { outcome: "merged", target: "main", fetched: false, head: "a".repeat(40) }).content[0].text, /fetching it failed, so the local copy was used/);

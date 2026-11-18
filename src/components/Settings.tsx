@@ -89,7 +89,7 @@ const report = (error: string | null) => {
 // Theme (applied before first paint by public/theme-init.js)
 
 export type Theme = "light" | "dark" | "system";
-const THEME_KEY = "codex-ui:theme";
+const THEME_KEY = "better-codex:theme";
 
 export function currentTheme(): Theme {
   return readPref<Theme>(THEME_KEY, ["light", "dark", "system"], "system");
@@ -110,8 +110,8 @@ export function saveTheme(theme: Theme) {
 // Appearance choices mirrored on <html> (public/theme-init.js writes them before first paint).
 type Size = "s" | "m" | "l";
 const SIZES: Size[] = ["s", "m", "l"];
-const CHAT_TEXT_SIZE_KEY = "codex-ui:chat-text-size";
-const TRANSCRIPT_WIDTH_KEY = "codex-ui:transcript-width";
+const CHAT_TEXT_SIZE_KEY = "better-codex:chat-text-size";
+const TRANSCRIPT_WIDTH_KEY = "better-codex:transcript-width";
 
 function saveHtmlPref(key: string, attr: "chatTextSize" | "transcriptWidth", value: string) {
   writePref(key, value);
@@ -120,7 +120,7 @@ function saveHtmlPref(key: string, attr: "chatTextSize" | "transcriptWidth", val
 
 // Code font (cd19fedd2 codeFont, editorPrefs.editorFont): one family name in front of the
 // monospace stack, as shared-frame Ra() writes --cds-font-mono-override (quoted, then a comma).
-const CODE_FONT_KEY = "codex-ui:code-font";
+const CODE_FONT_KEY = "better-codex:code-font";
 
 function codeFont(): string {
   try {
@@ -147,7 +147,7 @@ applyCodeFont();
 // 代码字号 (Claude 4.4212 cbc28252c codeFontSize, shared-7 hz / _z): 11–20 px with a line 1.45×
 // as tall, for open files, diffs, code blocks, command output and the terminal; unset follows the density.
 export const CODE_SIZES = [11, 12, 13, 14, 15, 16, 18, 20] as const;
-const CODE_SIZE_KEY = "codex-ui:code-font-size";
+const CODE_SIZE_KEY = "better-codex:code-font-size";
 
 export function codeFontSize(): number | null {
   try {
@@ -177,7 +177,7 @@ applyCodeSize();
 // Code themes (c5d464fa3 r(): one for light mode, one for dark, Claude Light / Dark by default).
 // Both go on <html> as --code-light-* / --code-dark-* (transcript.css picks the page's mode, a
 // [data-code-mode] preview its own); the terminal takes its palette (Terminal.tsx).
-const CODE_THEME_KEYS: Record<CodeThemeMode, string> = { light: "codex-ui:code-theme-light", dark: "codex-ui:code-theme-dark" };
+const CODE_THEME_KEYS: Record<CodeThemeMode, string> = { light: "better-codex:code-theme-light", dark: "better-codex:code-theme-dark" };
 const CODE_MODES = ["light", "dark"] as const;
 
 export function codeThemeOf(mode: CodeThemeMode): CodeTheme {
@@ -201,7 +201,7 @@ applyCodeThemes();
 // cm() marks <html>: data-font="system" for System and OpenDyslexic, then data-system-font or
 // data-dyslexic-font (tokens.css, transcript.css).
 type InterfaceFont = "anthropic" | "system" | "dyslexic";
-const INTERFACE_FONT_KEY = "codex-ui:interface-font";
+const INTERFACE_FONT_KEY = "better-codex:interface-font";
 const INTERFACE_FONTS: { value: InterfaceFont; label: string }[] = [
   { value: "anthropic", label: "Anthropic Sans" },
   { value: "system", label: "系统" },
@@ -775,7 +775,7 @@ function AppearanceSection() {
           value={defaultView}
           options={VIEWS.map((view) => ({ value: view, label: VIEW_LABELS[view] }))}
           onChange={(value: TranscriptView) => {
-            writePref("codex-ui:view", value);
+            writePref("better-codex:view", value);
             setState({ defaultView: value });
           }}
         />
@@ -784,7 +784,7 @@ function AppearanceSection() {
   );
 }
 
-/** 字体许可 (cea462098): the licence text of the faces in use (Claude Desktop's, else codex-ui's own for
+/** 字体许可 (cea462098): the licence text of the faces in use (Claude Desktop's, else better-codex's own for
  *  its stand-ins), fetched on first open; the dialog stays empty without it. */
 function FontLicenses() {
   const [open, setOpen] = useState(false);
@@ -941,8 +941,8 @@ const NEW_TASK_PROMPTS: { value: NewTaskPrompt; label: string }[] = [
   { value: "new_session", label: "始终新建会话" },
 ];
 
-/** The row needs codex_ui_desktop's session tools: the desktop app with the experimental backend (Claude whenMissing hide). */
-const desktopToolsOn = (s: AppState) => s.server.info?.codexUiDesktopTools === true && !!window.codexDesktop;
+/** The row needs better_codex_desktop's session tools: the desktop app with the experimental backend (Claude whenMissing hide). */
+const desktopToolsOn = (s: AppState) => s.server.info?.betterCodexDesktopTools === true && !!window.codexDesktop;
 
 /** Bl2Tfe3A pr, the "Sessions" group (rows Codex has no counterpart for are left out). */
 function SessionsSection() {
@@ -950,7 +950,7 @@ function SessionsSection() {
   const archiveDays = useStore((s) => s.autoArchiveDays);
   const newTaskPrompt = useStore((s) => s.newTaskPrompt);
   const sessionTools = useStore(desktopToolsOn);
-  const workflowsOffered = useStore((s) => s.server.info?.codexUiWorkflows === true);
+  const workflowsOffered = useStore((s) => s.server.info?.betterCodexWorkflows === true);
   const workflowsOn = useWorkflowsEnabled();
   const [desktop, saveDesktop] = useDesktopSettings();
   return (
@@ -964,7 +964,7 @@ function SessionsSection() {
           checked={allowFullAccess}
           label="允许绕过权限模式"
           onChange={(on) => {
-            writePref("codex-ui:allow-full-access", String(on));
+            writePref("better-codex:allow-full-access", String(on));
             setState({ allowFullAccess: on });
           }}
         />
@@ -1007,7 +1007,7 @@ function SessionsSection() {
           value={String(archiveDays)}
           options={ARCHIVE_DAYS.map((days) => ({ value: String(days), label: days ? `${days} 天` : "从不" }))}
           onChange={(value) => {
-            writePref("codex-ui:auto-archive-days", value);
+            writePref("better-codex:auto-archive-days", value);
             setState({ autoArchiveDays: Number(value) });
           }}
         />
@@ -1024,7 +1024,7 @@ function SessionsSection() {
 }
 
 /**
- * 工作树位置 (Claude 4.4212 cbc28252c worktreeLocation): where Codex UI makes session worktrees,
+ * 工作树位置 (Claude 4.4212 cbc28252c worktreeLocation): where Better Codex makes session worktrees,
  * `[desktop] git-worktree-root` in config.toml (Codex desktop's own key, so both apps agree);
  * unset, $CODEX_HOME/worktrees. Takes effect for worktrees made from now on.
  */
@@ -1337,7 +1337,7 @@ const PRIMARY = typeof navigator !== "undefined" && platformName() === "Mac" ? "
 const RESERVED_SHORTCUTS = [
   // c71860c77: the system's.
   ...["Cmd+Q", "Cmd+W", "Cmd+H", "Cmd+M", "Cmd+,", "Cmd+N", "Cmd+O", "Cmd+T", "Cmd+S", "Cmd+C", "Cmd+V", "Ctrl+W", "Ctrl+N", "Ctrl+O", "Ctrl+T", "Ctrl+S", "Ctrl+C", "Ctrl+V"],
-  // codex-ui's own (Palette.tsx bindings), spelled the way the recorder does (Shift+Alt+Ctrl+key): a global hotkey would take them from the page.
+  // better-codex's own (Palette.tsx bindings), spelled the way the recorder does (Shift+Alt+Ctrl+key): a global hotkey would take them from the page.
   ..."KB/,F=-`0123456789".split("").map((key) => `${PRIMARY}+${key}`),
   ...["K", ",", "O", "D", "M", "I", "E", "Backspace"].map((key) => `Shift+${PRIMARY}+${key}`),
   // The Control key on a Mac too (Palette's ctrlTab()); ⌘J is the Mac's terminal key.
@@ -1713,12 +1713,12 @@ function UsageTab() {
 
 // ---------------------------------------------------------------------------
 // Capabilities (c71860c77 settings/capabilities). Claude's rows (artifacts, visualizations, code
-// execution) have no Codex counterpart; its 视觉内容 group holds codex-ui's composer choice.
+// execution) have no Codex counterpart; its 视觉内容 group holds better-codex's composer choice.
 
-const MERGED_MODEL_PICKER_KEY = "codex-ui:merged-model-picker";
-const PLAN_CARD_KEY = "codex-ui:plan-card";
-const AWAY_RECAP_KEY = "codex-ui:away-recap";
-const INLINE_VISUALS_KEY = "codex-ui:inline-visuals";
+const MERGED_MODEL_PICKER_KEY = "better-codex:merged-model-picker";
+const PLAN_CARD_KEY = "better-codex:plan-card";
+const AWAY_RECAP_KEY = "better-codex:away-recap";
+const INLINE_VISUALS_KEY = "better-codex:inline-visuals";
 
 function CapabilitiesTab() {
   const merged = useStore((s) => s.mergedModelPicker);
@@ -1937,7 +1937,7 @@ function AboutTab() {
           <Spark size={36} />
         </div>
         <h3 className="about-title">
-          Codex UI
+          Better Codex
           {DESKTOP && (
             <>
               {" "}
@@ -1950,7 +1950,7 @@ function AboutTab() {
           className="about-version"
           aria-label={`将版本 ${version} 复制到剪贴板`}
           onClick={() => {
-            void navigator.clipboard.writeText(["Codex UI", version, BUILD.time].filter(Boolean).join(" "));
+            void navigator.clipboard.writeText(["Better Codex", version, BUILD.time].filter(Boolean).join(" "));
             setCopied(true);
           }}
         >
@@ -2554,7 +2554,7 @@ export function LoginView() {
 }
 
 // ---------------------------------------------------------------------------
-// get_settings / set_setting (codex_ui_desktop, context/settings-tools.mjs): the preferences the
+// get_settings / set_setting (better_codex_desktop, context/settings-tools.mjs): the preferences the
 // model may read and, once the user allows it on a card, change, with the writes the rows make.
 
 const onOff = (on: boolean) => (on ? "on" : "off");
@@ -2597,7 +2597,7 @@ const MODEL_SETTING_WRITES: Record<ModelSettingKey, (value: string) => void | Pr
     applyInterfaceFont(value as InterfaceFont);
   },
   default_transcript_view: (value) => {
-    writePref("codex-ui:view", value);
+    writePref("better-codex:view", value);
     setState({ defaultView: value as TranscriptView });
   },
   plan_card: (value) => {

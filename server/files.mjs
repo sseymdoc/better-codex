@@ -182,7 +182,7 @@ function registered(protocol) {
 }
 
 let editors, editorsAt = 0;
-const EDITORS_TTL = 60_000; // an editor installed while codex-ui runs shows up within a minute
+const EDITORS_TTL = 60_000; // an editor installed while better-codex runs shows up within a minute
 
 /** The editors installed, as Claude lists them (getInstalledEditors: by a registered URL protocol). */
 export function installedEditors() {

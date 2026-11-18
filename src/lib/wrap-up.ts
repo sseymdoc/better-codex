@@ -9,7 +9,7 @@ import { readJson, sessionCall, sessionMeta, writeJson, type Proposal } from "./
 type McpItem = Extract<ThreadItem, { type: "mcpToolCall" }>;
 interface TurnLike { id: string; status: string; items: ThreadItem[] }
 
-export const isWrapUpCall = (item: ThreadItem): item is McpItem => item.type === "mcpToolCall" && item.server === "codex_ui_desktop" && item.tool === "wrap_up";
+export const isWrapUpCall = (item: ThreadItem): item is McpItem => item.type === "mcpToolCall" && item.server === "better_codex_desktop" && item.tool === "wrap_up";
 
 /** A turn's last wrap_up that went through (Dr): failed or refused calls draw nothing. */
 export function turnWrapUp(turn: TurnLike | undefined): { item: McpItem; wrap: WrapUp } | null {
@@ -25,7 +25,7 @@ export function turnWrapUp(turn: TurnLike | undefined): { item: McpItem; wrap: W
 // Dismissals (fr): the last one per session in memory, and those whose question was on show kept
 // on this machine (Claude's epitaxy.dismissedTurnReceipts), 200 a session, 100 sessions.
 
-const DISMISSED_KEY = "codex-ui:dismissed-turn-receipts";
+const DISMISSED_KEY = "better-codex:dismissed-turn-receipts";
 const lastDismissed = new Map<string, string>();
 let kept = (() => {
   const saved = readJson(DISMISSED_KEY);

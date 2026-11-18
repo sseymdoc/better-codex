@@ -2151,7 +2151,7 @@
    surface-1, centred), a mt-lg link under it. Waiting on the browser (tm): a 48px
    spinner, a serif 24 status title, a balanced 14px hint or the mono device code, back.
    A browser keeps the W11 /login frame: a 72px nav (84 from 69rem) and the title as a
-   serif 56/64.4 hero (login-hero-in belongs to the hero media, which codex-ui has none of). */
+   serif 56/64.4 hero (login-hero-in belongs to the hero media, which better-codex has none of). */
 
 .login {
   display: flex;

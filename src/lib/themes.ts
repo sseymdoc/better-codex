@@ -1,5 +1,5 @@
 // Code themes (Settings → Codex → 代码外观): the list Claude Desktop 2.42304.0.0 offers (c5d464fa3 k),
-// each resolved for codex-ui's highlight.js classes. Generated from the themes the app bundles
+// each resolved for better-codex's highlight.js classes. Generated from the themes the app bundles
 // (claude-light / claude-dark as c5d464fa3 builds them, the rest Shiki's tm-themes in cd14a9327 and
 // @pierre/theme) the way Claude's own editor theme reads them (cbd02b8f2 ea: the longest scope prefix
 // wins, and each property takes the first of its scopes that resolves, as na() walks Qi), minus

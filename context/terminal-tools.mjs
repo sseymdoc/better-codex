@@ -1,4 +1,4 @@
-// codex_ui_desktop's terminal tools: this chat's tabs in the 终端 pane, which are the user's own
+// better_codex_desktop's terminal tools: this chat's tabs in the 终端 pane, which are the user's own
 // shells (process/spawn, outside the sandbox). Schemas, argument and receipt checks, result text.
 // No I/O or application state.
 

@@ -31,7 +31,7 @@ export async function verifyBrowserMcp(browser, work, url) {
         ? {
             type: "function_call",
             call_id: `call-${step}`,
-            namespace: "mcp__codex_ui_browser",
+            namespace: "mcp__better_codex_browser",
             name: actions[step][0],
             arguments: JSON.stringify(actions[step][1]),
           }
@@ -56,7 +56,7 @@ export async function verifyBrowserMcp(browser, work, url) {
   // Only this disposable test profile approves the fixture's mutations automatically.
   for (const tool of ["preview_start", "preview_fill", "preview_click"]) {
     const file = path.join(codexHome, "config.toml");
-    writeFileSync(file, `\n[mcp_servers.codex_ui_browser.tools.${tool}]\napproval_mode = "approve"\n`, { flag: "a" });
+    writeFileSync(file, `\n[mcp_servers.better_codex_browser.tools.${tool}]\napproval_mode = "approve"\n`, { flag: "a" });
   }
   const previousHome = process.env.CODEX_HOME;
   process.env.CODEX_HOME = codexHome;
@@ -80,7 +80,7 @@ export async function verifyBrowserMcp(browser, work, url) {
   const frames = [],
     pending = new Map(),
     controllers = [];
-  const cookie = `codex_ui_${httpServer.address().port}=browser-smoke-token`;
+  const cookie = `better_codex_${httpServer.address().port}=browser-smoke-token`;
   const send = async (message) => {
     const result = await fetch(`${base}/api/send?c=${connection}`, {
       method: "POST",
@@ -140,7 +140,7 @@ export async function verifyBrowserMcp(browser, work, url) {
       if (error.name !== "AbortError") throw error;
     });
     await hello;
-    await rpc("initialize", { clientInfo: { name: "codex_ui_browser_smoke", version: "1.0" }, capabilities: { experimentalApi: true } });
+    await rpc("initialize", { clientInfo: { name: "better_codex_browser_smoke", version: "1.0" }, capabilities: { experimentalApi: true } });
     await send({ method: "initialized" });
     const started = await rpc("thread/start", {
       cwd: work,
@@ -153,7 +153,7 @@ export async function verifyBrowserMcp(browser, work, url) {
     await rpc("turn/start", {
       threadId,
       input: [
-        { type: "text", text: "Use only codex_ui_browser tools to open the test page, fill and submit the form, then inspect the result." },
+        { type: "text", text: "Use only better_codex_browser tools to open the test page, fill and submit the form, then inspect the result." },
       ],
     });
     for (let i = 0; i < 300; i++) {

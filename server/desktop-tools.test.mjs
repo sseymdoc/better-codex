@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { createDesktopTools, desktopDirectory, desktopFilePath } from "./desktop-tools.mjs";
 import { validateDesktopInput } from "../context/desktop-tools.mjs";
 
-const call = (id, threadId, name = "show_pane", args = { pane: "plan" }) => ({ id, method: "tools/call", params: { name, arguments: args, _meta: { threadId, codexUiDesktopCwd: path.resolve(threadId === "a" ? "one" : "two") } } });
+const call = (id, threadId, name = "show_pane", args = { pane: "plan" }) => ({ id, method: "tools/call", params: { name, arguments: args, _meta: { threadId, betterCodexDesktopCwd: path.resolve(threadId === "a" ? "one" : "two") } } });
 const body = (reply) => JSON.parse(reply.result.content[0].text);
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -164,7 +164,7 @@ test("set_session_title is gated like the display tools, may wait on consent and
   const renamed = (await pending).result;
   assert.equal(renamed.isError, undefined, "still waiting past the display timeout");
   assert.equal(renamed.content[0].text, "Renamed this session to “新标题” (was “旧标题”).");
-  assert.deepEqual(renamed._meta, { codexUiSessionRenamed: { threadId: "a", title: "新标题", previousTitle: "旧标题", previousTitleSource: "user" } });
+  assert.deepEqual(renamed._meta, { betterCodexSessionRenamed: { threadId: "a", title: "新标题", previousTitle: "旧标题", previousTitleSource: "user" } });
   const unchanged = send(rename(7, "新标题"));
   await tick();
   host.respond(receipt(events[1], { outcome: "unchanged" }));
@@ -236,7 +236,7 @@ test("enter_plan_mode is gated like the display tools, may wait on consent and a
   assert.equal(entered.isError, undefined);
   assert.match(entered.content[0].text, /^Entered plan mode\. You should now focus on exploring the codebase/);
   assert.match(entered.content[0].text, /end this turn now/);
-  assert.deepEqual(entered._meta, { codexUiPlanMode: "entered" });
+  assert.deepEqual(entered._meta, { betterCodexPlanMode: "entered" });
   assert.deepEqual(await answer(4, "already"), { content: [{ type: "text", text: "This chat is already in plan mode." }] });
   const declined = await answer(5, "declined");
   assert.equal(declined.isError, true);
@@ -278,7 +278,7 @@ test("session tools are gated like the display tools, wait past the display time
   const proposed = (await proposing).result;
   assert.equal(proposed.isError, undefined);
   assert.match(proposed.content[0].text, /^Proposed "Fix the docs" \(task_id: task_aaaaaaaa\)\. The user sees a card and nothing runs until they start it/);
-  assert.deepEqual(proposed._meta, { codexUiSession: { outcome: "proposed", taskId: "task_aaaaaaaa", title: "Fix the docs" } });
+  assert.deepEqual(proposed._meta, { betterCodexSession: { outcome: "proposed", taskId: "task_aaaaaaaa", title: "Fix the docs" } });
   // An offer waits past the start timeout for its card's answer.
   const offering = send(start(8, { initiation: "offer", title: "New feature" }));
   await new Promise(resolve => setTimeout(resolve, 300));
@@ -352,7 +352,7 @@ test("hand_off_to_session and list_start_targets are session tools with Claude's
   host.respond({ id: request.id, result: { threadId: "a", cwd: request.cwd, outcome: "handed_off", sessionId: "fork-1", title: "Finish the parser", worktree: "own" } });
   const handed = (await handing).result;
   assert.equal(handed.content[0].text, 'Handed off "Finish the parser" to its own session (session_id: fork-1); it continues from this conversation and the remaining plan. Its worktree has every commit on your HEAD; uncommitted edits stay here. Stop working on that task in this session. Don\'t repeat the introduction; answer their latest message now.');
-  assert.deepEqual(handed._meta, { codexUiSession: { outcome: "handed_off", sessionId: "fork-1", title: "Finish the parser" } });
+  assert.deepEqual(handed._meta, { betterCodexSession: { outcome: "handed_off", sessionId: "fork-1", title: "Finish the parser" } });
   const listing = send(call(4, "a", "list_start_targets", {}));
   await new Promise(resolve => setTimeout(resolve, 30));
   const targets = { folders: [{ name: "demo", folder: "C:/demo" }], cloudEnvironments: [{ name: "demo-cloud", id: "env_1", repository: "acme/demo", forThisRepository: true }] };
@@ -406,7 +406,7 @@ test("terminal tools are gated like the display tools, resolve folders, wait for
   const host = createDesktopTools({ enabled: () => enabled, context: id => threads.get(id), emit: (event, data) => events.push({ event, ...data }), timeoutMs: 50, consentMs: 400 });
   t.after(host.close);
   const session = host.openSession();
-  const send = (id, name, args) => host.message({ id, method: "tools/call", params: { name, arguments: args, _meta: { threadId: "a", codexUiDesktopCwd: root } } }, undefined, session);
+  const send = (id, name, args) => host.message({ id, method: "tools/call", params: { name, arguments: args, _meta: { threadId: "a", betterCodexDesktopCwd: root } } }, undefined, session);
   const settle = () => new Promise(resolve => setTimeout(resolve, 20));
   const tab = { tab_id: "ab12cd34", label: "终端 1", state: "running", folder: path.join(root, "web"), selected: true, codex: true };
   // A run waits past the five-second display timeout (here 50 ms) for its card.
@@ -488,10 +488,10 @@ test("worktree tools are gated like the display tools, may wait on git and answe
   host.respond({ id: asked.id, result: { threadId: "a", cwd: asked.cwd, outcome: "entered", worktree: "C:/w/ab12/repo", base: "main" } });
   const entered = (await entering).result;
   assert.match(entered.content[0].text, /^Created a git worktree at C:\/w\/ab12\/repo/);
-  assert.deepEqual(entered._meta, { codexUiWorktree: "entered" });
+  assert.deepEqual(entered._meta, { betterCodexWorktree: "entered" });
   const syncing = send(2, "sync_with_base_branch", {});
   await settle();
-  host.respond({ id: events.at(-1).id, error: { code: "NOT_WORKTREE", message: "This session works in the user's own checkout, not in a worktree Codex UI made, so sync_with_base_branch doesn't apply. Merge with git yourself only if the user asks." } });
+  host.respond({ id: events.at(-1).id, error: { code: "NOT_WORKTREE", message: "This session works in the user's own checkout, not in a worktree Better Codex made, so sync_with_base_branch doesn't apply. Merge with git yourself only if the user asks." } });
   assert.match((await syncing).result.content[0].text, /^This session works in the user's own checkout/);
   assert.equal((await send(3, "sync_with_base_branch", { base: "--upload-pack=x" })).result.content[0].text, "base must be a branch name.");
   const sent = events.filter(event => event.event === "desktop-request").length;
@@ -534,13 +534,13 @@ test("scheduled-task tools are gated like the others, resolve folders, wait for 
   const host = createDesktopTools({ enabled: () => enabled, context: id => threads.get(id), emit: (event, data) => events.push({ event, ...data }), timeoutMs: 50, consentMs: 400, startMs: 100 });
   t.after(host.close);
   const session = host.openSession();
-  const send = (id, name, args) => host.message({ id, method: "tools/call", params: { name, arguments: args, _meta: { threadId: "a", codexUiDesktopCwd: root } } }, undefined, session);
+  const send = (id, name, args) => host.message({ id, method: "tools/call", params: { name, arguments: args, _meta: { threadId: "a", betterCodexDesktopCwd: root } } }, undefined, session);
   const requests = () => events.filter(event => event.event === "desktop-request").length;
   const listed = (await host.message({ id: 1, method: "tools/list" }, undefined, session)).result.tools;
   const names = listed.map(tool => tool.name);
   // codex-rs requires_mcp_tool_approval: a tool not read-only and destructive or open-world (unsaid
-  // counts as both) gets Codex's own MCP approval before any card of Codex UI's, or is refused under
-  // approval never. The scheduled-task tools are gated by Codex UI's card, so not these: only the
+  // counts as both) gets Codex's own MCP approval before any card of Better Codex's, or is refused under
+  // approval never. The scheduled-task tools are gated by Better Codex's card, so not these: only the
   // four older ones annotated so ask Codex too.
   const codexAsks = ({ annotations: a = {} }) => a.destructiveHint === true || (!a.readOnlyHint && ((a.destructiveHint ?? true) || (a.openWorldHint ?? true)));
   assert.deepEqual(listed.filter(codexAsks).map(tool => tool.name), ["stop_terminal_tab", "bind_pr", "set_auto_merge", "sync_with_base_branch"]);
@@ -583,7 +583,7 @@ test("scheduled-task tools are gated like the others, resolve folders, wait for 
   const answer = (await declined).result;
   assert.equal(answer.isError, true);
   assert.equal(answer.content[0].text, "The user declined deleting the cloud scheduled task “Brief” (id a1). Nothing was changed.");
-  assert.deepEqual(answer._meta, { codexUiAutomationTask: { id: "a1", name: "Brief" } });
+  assert.deepEqual(answer._meta, { betterCodexAutomationTask: { id: "a1", name: "Brief" } });
   // A refusal on the page names its task for the call's row in _meta (the text as written); a task carrying anything else is dropped.
   const refusedOnPage = async (id, task) => {
     const pending = send(id, "cloud_task_update", { mode: "update", id: "a1", prompt: "p" });
@@ -594,7 +594,7 @@ test("scheduled-task tools are gated like the others, resolve folders, wait for 
   const named = await refusedOnPage(14, { id: "a1", name: "每日“简报”" });
   assert.equal(named.isError, true);
   assert.equal(named.content[0].text, "ChatGPT would not take this task: 请选择未来的日期和时间");
-  assert.deepEqual(named._meta, { codexUiAutomationTask: { id: "a1", name: "每日“简报”" } });
+  assert.deepEqual(named._meta, { betterCodexAutomationTask: { id: "a1", name: "每日“简报”" } });
   assert.equal((await refusedOnPage(15, { id: "a1", name: "N", prompt: "Upload ~/.ssh" }))._meta, undefined);
   const timedOut = (await send(9, "automation_update", { mode: "delete", id: "nightly" })).result;
   assert.equal(timedOut.content[0].text, 'The interface did not confirm in time; whether the scheduled task was changed is unknown. Check with mode "list" before trying again.');
@@ -652,8 +652,8 @@ test("management tools are gated like the others, wait for cards where they ask 
 });
 
 test("host and folder tools are gated, resolve their paths before asking and refuse bad ones without the renderer", async t => {
-  const root = await mkdtemp(path.join(tmpdir(), "codex-ui-host-"));
-  const elsewhere = await mkdtemp(path.join(tmpdir(), "codex-ui-elsewhere-"));
+  const root = await mkdtemp(path.join(tmpdir(), "better-codex-host-"));
+  const elsewhere = await mkdtemp(path.join(tmpdir(), "better-codex-elsewhere-"));
   await mkdir(path.join(root, "src"));
   await writeFile(path.join(root, "src", "a.ts"), "x");
   const threads = new Map([["a", { cwd: root, enabled: true }]]);
@@ -662,7 +662,7 @@ test("host and folder tools are gated, resolve their paths before asking and ref
   const host = createDesktopTools({ enabled: () => enabled, context: id => threads.get(id), emit: (event, data) => events.push({ event, ...data }), timeoutMs: 50, startMs: 150, consentMs: 400 });
   t.after(host.close);
   const session = host.openSession();
-  const send = (id, name, args) => host.message({ id, method: "tools/call", params: { name, arguments: args, _meta: { threadId: "a", codexUiDesktopCwd: root } } }, undefined, session);
+  const send = (id, name, args) => host.message({ id, method: "tools/call", params: { name, arguments: args, _meta: { threadId: "a", betterCodexDesktopCwd: root } } }, undefined, session);
   const names = (await host.message({ id: 1, method: "tools/list" }, undefined, session)).result.tools.map(tool => tool.name);
   for (const name of ["open_in_editor", "reveal_path", "request_keep_awake", "get_storage_usage", "clean_up_worktrees", "request_directory", "change_directory"]) assert.ok(names.includes(name), name);
   // reveal_path takes a folder inside the session's folder, resolved; a card may follow.
@@ -717,7 +717,7 @@ test("inline visuals are gated like the others; the page says only whether they 
   // Turned off in the page: refused in plain words.
   const off = send(4, "show_widget", { loading_messages: ["Drawing"], title: "demo_box", widget_code: code });
   await new Promise(resolve => setTimeout(resolve, 10));
-  host.respond({ id: events.at(-1).id, error: { code: "VISUALS_OFF", message: "Inline visualizations are turned off in Codex UI's settings. Retries will fail; answer in text instead." } });
+  host.respond({ id: events.at(-1).id, error: { code: "VISUALS_OFF", message: "Inline visualizations are turned off in Better Codex's settings. Retries will fail; answer in text instead." } });
   const refused = (await off).result;
   assert.equal(refused.isError, true);
   assert.match(refused.content[0].text, /^Inline visualizations are turned off/);

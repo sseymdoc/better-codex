@@ -450,7 +450,7 @@ export function markCloudTaskRead(id: string): void {
 
 /** `codex apply`: the task's diff onto a local checkout, whole or not at all (server/git.mjs applyPatch). */
 export function applyCloudDiff(cwd: string, diff: string): Promise<unknown> {
-  return callExperimental("codexUi/git/apply", { cwd, diff });
+  return callExperimental("betterCodex/git/apply", { cwd, diff });
 }
 
 /** Signed out or switched accounts: nothing of the old account's cloud stays on screen. */

@@ -16,8 +16,8 @@ for (const mode of ["cold", "prewarm", "old", "off", "web"]) test(`desktop bridg
 createInterface({input:process.stdin}).on('line',line=>{
   const {id,method,params={}}=JSON.parse(line);
   let result={};
-  if(method==='initialize')result={codexUiHostContext:true,${mode !== "old" ? "codexUiDesktopTools:true" : ""}};
-  if(method==='thread/start')result={thread:{id:params.threadId||'parent',cwd:params.cwd||process.cwd(),parentThreadId:params.parent||null,source:'cli'},token:process.env.CODEX_UI_DESKTOP_TOKEN,args:process.argv};
+  if(method==='initialize')result={betterCodexHostContext:true,${mode !== "old" ? "betterCodexDesktopTools:true" : ""}};
+  if(method==='thread/start')result={thread:{id:params.threadId||'parent',cwd:params.cwd||process.cwd(),parentThreadId:params.parent||null,source:'cli'},token:process.env.BETTER_CODEX_DESKTOP_TOKEN,args:process.argv};
   if(method==='thread/close')console.log(JSON.stringify({method:'thread/closed',params:{threadId:params.threadId}}));
   if(id!==undefined)console.log(JSON.stringify({id,result}));
 });`);
@@ -27,7 +27,7 @@ createInterface({input:process.stdin}).on('line',line=>{
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   t.after(() => { service.close(); server.closeAllConnections(); server.close(); });
   const host = `127.0.0.1:${server.address().port}`, base = `http://${host}`;
-  const cookie = `codex_ui_${server.address().port}=ui-token`;
+  const cookie = `better_codex_${server.address().port}=ui-token`;
   if (mode === "prewarm") await service.prewarm(host);
   const events = [], lines = [];
   const id = service.connect(host, { event: (event, data) => events.push({ event, ...data }), message: line => lines.push(JSON.parse(line)), end() {} });
@@ -49,13 +49,13 @@ createInterface({input:process.stdin}).on('line',line=>{
   const list = { id: 1, method: "tools/list" };
   if (["off", "web"].includes(mode)) {
     assert.equal(started.token, undefined);
-    assert.equal(started.args.some(arg => arg.startsWith("mcp_servers.codex_ui_desktop.")), false);
+    assert.equal(started.args.some(arg => arg.startsWith("mcp_servers.better_codex_desktop.")), false);
     assert.equal(started.args.some(arg => arg.startsWith("features.code_mode.")), false);
     assert.equal((await post(list)).status, 401);
     assert.equal((await post({ id: 9, method: "tools/call", params: { name: "run_in_terminal", arguments: { command: "whoami" } } })).status, 401, "a terminal tool is refused with the backend off");
     return;
   }
-  assert.ok(started.args.includes('features.code_mode.direct_only_tool_namespaces=["mcp__codex_ui_desktop"]'), "desktop tools stay top-level in code mode");
+  assert.ok(started.args.includes('features.code_mode.direct_only_tool_namespaces=["mcp__better_codex_desktop"]'), "desktop tools stay top-level in code mode");
   assert.equal((await post(list, { Cookie: cookie })).status, 401);
   assert.equal((await post(list, { ...auth, Origin: "https://untrusted.invalid" })).status, 401);
   assert.equal((await post(list, { ...auth, Authorization: "Bearer wrong" })).status, 401);
@@ -66,14 +66,14 @@ createInterface({input:process.stdin}).on('line',line=>{
   const tools = (await (await post(list)).json()).result.tools;
   assert.equal(tools.length, mode === "old" ? 0 : DESKTOP_TOOLS.length);
   assert.ok(tools.some(tool => tool.name === "run_in_terminal") === (mode !== "old"));
-  const call = (requestId, threadId = "parent", cwd = work) => ({ id: requestId, method: "tools/call", params: { name: "show_pane", arguments: { pane: "plan" }, _meta: { threadId, codexUiDesktopCwd: cwd } } });
-  const rename = requestId => ({ id: requestId, method: "tools/call", params: { name: "set_session_title", arguments: { title: " 新标题 " }, _meta: { threadId: "parent", codexUiDesktopCwd: work } } });
+  const call = (requestId, threadId = "parent", cwd = work) => ({ id: requestId, method: "tools/call", params: { name: "show_pane", arguments: { pane: "plan" }, _meta: { threadId, betterCodexDesktopCwd: cwd } } });
+  const rename = requestId => ({ id: requestId, method: "tools/call", params: { name: "set_session_title", arguments: { title: " 新标题 " }, _meta: { threadId: "parent", betterCodexDesktopCwd: work } } });
   assert.equal((await (await post(call(2))).json()).result.isError, true, "no accepted host snapshot");
   assert.equal((await (await post(rename(20))).json()).result.isError, true, "no rename without an accepted host snapshot");
-  await rpc("thread/settings/update", { threadId: "parent", codexUiContext: hostContext(work, false, { desktopContext: true }) });
+  await rpc("thread/settings/update", { threadId: "parent", betterCodexContext: hostContext(work, false, { desktopContext: true }) });
   if (mode === "old") { assert.equal((await (await post(call(3))).json()).result.isError, true); return; }
   await rpc("thread/start", { threadId: "child", parent: "parent" });
-  await rpc("thread/settings/update", { threadId: "child", codexUiContext: hostContext(work, false, { desktopContext: true }) });
+  await rpc("thread/settings/update", { threadId: "child", betterCodexContext: hostContext(work, false, { desktopContext: true }) });
   for (const request of [call(3, "child"), call(4, "other"), call(5, "parent", path.join(work, "other"))]) assert.equal((await (await post(request)).json()).result.isError, true);
   const pending = post(call(6));
   await until(() => events.some(event => event.event === "desktop-request"));
@@ -95,7 +95,7 @@ createInterface({input:process.stdin}).on('line',line=>{
   assert.equal((await post({ id: asked.id, result: { threadId: "parent", cwd: work, title: "新标题", previousTitle: "旧标题", previousTitleSource: "user", outcome: "renamed" } }, renderer, receiptUrl)).status, 204);
   const renamed = (await (await renaming).json()).result;
   assert.equal(renamed.content[0].text, "Renamed this session to “新标题” (was “旧标题”).");
-  assert.deepEqual(renamed._meta, { codexUiSessionRenamed: { threadId: "parent", title: "新标题", previousTitle: "旧标题", previousTitleSource: "user" } });
+  assert.deepEqual(renamed._meta, { betterCodexSessionRenamed: { threadId: "parent", title: "新标题", previousTitle: "旧标题", previousTitleSource: "user" } });
   await rpc("thread/close", { threadId: "parent" });
   assert.equal((await (await post(call(7))).json()).result.isError, true);
   const upload = http.request(receiptUrl, { method: "POST", headers: renderer });

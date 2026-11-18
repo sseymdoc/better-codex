@@ -1,4 +1,4 @@
-// codex_ui_desktop's inline visuals, after Claude 4.4212's visualize server (app.asar
+// better_codex_desktop's inline visuals, after Claude 4.4212's visualize server (app.asar
 // index.chunk-BBu5cdqa getImagineServerDef: show_widget and read_me; its elicitation module and
 // MCP App resource are Claude's own). The page answers whether 设置 › 能力 › 内联可视化 is on and
 // draws the widget from the call's arguments (src/components/Widget.tsx in a server/widget-frame.mjs
@@ -7,10 +7,10 @@
 import { read, toolTable, tool } from "./manage-tools.mjs";
 import { VISUAL_MODULES, VISUAL_PLATFORMS, visualGuide } from "./visualize-guide.mjs";
 
-/** What a widget may weigh, in UTF-16 units: codex-ui's cap (Claude's schema sets none). */
+/** What a widget may weigh, in UTF-16 units: better-codex's cap (Claude's schema sets none). */
 export const MAX_WIDGET_CODE = 512 * 1024;
 export const SHOWN = "Content rendered and shown to the user. Please do not duplicate the shown content in text because it's already visually represented.";
-export const VISUALS_OFF = "Inline visualizations are turned off in Codex UI's settings. Retries will fail; answer in text instead.";
+export const VISUALS_OFF = "Inline visualizations are turned off in Better Codex's settings. Retries will fail; answer in text instead.";
 
 const SPEC = [
   tool("show_widget", "Show visual content (SVG graphics, diagrams, charts, or interactive HTML widgets) that renders inline alongside your text response. Use for flowcharts, architecture diagrams, dashboards, forms, calculators, data tables, games, illustrations, or any visual content. The code is auto-detected: it starts with <svg> for SVG mode, otherwise HTML mode. A global sendPrompt(text) function is available: it sends a message to the chat as if the user typed it. IMPORTANT: call read_me before your first show_widget call. Do not narrate or mention the read_me call to the user; call it silently, then respond as if you went straight to building the visualization.",

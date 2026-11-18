@@ -1,6 +1,6 @@
 // 自定义 › 插件: the Codex app's /plugins (plugins-skills-tabs, team-plugins cards, plugin-detail-view,
 // plugin-install-modal) as 发现, its plugins-settings 插件 / 市场 tabs as 我的 (SettingsCustomize
-// PluginsTab), drawn with codex-ui's Claude parts. App-server RPCs only, so there is no ChatGPT home
+// PluginsTab), drawn with better-codex's Claude parts. App-server RPCs only, so there is no ChatGPT home
 // feed, 团队 tab or plugin request, and remote plugins are turned on and off on ChatGPT.
 
 import type { AppSummary } from "@protocol/v2/AppSummary";

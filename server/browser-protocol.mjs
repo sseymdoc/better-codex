@@ -1,4 +1,4 @@
-// Codex UI browser tool contracts, bound to app-server thread metadata.
+// Better Codex browser tool contracts, bound to app-server thread metadata.
 import contracts from "./browser-tools.json" with { type: "json" };
 
 const descriptions = {
@@ -86,7 +86,7 @@ export async function browserMcpMessage(message, { browser, threads, signal }) {
     return reply({
       protocolVersion: params.protocolVersion ?? "2025-03-26",
       capabilities: { tools: {} },
-      serverInfo: { name: "Codex UI Browser", version: "1.2.1" },
+      serverInfo: { name: "Better Codex Browser", version: "1.2.1" },
     });
   if (method === "ping") return reply({});
   if (method === "tools/list") return reply({ tools: browser.toolsEnabled?.() === false ? [] : BROWSER_TOOLS });

@@ -1,4 +1,4 @@
-// Codex UI's native browser executor, using Electron's debugger transport and public CDP APIs.
+// Better Codex's native browser executor, using Electron's debugger transport and public CDP APIs.
 import { AsyncLocalStorage } from "node:async_hooks";
 import { performance } from "node:perf_hooks";
 

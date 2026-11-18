@@ -1,5 +1,5 @@
-// codex_ui_desktop's pull request tools: the PRs bound to this session (the rail's 更改 card), read
-// through gh, and the two switches the user may want flipped: GitHub's auto-merge and Codex UI's
+// better_codex_desktop's pull request tools: the PRs bound to this session (the rail's 更改 card), read
+// through gh, and the two switches the user may want flipped: GitHub's auto-merge and Better Codex's
 // 自动修复 (pr-monitor.ts). Schemas, argument and receipt checks, result text. No I/O.
 
 export const PR_TOOL_NAMES = Object.freeze(["get_pr_status", "bind_pr", "unbind_pr", "set_auto_merge", "set_pr_monitor"]);
@@ -18,7 +18,7 @@ export const PR_TOOLS = [
     inputSchema: { type: "object", additionalProperties: false, required: ["pr"], properties: { pr: { ...pr, description: "The pull request: its GitHub URL, or its number in this session's repository." } } }, annotations: annotations(false, false) },
   { name: "set_auto_merge", description: "Turn GitHub's auto-merge on or off for a pull request bound to this session: on, GitHub merges it by itself once its requirements pass (squash where the repository allows it). This changes the pull request on GitHub, so turn it on only when the user asks in this conversation; a draft can't take it.",
     inputSchema: { type: "object", additionalProperties: false, required: ["enabled"], properties: { pr, enabled } }, annotations: annotations(false, true) },
-  { name: "set_pr_monitor", description: "Turn Codex UI's auto-fix on or off for a pull request bound to this session. While it is on, the app reads the pull request in the background and, when CI fails, a merge conflict appears or new review comments arrive, continues this session with a <ci-monitor-event> message describing what changed (once per change, when the session is idle). It stops when the pull request merges or closes. Turn it on only when the user asks in this conversation.",
+  { name: "set_pr_monitor", description: "Turn Better Codex's auto-fix on or off for a pull request bound to this session. While it is on, the app reads the pull request in the background and, when CI fails, a merge conflict appears or new review comments arrive, continues this session with a <ci-monitor-event> message describing what changed (once per change, when the session is idle). It stops when the pull request merges or closes. Turn it on only when the user asks in this conversation.",
     inputSchema: { type: "object", additionalProperties: false, required: ["enabled"], properties: { pr, enabled } }, annotations: annotations(false, false) },
 ];
 
@@ -90,5 +90,5 @@ export function prResult(name, args, receipt) {
   if (name === "unbind_pr") return text(receipt.outcome === "not_bound" ? `${receipt.url} was not bound to this session; nothing changed.` : `Removed ${receipt.url} from this session's 更改 card; auto-fix no longer watches it. The pull request on GitHub is untouched.`);
   const what = name === "set_auto_merge" ? "Auto-merge" : "Auto-fix";
   if (receipt.outcome === "unchanged") return text(`${what} was already ${args.enabled ? "on" : "off"} for ${receipt.url}.`);
-  return text(`${what} is now ${receipt.outcome} for ${receipt.url}.${name === "set_pr_monitor" && receipt.outcome === "on" ? " Codex UI continues this session with a <ci-monitor-event> message when CI fails, a conflict appears or new review comments arrive." : ""}`);
+  return text(`${what} is now ${receipt.outcome} for ${receipt.url}.${name === "set_pr_monitor" && receipt.outcome === "on" ? " Better Codex continues this session with a <ci-monitor-event> message when CI fails, a conflict appears or new review comments arrive." : ""}`);
 }

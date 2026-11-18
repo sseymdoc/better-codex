@@ -23,18 +23,18 @@ const unstable = (keys) =>
 
 // Stands in for `codex app-server`: answers every request line with a result, getAuthStatus with
 // the ChatGPT login, and "warn" with the unstable-feature warnings first and its arguments.
-const fakeCodex = path.join(mkdtempSync(path.join(tmpdir(), "codex-ui-")), "fake-codex.mjs");
+const fakeCodex = path.join(mkdtempSync(path.join(tmpdir(), "better-codex-")), "fake-codex.mjs");
 writeFileSync(
   fakeCodex,
   `import { createInterface } from "node:readline";
 createInterface({ input: process.stdin }).on("line", (line) => {
   const { id, method, params } = JSON.parse(line);
   if (method === "oversizeStderr") return void process.stderr.write(Buffer.alloc(2 * 1024 * 1024, "x"));
-  if (method === "privateReply") process.stdout.write(JSON.stringify({ id: "codex-ui-bridge:expired", result: { authToken: "late-secret" } }) + "\\n");
+  if (method === "privateReply") process.stdout.write(JSON.stringify({ id: "better-codex-bridge:expired", result: { authToken: "late-secret" } }) + "\\n");
   if (method === "warn")
     for (const keys of ["apply_patch_streaming_events", "apply_patch_streaming_events, local_thread_store_compression"])
       process.stdout.write(JSON.stringify({ method: "warning", params: { threadId: "t", message: ${JSON.stringify(unstable("KEYS"))}.replace("KEYS", keys) } }) + "\\n");
-  const result = method === "getAuthStatus" ? { authMethod: "chatgpt", authToken: params.refreshToken ? ${JSON.stringify(FRESH)} : ${JSON.stringify(STALE)} } : method === "experimentalBackend" ? { enabled: process.env.CODEX_UI_EXPERIMENTAL_BACKEND, access: process.env.CODEX_UI_TOOL_ACCESS_MODE, search: process.env.CODEX_UI_CONNECTOR_SEARCH, ponytailMap: process.env.PONYTAIL_MAP } : method === "warn" ? { argv: process.argv.slice(2) } : { echoed: true };
+  const result = method === "getAuthStatus" ? { authMethod: "chatgpt", authToken: params.refreshToken ? ${JSON.stringify(FRESH)} : ${JSON.stringify(STALE)} } : method === "experimentalBackend" ? { enabled: process.env.BETTER_CODEX_EXPERIMENTAL_BACKEND, access: process.env.BETTER_CODEX_TOOL_ACCESS_MODE, search: process.env.BETTER_CODEX_CONNECTOR_SEARCH, ponytailMap: process.env.PONYTAIL_MAP } : method === "warn" ? { argv: process.argv.slice(2) } : { echoed: true };
   process.stdout.write(JSON.stringify({ id, result }) + "\\n");
 });
 `,
@@ -86,7 +86,7 @@ async function withBridge(fn, codex = fakeCodex, options = {}) {
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
   try {
-    await fn(port, { host: `127.0.0.1:${port}`, cookie: `codex_ui_${port}=s3cret` });
+    await fn(port, { host: `127.0.0.1:${port}`, cookie: `better_codex_${port}=s3cret` });
   } finally {
     orchestrator.close();
     server.close();
@@ -115,8 +115,8 @@ test("oversized backend output becomes a fatal SSE event and the connection reje
 });
 
 test("experimental backend selection overrides inherited flags even for a custom binary", async () => {
-  const previous = process.env.CODEX_UI_EXPERIMENTAL_BACKEND;
-  process.env.CODEX_UI_EXPERIMENTAL_BACKEND = "1";
+  const previous = process.env.BETTER_CODEX_EXPERIMENTAL_BACKEND;
+  process.env.BETTER_CODEX_EXPERIMENTAL_BACKEND = "1";
   try {
     for (const experimentalBackend of [undefined, false, true]) {
       await withBridge(async (port, auth) => {
@@ -131,8 +131,8 @@ test("experimental backend selection overrides inherited flags even for a custom
       }, fakeCodex, { experimentalBackend });
     }
   } finally {
-    if (previous === undefined) delete process.env.CODEX_UI_EXPERIMENTAL_BACKEND;
-    else process.env.CODEX_UI_EXPERIMENTAL_BACKEND = previous;
+    if (previous === undefined) delete process.env.BETTER_CODEX_EXPERIMENTAL_BACKEND;
+    else process.env.BETTER_CODEX_EXPERIMENTAL_BACKEND = previous;
   }
 });
 
@@ -162,7 +162,7 @@ test("only the experimental backend disables the synchronous Ponytail repository
 });
 
 test("tool access preferences are startup-owned and require the experimental backend", async () => {
-  const names = ["CODEX_UI_TOOL_ACCESS_MODE", "CODEX_UI_CONNECTOR_SEARCH"];
+  const names = ["BETTER_CODEX_TOOL_ACCESS_MODE", "BETTER_CODEX_CONNECTOR_SEARCH"];
   const previous = names.map((name) => process.env[name]);
   for (const name of names) process.env[name] = "inherited";
   try {
@@ -195,7 +195,7 @@ test("tool access preferences are startup-owned and require the experimental bac
 });
 
 test("finds installed codex binaries, newest first, when nothing else is configured", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "codex-ui-installed-"));
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-installed-"));
   const exe = process.platform === "win32" ? "codex.exe" : "codex";
   const place = (dir, seconds) => {
     mkdirSync(dir, { recursive: true });
@@ -224,7 +224,7 @@ test("finds installed codex binaries, newest first, when nothing else is configu
 });
 
 test("falls back when the configured binary or a local build's code-mode host is missing", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "codex-ui-fallback-"));
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-fallback-"));
   const exe = process.platform === "win32" ? "codex.exe" : "codex";
   const host = process.platform === "win32" ? "codex-code-mode-host.exe" : "codex-code-mode-host";
   const place = (file) => { mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, ""); return file; };
@@ -260,7 +260,7 @@ test("falls back when the configured binary or a local build's code-mode host is
 });
 
 test("puts a backend package's codex-path first on app-server's PATH, when the package has one", () => {
-  const root = mkdtempSync(path.join(tmpdir(), "codex-ui-package-"));
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-package-"));
   const codex = path.join(root, "bin", process.platform === "win32" ? "codex.exe" : "codex");
   mkdirSync(path.dirname(codex));
   writeFileSync(codex, "");
@@ -287,7 +287,7 @@ test("guards the API by host, origin and token", async () => {
 });
 
 test("serves a PDF's bytes to the token holder, and only PDFs", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-pdf-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-pdf-"));
   const pdf = path.join(dir, "Doc.PDF");
   writeFileSync(pdf, "%PDF-1.4 test");
   writeFileSync(path.join(dir, "secret.txt"), "nope");
@@ -312,7 +312,7 @@ test("trades the URL token for a cookie", async () => {
     const res = await request(port, { path: "/chat?token=s3cret", headers: { host: auth.host } });
     assert.equal(res.status, 302);
     assert.equal(res.headers.location, "/chat");
-    assert.match(res.headers["set-cookie"][0], new RegExp(`^codex_ui_${port}=s3cret; HttpOnly; SameSite=Strict`));
+    assert.match(res.headers["set-cookie"][0], new RegExp(`^better_codex_${port}=s3cret; HttpOnly; SameSite=Strict`));
   });
 });
 
@@ -394,7 +394,7 @@ for (const desktop of [false, true]) test(`transcribes dictation with ${desktop 
     assert.equal(sent.length, desktop ? 2 : 0);
     assert.deepEqual(
       seen.map(({ url, auth, account, originator, sku }) => ({ url, auth, account, originator, sku })),
-      [STALE, FRESH].map((token) => ({ url: "/backend-api/transcribe", auth: `Bearer ${token}`, account: "acct-1", originator: "codex_ui", sku: "CODEX" })),
+      [STALE, FRESH].map((token) => ({ url: "/backend-api/transcribe", auth: `Bearer ${token}`, account: "acct-1", originator: "better_codex", sku: "CODEX" })),
     );
     assert.match(seen[1].body, /name="file"; filename="codex\.webm"\r\nContent-Type: audio\/webm;codecs=opus\r\n\r\nOggS-clip/);
     assert.equal(transcribeError(400, { detail: { code: "audio_too_short" } }), "没听清楚。请重试");
@@ -729,7 +729,7 @@ test("the dot character runtime comes from the installed Codex app's archive, on
   head.writeUInt32LE(8 + padded.length, 4);
   head.writeUInt32LE(4 + padded.length, 8);
   head.writeUInt32LE(json.length, 12);
-  const asar = path.join(mkdtempSync(path.join(tmpdir(), "codex-ui-orbit-")), "app.asar");
+  const asar = path.join(mkdtempSync(path.join(tmpdir(), "better-codex-orbit-")), "app.asar");
   writeFileSync(asar, Buffer.concat([head, padded, ...Object.values(files).map((text) => Buffer.from(text))]));
   const orbit = createOrbitFiles({ locate: async () => asar });
   await withBridge(async (port, auth) => {
@@ -951,7 +951,7 @@ test("a dot's activity streams through as it comes, only from its own stream rou
 });
 
 test("API-key accounts never send their key to the profile service", async (t) => {
-  const apiCodex = path.join(mkdtempSync(path.join(tmpdir(), "codex-ui-api-profile-")), "codex.mjs");
+  const apiCodex = path.join(mkdtempSync(path.join(tmpdir(), "better-codex-api-profile-")), "codex.mjs");
   writeFileSync(apiCodex, 'import { createInterface } from "node:readline"; createInterface({ input: process.stdin }).on("line", line => { const { id } = JSON.parse(line); process.stdout.write(JSON.stringify({ id, result: { authMethod: "apikey", authToken: "test-key" } }) + "\\n"); });');
   const upstream = t.mock.method(globalThis, "fetch", () => { throw new Error("must not fetch"); });
   await withBridge(async (port, auth) => {
@@ -971,7 +971,7 @@ test("API-key accounts never send their key to the profile service", async (t) =
 });
 
 test("reads opencodex provider quotas with a signed one-shot read capability", async () => {
-  const home = mkdtempSync(path.join(tmpdir(), "codex-ui-opencodex-"));
+  const home = mkdtempSync(path.join(tmpdir(), "better-codex-opencodex-"));
   const secret = randomBytes(32).toString("base64url");
   const sign = (...lines) => createHmac("sha256", secret).update(lines.join("\n")).digest("base64url");
   let signsBack = true;
@@ -1007,7 +1007,7 @@ test("reads opencodex provider quotas with a signed one-shot read capability", a
 });
 
 test("reads a thread's context parts from its rollout and from no other file", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-rollout-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-rollout-"));
   const rollout = path.join(dir, "rollout-2026-10-19T00-00-00-t.jsonl");
   const line = (type, payload) => JSON.stringify({ type, payload });
   writeFileSync(
@@ -1029,7 +1029,7 @@ test("reads a thread's context parts from its rollout and from no other file", a
 });
 
 test("serves Git preview replies over SSE including quoted untracked names", async () => {
-  const repo = mkdtempSync(path.join(tmpdir(), "codex-ui-untracked-"));
+  const repo = mkdtempSync(path.join(tmpdir(), "better-codex-untracked-"));
   const git = (...args) => spawnSync("git", args, { cwd: repo, encoding: "utf8" }).stdout;
   git("init", "-q", "-b", "main");
   git("config", "core.quotePath", "true");
@@ -1059,7 +1059,7 @@ test("serves Git preview replies over SSE including quoted untracked names", asy
 });
 
 test("answers the environment dialog's Git requests itself, never passing them to the backend", async () => {
-  const repo = mkdtempSync(path.join(tmpdir(), "codex-ui-branches-"));
+  const repo = mkdtempSync(path.join(tmpdir(), "better-codex-branches-"));
   const git = (...args) => spawnSync("git", args, { cwd: repo, encoding: "utf8" }).stdout;
   git("init", "-q", "-b", "main");
   git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--allow-empty", "-qm", "base");
@@ -1070,9 +1070,9 @@ test("answers the environment dialog's Git requests itself, never passing them t
       if (frame.event === "hello") {
         const headers = { ...auth, origin: `http://${auth.host}`, "content-type": "application/x-ndjson" };
         const body = [
-          { id: 10, method: "codexUi/git/branches", params: { cwd: repo } },
-          { id: 11, method: "codexUi/git/switch", params: { cwd: repo, branch: "--force" } },
-          { id: 12, method: "codexUi/git/branches", params: {} },
+          { id: 10, method: "betterCodex/git/branches", params: { cwd: repo } },
+          { id: 11, method: "betterCodex/git/switch", params: { cwd: repo, branch: "--force" } },
+          { id: 12, method: "betterCodex/git/branches", params: {} },
         ].map((message) => JSON.stringify(message)).join("\n");
         request(port, { method: "POST", path: `/api/send?c=${frame.data.connectionId}`, headers, body });
       }
@@ -1136,7 +1136,7 @@ test("a dot call's answer comes back as text, with the call's Location and root 
 });
 
 test("the local computer: desktop only, registered under the login, its exec-server started, the dot's threads told, off again", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-executor-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-executor-"));
   // `codex exec-server` reaches rendezvous and stays until its stdin closes; anything else is the
   // fake app-server.
   const codex = path.join(dir, "codex.mjs");
@@ -1394,7 +1394,7 @@ test("library calls: the page's own pass, the bridge's own and loose ones are re
   });
 });
 
-test("the library's gate: a ChatGPT login, its plan, statsig asked as codex-ui and the registration country, kept a minute", async () => {
+test("the library's gate: a ChatGPT login, its plan, statsig asked as better-codex and the registration country, kept a minute", async () => {
   await withLibrary(async ({ port, auth, c, seen, sent }) => {
     const ask = async () => { const answer = await request(port, { path: `/api/library/available?c=${c}`, headers: auth }); return [answer.status, JSON.parse(answer.text)]; };
     assert.deepEqual(await ask(), [200, { available: true, favorites: true, storageBanner: false, notes: true, userId: "user-1" }]);
@@ -1412,7 +1412,7 @@ test("the library's gate: a ChatGPT login, its plan, statsig asked as codex-ui a
     assert.equal((await request(port, { path: "/api/library/available?c=gone", headers: auth })).status, 410);
   });
   // The stable id is kept in the host's data folder.
-  const dataDir = mkdtempSync(path.join(tmpdir(), "codex-ui-data-"));
+  const dataDir = mkdtempSync(path.join(tmpdir(), "better-codex-data-"));
   await withLibrary(async ({ port, auth, c }) => { await request(port, { path: `/api/library/available?c=${c}`, headers: auth }); }, { dataDir });
   assert.match(JSON.parse(readFileSync(path.join(dataDir, "library-statsig.json"), "utf8")).stableId, /^[0-9a-f-]{36}$/);
 });
@@ -1530,7 +1530,7 @@ test("a library file's answer has two minutes to begin, its body as long as it t
 });
 
 test("a library upload: the bytes through a temporary file, the upload URL and the login kept in the bridge", async () => {
-  const spools = () => readdirSync(tmpdir()).filter((name) => name.startsWith("codex-ui-upload-"));
+  const spools = () => readdirSync(tmpdir()).filter((name) => name.startsWith("better-codex-upload-"));
   const before = spools();
   await withLibrary(async ({ port, c, headers, seen, blobs }) => {
     const upload = (params, body, extra = {}) => request(port, { method: "POST", path: `/api/library/upload?${new URLSearchParams({ c, ...params })}`, headers: { ...headers, ...extra }, body });
@@ -1557,7 +1557,7 @@ test("a library upload: the bytes through a temporary file, the upload URL and t
 });
 
 test("a library file saved for a chat: under CODEX_HOME/attachments by its ids only, removed on failure and on request", async () => {
-  const home = mkdtempSync(path.join(tmpdir(), "codex-ui-home-"));
+  const home = mkdtempSync(path.join(tmpdir(), "better-codex-home-"));
   const previous = process.env.CODEX_HOME;
   process.env.CODEX_HOME = home;
   const folders = () => (existsSync(path.join(home, "attachments")) ? readdirSync(path.join(home, "attachments")) : []);
@@ -1613,7 +1613,7 @@ test("a library file saved for a chat: under CODEX_HOME/attachments by its ids o
 });
 
 test("scheduled tasks: a page's own connection, JSON verbs, and every change pushed to each page", async () => {
-  const home = mkdtempSync(path.join(tmpdir(), "codex-ui-automations-"));
+  const home = mkdtempSync(path.join(tmpdir(), "better-codex-automations-"));
   let clock = Date.parse("2026-10-30T09:00:00Z");
   const store = createAutomations({ home, now: () => clock });
   // A verb may fail partway (a busy file, say) after it changed something: that change still goes out.
@@ -1712,9 +1712,9 @@ test("scheduled tasks: a page's own connection, JSON verbs, and every change pus
       assert.deepEqual(items, []);
 
       await ping(await durable.id);
-      assert.ok((await durable.frames).every((frame) => frame.data.method !== "codexUi/automations/changed"));
+      assert.ok((await durable.frames).every((frame) => frame.data.method !== "betterCodex/automations/changed"));
       await Promise.all([ping(c), ping(other)]);
-      const pushed = async (stream) => (await stream.frames).filter((frame) => frame.data.method === "codexUi/automations/changed").map((frame) => frame.data.params.stamp);
+      const pushed = async (stream) => (await stream.frames).filter((frame) => frame.data.method === "betterCodex/automations/changed").map((frame) => frame.data.params.stamp);
       const [first, second] = [await pushed(a), await pushed(b)];
       // create, update, pause, resume, claim, report, completed, read all, archived (then failed), run now, delete.
       assert.equal(first.length, 11);

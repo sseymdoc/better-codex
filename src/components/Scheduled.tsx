@@ -48,7 +48,7 @@ const cloudOffered = (access: CloudAccess) => access === "ok" || access === "err
 function cloudBlocked(access: CloudAccess, pending: boolean, chatgpt: boolean): string | undefined {
   if (pending) return "正在加载…";
   if (access === "signin") return chatgpt ? "登录会话已过期" : "需要使用 ChatGPT 账户登录 Codex";
-  return access === "blocked" ? "需要在 Codex UI 桌面版中使用" : undefined;
+  return access === "blocked" ? "需要在 Better Codex 桌面版中使用" : undefined;
 }
 
 /** The store holds a ChatGPT login: a signin is then its session expiring (CloudBanner). */
@@ -386,7 +386,7 @@ function CloudBanner({ access }: { access: CloudAccess }) {
   if (access === "blocked")
     return (
       <Banner action={<Button variant="secondary" size="sm" onClick={openChatGPT}>在 ChatGPT 中打开</Button>}>
-        云端定时任务需要在 Codex UI 桌面版中使用；也可以在 ChatGPT 中打开。
+        云端定时任务需要在 Better Codex 桌面版中使用；也可以在 ChatGPT 中打开。
       </Banner>
     );
   if (access === "error")

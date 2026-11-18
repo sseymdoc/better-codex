@@ -19,7 +19,7 @@ export async function verifyNativeDesktop(win, work, binary) {
       bodies.push(JSON.parse(body));
       const index = (bodies.length - 1) % 4;
       const action = [["get_ui_state", {}], ["show_pane", { pane: "plan" }], ["show_pane", { pane: "files", path: "sample.txt", line: 2 }]][index];
-      const output = action ? { type: "function_call", call_id: `desktop-${index}`, namespace: "mcp__codex_ui_desktop", name: action[0], arguments: JSON.stringify(action[1]) }
+      const output = action ? { type: "function_call", call_id: `desktop-${index}`, namespace: "mcp__better_codex_desktop", name: action[0], arguments: JSON.stringify(action[1]) }
         : { type: "message", role: "assistant", content: [{ type: "output_text", text: "done" }] };
       res.writeHead(200, { "Content-Type": "text/event-stream" });
       for (const event of [{ type: "response.created", response: { id: `response-${index}` } }, { type: "response.output_item.done", item: output }, { type: "response.completed", response: { id: `response-${index}`, usage: { input_tokens: 0, output_tokens: 0, total_tokens: 0 } } }]) res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
@@ -51,7 +51,7 @@ export async function verifyNativeDesktop(win, work, binary) {
         const receipt = { id: request.id };
         const operation = js(`displayRequest(${JSON.stringify(request)},new AbortController().signal)`).then(result => { receipt.result = result; }, error => { receipt.error = { code: "UI_ERROR", message: error.message }; })
           .then(async () => {
-            const response = await fetch(`http://${host}/api/desktop-result?c=${connection}`, { method: "POST", headers: { Cookie: `codex_ui_${bridgeServer.address().port}=native-display-fixture`, "Content-Type": "application/json" }, body: JSON.stringify(receipt) });
+            const response = await fetch(`http://${host}/api/desktop-result?c=${connection}`, { method: "POST", headers: { Cookie: `better_codex_${bridgeServer.address().port}=native-display-fixture`, "Content-Type": "application/json" }, body: JSON.stringify(receipt) });
             assert.equal(response.status, 204);
           });
         receipts.push(operation);
@@ -62,14 +62,14 @@ export async function verifyNativeDesktop(win, work, binary) {
       pending.set(id, message => { pending.delete(id); message.error ? reject(new Error(JSON.stringify(message.error))) : resolve(message.result); });
       service.send(connection, [{ id, method, params }]);
     });
-    const initialized = await rpc("initialize", { clientInfo: { name: "codex_ui_display_smoke", version: "1" }, capabilities: { experimentalApi: true } });
-    assert.equal(initialized.codexUiDesktopTools, true);
-    assert.equal(initialized.codexUiHostContextV2, true);
+    const initialized = await rpc("initialize", { clientInfo: { name: "better_codex_display_smoke", version: "1" }, capabilities: { experimentalApi: true } });
+    assert.equal(initialized.betterCodexDesktopTools, true);
+    assert.equal(initialized.betterCodexHostContextV2, true);
     service.send(connection, [{ method: "initialized" }]);
     const started = await rpc("thread/start", { cwd: work, model: "gpt-5.1", approvalPolicy: "never", sandbox: "read-only", ephemeral: true });
     threadId = started.thread.id;
     await js(`loadNativeThread(${JSON.stringify(started.thread)})`);
-    await rpc("thread/settings/update", { threadId, codexUiContext: hostContext(work, false, { desktopContext: true, desktopTools: true, hostContextV2: true }) });
+    await rpc("thread/settings/update", { threadId, betterCodexContext: hostContext(work, false, { desktopContext: true, desktopTools: true, hostContextV2: true }) });
     await rpc("turn/start", { threadId, input: [{ type: "text", text: "Display the existing plan and sample file with the declared desktop tools.", text_elements: [] }] });
     await until(() => messages.some(message => message.method === "turn/completed"));
     await Promise.all(receipts);
@@ -78,7 +78,7 @@ export async function verifyNativeDesktop(win, work, binary) {
     assert.ok(completed.every(item => item.status === "completed"), JSON.stringify(completed));
     assert.equal(bodies.length, 4);
     assert.match(JSON.stringify(bodies[0].tools), /show_pane/);
-    assert.match(JSON.stringify(bodies[0].input), /Current Codex UI local display tools/);
+    assert.match(JSON.stringify(bodies[0].input), /Current Better Codex local display tools/);
     const outputs = bodies.at(-1).input.filter(item => item.type === "function_call_output").map(item => JSON.stringify(item.output)).join("\n");
     assert.ok(outputs.includes("displayed") && outputs.includes("true") && outputs.includes(threadId));
     assert.equal(await js(`document.querySelector('[data-view="${threadId}"][data-pane="files"]') !== null`), true);
@@ -86,7 +86,7 @@ export async function verifyNativeDesktop(win, work, binary) {
     writeFileSync(path.join(secondCwd, "sample.txt"), "second directory\n");
     const second = await rpc("thread/start", { cwd: secondCwd, model: "gpt-5.1", approvalPolicy: "never", sandbox: "read-only", ephemeral: true });
     await js(`loadNativeThread(${JSON.stringify(second.thread)})`);
-    await rpc("thread/settings/update", { threadId: second.thread.id, codexUiContext: hostContext(secondCwd, false, { desktopContext: true, desktopTools: true }) });
+    await rpc("thread/settings/update", { threadId: second.thread.id, betterCodexContext: hostContext(secondCwd, false, { desktopContext: true, desktopTools: true }) });
     await rpc("turn/start", { threadId: second.thread.id, input: [{ type: "text", text: "Display this chat only.", text_elements: [] }] });
     await until(() => messages.filter(message => message.method === "turn/completed").length === 2);
     await Promise.all(receipts);

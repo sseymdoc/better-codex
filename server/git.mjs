@@ -139,9 +139,9 @@ export async function createWorktree(cwd, base, root, signal) {
   return { cwd: path.resolve(worktree, prefix), worktree, repository, base: from || null };
 }
 
-/** Where codex-ui keeps a worktree's base branch: beside codex-thread.json, which only Codex's own fields may fill. */
+/** Where better-codex keeps a worktree's base branch: beside codex-thread.json, which only Codex's own fields may fill. */
 async function baseFile(cwd, signal) {
-  const located = await runGit(cwd, ["rev-parse", "--path-format=absolute", "--git-path", "codex-ui-base.json"], signal);
+  const located = await runGit(cwd, ["rev-parse", "--path-format=absolute", "--git-path", "better-codex-base.json"], signal);
   return located.code === 0 ? located.stdout.trim() : null;
 }
 
@@ -231,7 +231,7 @@ export async function switchBranch(cwd, branch, signal) {
 export async function applyPatch(cwd, diff, signal) {
   if (typeof diff !== "string" || !diff.trim()) throw new Error("没有可应用的更改。");
   if (Buffer.byteLength(diff) > MAX_DIFF_BYTES) throw tooLarge();
-  const file = path.join(os.tmpdir(), `codex-ui-${randomUUID()}.patch`);
+  const file = path.join(os.tmpdir(), `better-codex-${randomUUID()}.patch`);
   fs.writeFileSync(file, diff.endsWith("\n") ? diff : `${diff}\n`);
   try {
     const check = await runGit(cwd, ["apply", "--check", "--whitespace=nowarn", file], signal, 60_000);

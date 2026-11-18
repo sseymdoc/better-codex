@@ -43,8 +43,8 @@ log("ready");
 createInterface({ input: process.stdin }).on("line", (line) => {
   const message = JSON.parse(line);
   log("request", { method: message.method });
-  const result = { pid: process.pid, params: message.params, enabled: process.env.CODEX_UI_EXPERIMENTAL_BACKEND,
-    token: process.env.CODEX_UI_BROWSER_TOKEN, args: process.argv,
+  const result = { pid: process.pid, params: message.params, enabled: process.env.BETTER_CODEX_EXPERIMENTAL_BACKEND,
+    token: process.env.BETTER_CODEX_BROWSER_TOKEN, args: process.argv,
     ...(message.method === "thread/start" ? { thread: { id: "thread-" + process.pid, cwd: process.cwd() } } : {}) };
   if (message.id !== undefined) process.stdout.write(JSON.stringify({ id: message.id, result }) + "\\n");
 }).on("close", () => process.exit(0));
@@ -54,7 +54,7 @@ createInterface({ input: process.stdin }).on("line", (line) => {
   const server = http.createServer((req, res) => bridge.handle(req, res));
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const host = `127.0.0.1:${server.address().port}`, base = `http://${host}`;
-  const headers = { Cookie: `codex_ui_${server.address().port}=test` }, clients = [];
+  const headers = { Cookie: `better_codex_${server.address().port}=test` }, clients = [];
   const records = () => {
     try { return readFileSync(record, "utf8").trim().split("\n").filter(Boolean).map(JSON.parse); }
     catch (error) { if (error.code === "ENOENT") return []; throw error; }
@@ -134,7 +134,7 @@ test("one warm process is claimed once with its original handshake and early out
   assert.equal(f.records().some((r) => r.event === "request"), false, "prewarm must not initialize or create a thread");
   assert.equal((await fetch(f.base + "/api/events")).status, 401);
   const [a, b] = await Promise.all([f.connect(), f.connect()]);
-  const params = { clientInfo: { name: "codex_ui", version: "test" }, capabilities: { experimentalApi: true } };
+  const params = { clientInfo: { name: "better_codex", version: "test" }, capabilities: { experimentalApi: true } };
   const replies = await Promise.all([a.call("initialize", params), b.call("initialize", params)]);
   assert.equal(replies.filter((r) => r.pid === pid).length, 1);
   assert.notEqual(replies[0].pid, replies[1].pid);
@@ -157,10 +157,10 @@ test("a connection can claim a process that is still booting", async (t) => {
 for (const changed of ["configuration", "binary", "credentials", "environment"]) {
   test(`changed ${changed} rejects the spare before claim`, async (t) => {
     const f = await fixture(t);
-    const previous = process.env.CODEX_UI_PREWARM_TEST;
+    const previous = process.env.BETTER_CODEX_PREWARM_TEST;
     t.after(() => {
-      if (previous === undefined) delete process.env.CODEX_UI_PREWARM_TEST;
-      else process.env.CODEX_UI_PREWARM_TEST = previous;
+      if (previous === undefined) delete process.env.BETTER_CODEX_PREWARM_TEST;
+      else process.env.BETTER_CODEX_PREWARM_TEST = previous;
     });
     assert.equal(f.orchestrator.prewarm(f.host), true);
     await waitFor(() => f.records().some((r) => r.event === "ready"));
@@ -172,7 +172,7 @@ for (const changed of ["configuration", "binary", "credentials", "environment"])
       writeFileSync(f.fake, readFileSync(f.fake, "utf8") + "\n// new binary version\n");
     } else if (changed === "credentials") {
       writeFileSync(path.join(process.env.CODEX_HOME, "auth.json"), "{}");
-    } else process.env.CODEX_UI_PREWARM_TEST = "changed";
+    } else process.env.BETTER_CODEX_PREWARM_TEST = "changed";
     const client = await f.connect();
     assert.notEqual((await client.call("initialize")).pid, old);
     await waitFor(() => !alive(old), "invalidated spare was not stopped");

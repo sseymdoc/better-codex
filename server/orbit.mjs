@@ -1,6 +1,6 @@
 // The Codex desktop app's dot character runtime (orbit-characters: a WASM engine and the iframe
 // that hosts it, webview/assets/orbit-character-<hash>/), read as it is from the app's own
-// installed package: codex-ui ships none of it. Files are served from that one folder only, by
+// installed package: better-codex ships none of it. Files are served from that one folder only, by
 // the names the frame itself loads, so its relative imports keep working under the bridge.
 import { execFile } from "node:child_process";
 import { createReadStream } from "node:fs";

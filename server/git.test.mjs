@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { applyPatch, bindWorktree, createWorktree, gitBranches, gitDiffToRemote, switchBranch, syncWithBase } from "./git.mjs";
 
 function repository() {
-  const cwd = mkdtempSync(path.join(tmpdir(), "codex-ui-git-"));
+  const cwd = mkdtempSync(path.join(tmpdir(), "better-codex-git-"));
   const git = (...args) => {
     const result = spawnSync("git", args, { cwd, encoding: "utf8", windowsHide: true });
     assert.equal(result.status, 0, result.stderr);
@@ -70,7 +70,7 @@ test("missing remote and non-repository paths fail without returning an empty su
   const { cwd, git } = repository();
   git("remote", "remove", "origin");
   await assert.rejects(gitDiffToRemote(cwd), /远端提交/);
-  const empty = mkdtempSync(path.join(tmpdir(), "codex-ui-no-git-"));
+  const empty = mkdtempSync(path.join(tmpdir(), "better-codex-no-git-"));
   await assert.rejects(gitDiffToRemote(empty), /远端提交/);
 });
 
@@ -105,7 +105,7 @@ test("branch picker lists local branches, HEAD and origin's default; a plain fol
   });
   git("checkout", "-q", "--detach");
   assert.equal((await gitBranches(cwd)).head, null);
-  const empty = mkdtempSync(path.join(tmpdir(), "codex-ui-no-git-"));
+  const empty = mkdtempSync(path.join(tmpdir(), "better-codex-no-git-"));
   assert.deepEqual(await gitBranches(empty), { inRepo: false, root: null, head: null, defaultBranch: null, branches: [] });
 });
 
@@ -116,7 +116,7 @@ test("worktrees land in a four-hex bucket, detached at the base, and record thei
   git("add", ".");
   git("commit", "-qm", "sub");
   git("branch", "old", "HEAD~1");
-  const root = mkdtempSync(path.join(tmpdir(), "codex-ui-worktrees-"));
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-worktrees-"));
   const made = await createWorktree(path.join(cwd, "sub"), "main", root);
   const [bucket, folder, ...rest] = path.relative(root, made.worktree).split(path.sep);
   assert.deepEqual([/^[0-9a-f]{4}$/.test(bucket), folder, rest], [true, path.basename(cwd), []]);
@@ -135,7 +135,7 @@ test("worktrees land in a four-hex bucket, detached at the base, and record thei
 
 test("a bad base or root makes no worktree and leaves no bucket behind", async () => {
   const { cwd } = repository();
-  const root = mkdtempSync(path.join(tmpdir(), "codex-ui-worktrees-"));
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-worktrees-"));
   await assert.rejects(createWorktree(cwd, "missing", root), /找不到分支/);
   await assert.rejects(createWorktree(cwd, "--orphan", root), /无效的分支名称/);
   await assert.rejects(createWorktree(cwd, undefined, "relative"), /绝对路径/);
@@ -186,8 +186,8 @@ test("a cloud task's diff applies whole or not at all", async () => {
 test("a worktree records the branch it was cut from: the one picked, the checkout's, or the checkout's record", async () => {
   const { cwd, git } = repository();
   git("branch", "feature");
-  const root = mkdtempSync(path.join(tmpdir(), "codex-ui-worktrees-"));
-  const baseOf = (dir) => JSON.parse(readFileSync(spawnSync("git", ["rev-parse", "--path-format=absolute", "--git-path", "codex-ui-base.json"], { cwd: dir, encoding: "utf8" }).stdout.trim(), "utf8"));
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-worktrees-"));
+  const baseOf = (dir) => JSON.parse(readFileSync(spawnSync("git", ["rev-parse", "--path-format=absolute", "--git-path", "better-codex-base.json"], { cwd: dir, encoding: "utf8" }).stdout.trim(), "utf8"));
   const picked = await createWorktree(cwd, "feature", root);
   assert.deepEqual([picked.base, baseOf(picked.worktree)], ["feature", { version: 1, base: "feature" }]);
   const own = await createWorktree(cwd, null, root);
@@ -201,7 +201,7 @@ test("a worktree records the branch it was cut from: the one picked, the checkou
 
 test("syncing merges the fetched base, refuses uncommitted work and leaves conflicts for resolving", async () => {
   const { cwd, git, write } = repository();
-  const root = mkdtempSync(path.join(tmpdir(), "codex-ui-worktrees-"));
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-worktrees-"));
   const { worktree } = await createWorktree(cwd, "main", root);
   const inTree = (...args) => {
     const result = spawnSync("git", args, { cwd: worktree, encoding: "utf8", windowsHide: true });
@@ -227,7 +227,7 @@ test("syncing merges the fetched base, refuses uncommitted work and leaves confl
   assert.deepEqual([conflict.outcome, conflict.files], ["conflicts", ["tracked.txt"]]);
   assert.deepEqual(await syncWithBase(worktree), { outcome: "merging", files: ["tracked.txt"] });
   await assert.rejects(syncWithBase(worktree, "--upload-pack=x"), /无效的分支名称/);
-  const plain = mkdtempSync(path.join(tmpdir(), "codex-ui-plain-"));
+  const plain = mkdtempSync(path.join(tmpdir(), "better-codex-plain-"));
   await assert.rejects(syncWithBase(plain), /不是 Git 仓库/);
 });
 
@@ -236,7 +236,7 @@ test("uncommitted, merge-base and single-commit diffs for the changes pane's sco
   const { mkdtempSync, rmSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { gitDiffAgainst, gitLog, gitShow } = await import("./git.mjs");
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-scopes-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-scopes-"));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const git = (...args) => execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...args], { cwd: dir, stdio: "pipe" }).toString();
   git("init", "-q", "-b", "main");

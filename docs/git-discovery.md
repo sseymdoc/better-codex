@@ -36,10 +36,10 @@ REA 范围为三个前端 bundle；后续主进程和共享模块证据来自定
 
 ## 验证
 
-- `npm test --prefix codex-ui`：194 项通过；`npm run build --prefix codex-ui` 通过。
+- `npm test --prefix better-codex`：194 项通过；`npm run build --prefix better-codex` 通过。
 - Chrome + 真实 Codex 0.163.0 app-server + 独立 CODEX_HOME / Git 测试仓库：新会话首次发送即显示 `ui-git-before`。
 - 仅在测试仓库切换到 `ui-git-after`，数据库仍保存 `ui-git-before`；重新打开已有会话，环境栏显示 `ui-git-after`。
 - 模型替身只监听本机：在实际 `/v1/responses` 请求中确认初始及更新后的快照，数据为 user 上下文，工作流为 developer 上下文。未用真实模型判断其是否一定遵循提交指示。
-- 本地证据保存在被忽略的 `codex-ui/out/git-validation/`。早期采样误取历史第一份快照，已保留记录并修正为最新快照；最后一次采样断言通过。
+- 本地证据保存在被忽略的 `better-codex/out/git-validation/`。早期采样误取历史第一份快照，已保留记录并修正为最新快照；最后一次采样断言通过。
 
 此次验证没有替换已安装的桌面程序，也没有重启用户正在运行的会话。该版本使用前端事件刷新，没有复制 Claude 的主进程文件系统 watch；外部修改会在回到窗口或下一次刷新时出现。

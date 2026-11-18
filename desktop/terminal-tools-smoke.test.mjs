@@ -20,8 +20,8 @@ mkdirSync(path.join(work, "web"));
 const fake = path.join(work, "backend.mjs");
 writeFileSync(fake, `import {createInterface} from 'node:readline';createInterface({input:process.stdin}).on('line',line=>{
 const {id,method,params={}}=JSON.parse(line);let result={};
-if(method==='initialize')result={codexUiHostContext:true,codexUiDesktopContext:true,codexUiDesktopTools:true};
-if(method==='thread/start')result={token:process.env.CODEX_UI_DESKTOP_TOKEN,thread:{id:params.cwd?.endsWith('other')?'other':'main',cwd:params.cwd||process.cwd(),parentThreadId:null,source:'cli'}};
+if(method==='initialize')result={betterCodexHostContext:true,betterCodexDesktopContext:true,betterCodexDesktopTools:true};
+if(method==='thread/start')result={token:process.env.BETTER_CODEX_DESKTOP_TOKEN,thread:{id:params.cwd?.endsWith('other')?'other':'main',cwd:params.cwd||process.cwd(),parentThreadId:null,source:'cli'}};
 if(id!==undefined)console.log(JSON.stringify({id,result}));});`);
 
 // The shells: process/spawn succeeds, a typed line comes back as its echo plus a reply, Ctrl+C
@@ -53,7 +53,7 @@ const threads={};for(const cwd of [${JSON.stringify(work)},${JSON.stringify(path
 const response=await client.request('thread/start',{cwd});window.token=response.token;
 const thread=emptyThreadState({...response.thread,status:{type:'idle'}});thread.subscribed=true;thread.loaded=true;
 if(thread.meta.id==='other')thread.overrides={...thread.overrides,permission:'full-access'};
-threads[thread.meta.id]=thread;await client.request('thread/settings/update',{threadId:thread.meta.id,codexUiContext:hostContext(cwd,true,{desktopContext:true,desktopTools:true})});}
+threads[thread.meta.id]=thread;await client.request('thread/settings/update',{threadId:thread.meta.id,betterCodexContext:hostContext(cwd,true,{desktopContext:true,desktopTools:true})});}
 setState({threads,activeId:'main',conn:{status:'ready'},server:{...getState().server,info:{platformOs:'windows'}}});window.ready=true;
 }});
 Object.assign(window,{getState,setState,answerConsent,openTerminalTab,terminalTabs,layoutOf});
@@ -71,7 +71,7 @@ async function run() {
     await app.whenReady();
     const root = process.cwd();
     const bundle = await build({ stdin: { contents: fixture, resolveDir: root, loader: "tsx" }, bundle: true, write: false, format: "esm", target: "chrome140", tsconfig: "tsconfig.json", loader: { ".md": "text", ".css": "empty" } });
-    const assets = path.join(process.env.CODEX_UI_DIST ?? path.join(root, "dist"), "assets");
+    const assets = path.join(process.env.BETTER_CODEX_DIST ?? path.join(root, "dist"), "assets");
     const css = readdirSync(assets).filter(file => file.endsWith(".css")).map(file => readFileSync(path.join(assets, file), "utf8")).join("\n");
     service = createOrchestrator({ codex: fake, cwd: work, desktopUi: true, experimentalBackend: true, browser: { toolsEnabled: () => true }, log: { error() {} } });
     const bridge = createBridge(service, { token: "fixture" });
@@ -97,7 +97,7 @@ async function run() {
     headers["Mcp-Session-Id"] = (await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({ id: 0, method: "initialize", params: {} }) })).headers.get("mcp-session-id");
     let sequence = 0;
     const invoke = async (name, args = {}, threadId = "main") => {
-      const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({ id: ++sequence, method: "tools/call", params: { name, arguments: args, _meta: { threadId, codexUiDesktopCwd: threadId === "main" ? work : path.join(work, "other") } } }) });
+      const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({ id: ++sequence, method: "tools/call", params: { name, arguments: args, _meta: { threadId, betterCodexDesktopCwd: threadId === "main" ? work : path.join(work, "other") } } }) });
       const result = (await response.json()).result;
       return { error: result.isError === true, text: result.content[0].text };
     };

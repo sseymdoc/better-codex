@@ -1,4 +1,4 @@
-// codex_ui_desktop's scheduled-task tools on the page (components/DesktopTools.ts hands them over):
+// better_codex_desktop's scheduled-task tools on the page (components/DesktopTools.ts hands them over):
 // automation_update on this computer's tasks, cloud_task_update on the user's ChatGPT ones, each
 // change that needs the user's say on its card first.
 import { desktopError, type DesktopRequest, type DesktopResult } from "../../context/desktop-tools.mjs";
@@ -112,7 +112,7 @@ export async function automationRequest(request: DesktopRequest, args: Automatio
   const { threadId, cwd } = request;
   await refreshAutomations();
   const { items, error } = automationsState();
-  if (!items) throw desktopError("UNAVAILABLE", `Codex UI could not read its scheduled tasks${error ? ` (${error})` : ""}; nothing was changed.`);
+  if (!items) throw desktopError("UNAVAILABLE", `Better Codex could not read its scheduled tasks${error ? ` (${error})` : ""}; nothing was changed.`);
   // ponytail: a list stops at LIST_MAX tasks; page it should someone keep more.
   if (args.mode === "list") return { threadId, cwd, outcome: "listed", tasks: items.slice(0, LIST_MAX).map((a) => localTask(a, false)) };
   const creating = args.mode === "create" || args.mode === "suggested_create";
@@ -161,7 +161,7 @@ export async function automationRequest(request: DesktopRequest, args: Automatio
       const saved = creating ? await createAutomation({ ...input, kind }) : await updateAutomation(old!.id, input);
       return { threadId, cwd, outcome: creating ? "created" : "updated", task: localTask(saved, true) };
     } catch (failure) {
-      throw desktopError("SAVE_FAILED", `Codex UI could not save the scheduled task “${name}”: ${errorMessage(failure)}`);
+      throw desktopError("SAVE_FAILED", `Better Codex could not save the scheduled task “${name}”: ${errorMessage(failure)}`);
     }
   } catch (failure) {
     throw naming(failure, task);
@@ -179,10 +179,10 @@ function cloudTask(a: CloudAutomation, whole: boolean): CloudTask {
 
 const CLOUD_UNAVAILABLE: Record<CloudAccess, string> = {
   ok: "",
-  unknown: "Codex UI has not read the account yet; try again in a moment.",
-  signin: "Cloud scheduled tasks need Codex UI signed in with ChatGPT.",
+  unknown: "Better Codex has not read the account yet; try again in a moment.",
+  signin: "Cloud scheduled tasks need Better Codex signed in with ChatGPT.",
   unavailable: "This account has no cloud scheduled tasks (another model provider, or none offered to it).",
-  blocked: "ChatGPT turned the request away in browser mode; cloud scheduled tasks work in the Codex UI desktop app.",
+  blocked: "ChatGPT turned the request away in browser mode; cloud scheduled tasks work in the Better Codex desktop app.",
   error: "ChatGPT could not be reached",
 };
 
@@ -214,7 +214,7 @@ export async function cloudTaskRequest(request: DesktopRequest, args: CloudTaskA
       }
       // A new schedule is saved on the draft's zone, which is UTC when Intl does not know the saved one (knownZone).
       if (old && old.savedTimezone !== old.timezone && (args.rrule !== undefined || args.fireAt !== undefined) && args.timezone === undefined)
-        refuseInput(`This task is saved on the time zone ${old.savedTimezone}, which Codex UI cannot read; pass timezone with the new schedule.`);
+        refuseInput(`This task is saved on the time zone ${old.savedTimezone}, which Better Codex cannot read; pass timezone with the new schedule.`);
       if (args.fireAt !== undefined) Object.assign(draft, { repeat: false, ...wallTime(Date.parse(args.fireAt), draft.timezone) });
       // As the form: an edit checks a schedule it changed only, so a one-time run that has passed (or an
       // end date that has) still takes a new title or prompt; the account's shortest interval unread, the server judges.

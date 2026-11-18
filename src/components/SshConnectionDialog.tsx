@@ -42,7 +42,7 @@ export function SshConnectionDialog({ connection, onClose, onSaved, onDeleted }:
     const setTest = (next: Test) => setTested((last) => (last.target === target || next.state === "testing" ? { target, test: next } : last));
     setTest({ state: "testing" });
     try {
-      const environmentId = "codexui-ssh-test";
+      const environmentId = "bettercodex-ssh-test";
       await callExperimental("environment/addStdio", { environmentId, ...sshCommand(draft) });
       await callExperimental("environment/info", { environmentId });
       setTest({ state: "ok" });

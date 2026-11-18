@@ -6,9 +6,9 @@ import { readJson, record, writeJson } from "./store.ts";
  * orchestrating with dynamic workflows. The draft's pick (key "") moves to the session it starts.
  * Kept on this machine so a reload does not tell the model it went off.
  */
-const KEY = "codex-ui:ultracode";
+const KEY = "better-codex:ultracode";
 /** 设置 → 会话 → 动态工作流程 (cd19fedd2 dynamicWorkflows): offers the workflow tool. */
-const WORKFLOWS_KEY = "codex-ui:dynamic-workflows";
+const WORKFLOWS_KEY = "better-codex:dynamic-workflows";
 
 let sessions = record(readJson(KEY)) as Record<string, true>;
 let workflows = readJson(WORKFLOWS_KEY) !== false;

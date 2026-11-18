@@ -61,7 +61,7 @@ function renamed({ threadId, title, previousTitle, previousTitleSource, outcome 
   return {
     content: [{ type: "text", text: `Renamed ${which} to ${quote(title)}${previousTitle === undefined ? "" : ` (was ${quote(previousTitle)})`}.` }],
     // The transcript row's undo is for this chat's own title.
-    ...(session_id ? {} : { _meta: { codexUiSessionRenamed: { threadId, title, ...(previousTitle !== undefined && { previousTitle, ...(previousTitleSource !== undefined && { previousTitleSource }) }) } } }),
+    ...(session_id ? {} : { _meta: { betterCodexSessionRenamed: { threadId, title, ...(previousTitle !== undefined && { previousTitle, ...(previousTitleSource !== undefined && { previousTitleSource }) }) } } }),
   };
 }
 
@@ -77,8 +77,8 @@ function plannedFor({ outcome }) {
   if (outcome === "unavailable") return { isError: true, content: [{ type: "text", text: "Plan mode isn’t available for this session." }] };
   if (outcome === "declined") return { isError: true, content: [{ type: "text", text: "User declined to enter plan mode. Continue without plan mode." }] };
   return {
-    content: [{ type: "text", text: "Entered plan mode. You should now focus on exploring the codebase and designing an implementation approach. Plan mode applies from your next turn: end this turn now with one short sentence and no further tool calls. Codex UI then continues the task in plan mode, where you explore, design the approach and propose the plan for the user's approval." }],
-    _meta: { codexUiPlanMode: "entered" },
+    content: [{ type: "text", text: "Entered plan mode. You should now focus on exploring the codebase and designing an implementation approach. Plan mode applies from your next turn: end this turn now with one short sentence and no further tool calls. Better Codex then continues the task in plan mode, where you explore, design the approach and propose the plan for the user's approval." }],
+    _meta: { betterCodexPlanMode: "entered" },
   };
 }
 
@@ -181,15 +181,15 @@ export function createDesktopTools({ enabled, context, emit, timeoutMs = 5000, c
     }
     if (id === undefined) return null;
     const reply = result => ({ jsonrpc: "2.0", id, result });
-    if (method === "initialize") return reply({ protocolVersion: params.protocolVersion ?? "2025-03-26", capabilities: { tools: {} }, serverInfo: { name: "Codex UI Desktop", version: "1" } });
+    if (method === "initialize") return reply({ protocolVersion: params.protocolVersion ?? "2025-03-26", capabilities: { tools: {} }, serverInfo: { name: "Better Codex Desktop", version: "1" } });
     if (method === "ping") return reply({});
     if (method === "tools/list") return reply({ tools: !closed && enabled() ? DESKTOP_TOOLS : [] });
     if (method !== "tools/call") return { jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } };
     // Session, terminal, pull request and scheduled-task tools and wrap_up refuse in plain words, as Claude's do; display tools keep their coded errors.
-    const errorReply = error => reply({ isError: true, content: [{ type: "text", text: SESSION_TOOLS.includes(params.name) || TERMINAL_TOOL_NAMES.includes(params.name) || PR_TOOL_NAMES.includes(params.name) || WORKTREE_TOOL_NAMES.includes(params.name) || SETTINGS_TOOL_NAMES.includes(params.name) || WINDOW_TOOL_NAMES.includes(params.name) || AUTOMATION_TOOL_NAMES.includes(params.name) || MANAGE_TOOL_NAMES.includes(params.name) || HOST_TOOL_NAMES.includes(params.name) || VISUALIZE_TOOL_NAMES.includes(params.name) || params.name === "wrap_up" ? error.message : JSON.stringify({ code: error.code ?? "DISPLAY_FAILED", message: error.message }) }], ...(error.task && { _meta: { codexUiAutomationTask: error.task } }) });
+    const errorReply = error => reply({ isError: true, content: [{ type: "text", text: SESSION_TOOLS.includes(params.name) || TERMINAL_TOOL_NAMES.includes(params.name) || PR_TOOL_NAMES.includes(params.name) || WORKTREE_TOOL_NAMES.includes(params.name) || SETTINGS_TOOL_NAMES.includes(params.name) || WINDOW_TOOL_NAMES.includes(params.name) || AUTOMATION_TOOL_NAMES.includes(params.name) || MANAGE_TOOL_NAMES.includes(params.name) || HOST_TOOL_NAMES.includes(params.name) || VISUALIZE_TOOL_NAMES.includes(params.name) || params.name === "wrap_up" ? error.message : JSON.stringify({ code: error.code ?? "DISPLAY_FAILED", message: error.message }) }], ...(error.task && { _meta: { betterCodexAutomationTask: error.task } }) });
     try {
-      if (typeof params._meta?.codexUiDesktopCwd !== "string") throw fail("UNAVAILABLE", "A native desktop sampling context is required.");
-      current(params._meta?.threadId, params._meta.codexUiDesktopCwd);
+      if (typeof params._meta?.betterCodexDesktopCwd !== "string") throw fail("UNAVAILABLE", "A native desktop sampling context is required.");
+      current(params._meta?.threadId, params._meta.betterCodexDesktopCwd);
     } catch (error) { return errorReply(error); }
     const callKey = JSON.stringify([sessionId, id]);
     const key = JSON.stringify(params), previous = calls.get(callKey);

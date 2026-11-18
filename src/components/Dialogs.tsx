@@ -262,7 +262,7 @@ export function rewindHere(threadId: string, turnId: string, text: string): void
   if (!thread) return;
   const from = thread.turns.findIndex((turn) => turn.id === turnId);
   const preview = from === -1 ? null : rewindPreview(thread.turns.slice(from), threadCwd(thread));
-  if (preview || getState().server.info?.codexUiRevertSwitch !== true) setState({ dialog: { type: "rewind", threadId, turnId, text, preview } });
+  if (preview || getState().server.info?.betterCodexRevertSwitch !== true) setState({ dialog: { type: "rewind", threadId, turnId, text, preview } });
   else void runRewind(threadId, turnId, text, "conversation");
 }
 
@@ -302,7 +302,7 @@ async function runRewind(threadId: string, turnId: string, text: string, mode: R
 function RewindDialog({ threadId, turnId, text, preview }: { threadId: string; turnId: string; text: string; preview: RewindPreview | null }) {
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<RewindMode>("both");
-  const undoable = useStore((s) => s.server.info?.codexUiRevertSwitch === true);
+  const undoable = useStore((s) => s.server.info?.betterCodexRevertSwitch === true);
   // Its words, as the bubble shows them; a message of files alone quotes their names.
   const { files, request } = splitRequest(text);
   const quoted = request.trim() || files.map((file) => file.label).join("、");

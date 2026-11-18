@@ -1,7 +1,7 @@
 // What Claude Desktop's plan pane does to a task's text before it renders it (2.42304.0.0:
 // cccc2cf0a Nv): secrets masked (shared-104 Xs), a private key left open cut off (sc), and control
 // and invisible characters shown (shared-0 rF), the text between word joiners one piece at a time.
-// Claude masks secrets in many more places; codex-ui does it where the plan pane does.
+// Claude masks secrets in many more places; better-codex does it where the plan pane does.
 
 /** shared-0 JP: control, format, surrogate, separator and default-ignorable characters, a few
  * blank or invisible letters, and the noncharacters. */

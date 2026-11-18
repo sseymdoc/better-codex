@@ -18,8 +18,8 @@ app.disableHardwareAcceleration();
 const fake = path.join(work, "backend.mjs");
 writeFileSync(fake, `import {createInterface} from 'node:readline';createInterface({input:process.stdin}).on('line',line=>{
 const {id,method,params={}}=JSON.parse(line);let result={};
-if(method==='initialize')result={codexUiHostContext:true,codexUiDesktopContext:true,codexUiDesktopTools:true};
-if(method==='thread/start')result={token:process.env.CODEX_UI_DESKTOP_TOKEN,thread:{id:'main',cwd:params.cwd||process.cwd(),parentThreadId:null,source:'cli'}};
+if(method==='initialize')result={betterCodexHostContext:true,betterCodexDesktopContext:true,betterCodexDesktopTools:true};
+if(method==='thread/start')result={token:process.env.BETTER_CODEX_DESKTOP_TOKEN,thread:{id:'main',cwd:params.cwd||process.cwd(),parentThreadId:null,source:'cli'}};
 if(id!==undefined)console.log(JSON.stringify({id,result}));});`);
 
 // gh as the stand-in answers it: PR 7 bound to the session, its head and checks set from the test
@@ -58,7 +58,7 @@ const client=new Rpc({close(){},notification(){},request(){},desktop:displayRequ
 await client.request('initialize',{});window.connection=hello.connectionId;
 const response=await client.request('thread/start',{cwd:${JSON.stringify(work)}});window.token=response.token;
 const thread=emptyThreadState({...response.thread,gitInfo:{sha:'a'.repeat(40),branch:'feat/x',originUrl:'git@github.com:o/r.git'},status:{type:'idle'}});thread.subscribed=true;thread.loaded=true;thread.attachments=attachments.slice();
-await client.request('thread/settings/update',{threadId:'main',codexUiContext:hostContext(${JSON.stringify(work)},true,{desktopContext:true,desktopTools:true})});
+await client.request('thread/settings/update',{threadId:'main',betterCodexContext:hostContext(${JSON.stringify(work)},true,{desktopContext:true,desktopTools:true})});
 setState({threads:{main:thread},activeId:'main',conn:{status:'ready'},server:{...getState().server,info:{platformOs:'windows'}}});window.ready=true;
 }});
 Object.assign(window,{getState,setState,pollNow,isMonitored});
@@ -78,7 +78,7 @@ async function run() {
     await app.whenReady();
     const root = process.cwd();
     const bundle = await build({ stdin: { contents: fixture, resolveDir: root, loader: "tsx" }, bundle: true, write: false, format: "esm", target: "chrome140", tsconfig: "tsconfig.json", loader: { ".md": "text", ".css": "empty" } });
-    const assets = path.join(process.env.CODEX_UI_DIST ?? path.join(root, "dist"), "assets");
+    const assets = path.join(process.env.BETTER_CODEX_DIST ?? path.join(root, "dist"), "assets");
     const css = readdirSync(assets).filter(file => file.endsWith(".css")).map(file => readFileSync(path.join(assets, file), "utf8")).join("\n");
     service = createOrchestrator({ codex: fake, cwd: work, desktopUi: true, experimentalBackend: true, browser: { toolsEnabled: () => true }, log: { error() {} } });
     const bridge = createBridge(service, { token: "fixture" });
@@ -104,7 +104,7 @@ async function run() {
     headers["Mcp-Session-Id"] = (await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({ id: 0, method: "initialize", params: {} }) })).headers.get("mcp-session-id");
     let sequence = 0;
     const invoke = async (name, args = {}) => {
-      const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({ id: ++sequence, method: "tools/call", params: { name, arguments: args, _meta: { threadId: "main", codexUiDesktopCwd: work } } }) });
+      const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({ id: ++sequence, method: "tools/call", params: { name, arguments: args, _meta: { threadId: "main", betterCodexDesktopCwd: work } } }) });
       const result = (await response.json()).result;
       return { error: result.isError === true, text: result.content[0].text };
     };

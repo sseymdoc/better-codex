@@ -2,7 +2,7 @@
 // menus off: c03935b01 Ti / Ci, cf53e1812 B, ca5db7aaf expand, c9543da06 boundary keys). Each
 // view (a thread id, or "draft" for the new-session page) keeps its own open panes. The first
 // opens beside the chat at chat:pane = 2:3 for the big panes (changes, files) and 2:1 for the
-// rest; later ones stack under the last. Dragged ratios are remembered in codex-ui:pane-flex:
+// rest; later ones stack under the last. Dragged ratios are remembered in better-codex:pane-flex:
 // the column's width per top pane (against the chat's 2, c03935b01 wi) and each pane's share of
 // the column's height.
 
@@ -123,7 +123,7 @@ export function toggleActiveExpanded(key = viewKey()): void {
 
 type Flexes = Partial<Record<PaneId, number>>;
 
-const FLEX_KEY = "codex-ui:pane-flex";
+const FLEX_KEY = "better-codex:pane-flex";
 
 function readFlex(): { w: Flexes; h: Flexes } {
   const clean = (value: unknown): Flexes =>

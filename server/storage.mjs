@@ -1,11 +1,11 @@
 // 存储 (Claude 4.4212 设置 › 这台电脑 › 存储, c71860c77 z7yp64+Mvf, and ccd_host get_storage_usage /
 // clean_up_worktrees / discard_kept_worktree): how much space Codex takes on this computer, and
-// removing the session worktrees Codex UI made. Only a linked Git worktree in a four-hex bucket
+// removing the session worktrees Better Codex made. Only a linked Git worktree in a four-hex bucket
 // under the worktree folder is ever removed, through `git worktree remove`; a main checkout, a
 // symbolic link or anything elsewhere is refused whatever the page asks.
 import { lstat, readdir, readFile, realpath, rmdir, statfs } from "node:fs/promises";
 import path from "node:path";
-import { codexHome } from "./automations.mjs";
+import { appHome, codexHome } from "./automations.mjs";
 import { runGit } from "./git.mjs";
 
 const BUCKET = /^[0-9a-f]{4}$/;
@@ -82,7 +82,7 @@ export function createStorage({ home = codexHome(), now = Date.now } = {}) {
       sessions: await size(path.join(home, "sessions"), deadline),
       archivedSessions: await size(path.join(home, "archived_sessions"), deadline),
       attachments: await size(path.join(home, "attachments"), deadline),
-      scratchWorkspaces: await size(path.join(home, "codex-ui", "scratch-workspaces"), deadline),
+      scratchWorkspaces: await size(path.join(appHome(home), "scratch-workspaces"), deadline),
       worktrees: trees,
       free: disk ? disk.bavail * disk.bsize : null,
     };

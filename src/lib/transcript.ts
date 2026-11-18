@@ -308,7 +308,7 @@ export function renameChapter(store: ChapterStore, id: string, title: string): C
 export function agentChapters(turns: { id: string; items: ThreadItem[] }[]): AgentChapter[] {
   return turns.flatMap((turn) =>
     turn.items.flatMap((item) => {
-      if (item.type !== "mcpToolCall" || item.server !== "codex_ui_desktop" || item.tool !== "mark_chapter" || item.status !== "completed" || item.error) return [];
+      if (item.type !== "mcpToolCall" || item.server !== "better_codex_desktop" || item.tool !== "mark_chapter" || item.status !== "completed" || item.error) return [];
       const args = (item.arguments ?? {}) as { title?: unknown; summary?: unknown };
       const title = typeof args.title === "string" ? args.title.trim() : "";
       const summary = typeof args.summary === "string" && args.summary.trim() ? args.summary.trim() : undefined;
@@ -487,9 +487,9 @@ function rollsUp(block: Block): boolean {
  * user's `!` commands, sub-agent rows, generated images, plans or notices; a group always may.
  */
 /** A mark_chapter call: drawn as a chapter heading, not a tool row. */
-export const isChapterCall = (item: ThreadItem) => item.type === "mcpToolCall" && item.server === "codex_ui_desktop" && item.tool === "mark_chapter";
+export const isChapterCall = (item: ThreadItem) => item.type === "mcpToolCall" && item.server === "better_codex_desktop" && item.tool === "mark_chapter";
 /** show_widget and read_me: the widget in the conversation, and its setup nobody sees (items.tsx McpRow). */
-export const isVisualCall = (item: ThreadItem) => item.type === "mcpToolCall" && item.server === "codex_ui_desktop" && (item.tool === "show_widget" || item.tool === "read_me");
+export const isVisualCall = (item: ThreadItem) => item.type === "mcpToolCall" && item.server === "better_codex_desktop" && (item.tool === "show_widget" || item.tool === "read_me");
 
 export function holdsMark(entry: Entry): boolean {
   if (entry.kind === "group" || entry.block.kind !== "item") return true;
@@ -1064,7 +1064,7 @@ export function planCard(
   // every step off (c4ea84cb3 jr).
   const wrapped =
     !!turn && !!plan &&
-    turn.items.slice(plan.at).some((item) => item.type === "mcpToolCall" && (item as { server?: unknown }).server === "codex_ui_desktop" && (item as { tool?: unknown }).tool === "wrap_up") &&
+    turn.items.slice(plan.at).some((item) => item.type === "mcpToolCall" && (item as { server?: unknown }).server === "better_codex_desktop" && (item as { tool?: unknown }).tool === "wrap_up") &&
     !background.some((task) => turn.items.some((item) => item.id === task.itemId));
   const steps = wrapped ? plan.steps.map((step) => ({ ...step, status: "completed" as const })) : plan?.steps;
   if (!turn || !plan || !steps?.length) return null;

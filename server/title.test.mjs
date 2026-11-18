@@ -14,7 +14,7 @@ function fixture({ ephemeral = true, answer = "<title>通知样式</title>", han
   const log = path.join(work, "requests.jsonl"), script = path.join(work, "codex.mjs");
   writeFileSync(script, `import {createInterface} from 'node:readline';import {appendFileSync} from 'node:fs';
 const log=${JSON.stringify(log)},modelPages=${JSON.stringify(modelPages)},features=${JSON.stringify(features)};let fastThread=false;const send=m=>process.stdout.write(JSON.stringify(m)+'\\n');
-appendFileSync(log,JSON.stringify({pid:process.pid,argv:process.argv.slice(2),cwd:process.cwd(),browserToken:process.env.CODEX_UI_BROWSER_TOKEN})+'\\n');
+appendFileSync(log,JSON.stringify({pid:process.pid,argv:process.argv.slice(2),cwd:process.cwd(),browserToken:process.env.BETTER_CODEX_BROWSER_TOKEN})+'\\n');
 createInterface({input:process.stdin}).on('line',line=>{
  const {id,method,params}=JSON.parse(line);appendFileSync(log,line+'\\n');if(id===undefined)return;
  if(method==='thread/start'&&params.serviceTier==='priority'&&${rejectFastStart}){send({id,error:{message:'fast mode unavailable'}});return;}
@@ -137,7 +137,7 @@ test("title endpoint requires bridge auth, validates input, and works without a 
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const port = server.address().port, url = `http://127.0.0.1:${port}/api/title`;
   const post = (body, headers = {}) => fetch(url, { method: "POST", body: JSON.stringify(body), headers });
-  const headers = { cookie: `codex_ui_${port}=secret`, "content-type": "application/json" };
+  const headers = { cookie: `better_codex_${port}=secret`, "content-type": "application/json" };
   try {
     assert.equal((await post({ description: "描述" })).status, 401);
     assert.equal((await post({ description: "描述" }, { ...headers, origin: "http://untrusted.test" })).status, 403);
@@ -169,7 +169,7 @@ test("disconnecting HTTP or closing the bridge kills outstanding title workers",
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const port = server.address().port, abort = new AbortController();
     const response = fetch(`http://127.0.0.1:${port}/api/title`, {
-      method: "POST", signal: abort.signal, headers: { cookie: `codex_ui_${port}=secret`, "content-type": "application/json" }, body: JSON.stringify({ description: "描述" }),
+      method: "POST", signal: abort.signal, headers: { cookie: `better_codex_${port}=secret`, "content-type": "application/json" }, body: JSON.stringify({ description: "描述" }),
     }).then((response) => response.status, () => "aborted");
     try {
       await until(() => existsSync(f.log) && f.records().some((r) => r.method === "turn/start"));

@@ -1,6 +1,6 @@
 # 搜索
 
-按 Claude Desktop 2.42304.0.0 新版搜索面板对齐；Codex UI 只有 Code 模式，因此不显示内容分类标签。
+按 Claude Desktop 2.42304.0.0 新版搜索面板对齐；Better Codex 只有 Code 模式，因此不显示内容分类标签。
 
 - 侧栏“搜索”、`Ctrl+K` 和 `Ctrl+Shift+K` 打开同一个搜索界面。空白时先显示最多 8 条最近会话，再显示新建会话操作。
 - 输入后以 200ms 防抖搜索未归档及已归档会话的标题和正文，合并后按最近活动排序，最多 25 条结果；归档结果显示“已归档”，保留正文摘要及匹配文字。长文本仍是搜索，粘贴多行文本时合为一行。
@@ -19,12 +19,12 @@
 ## 验证
 
 ```powershell
-npm --prefix codex-ui test
-npm --prefix codex-ui run build
+npm --prefix better-codex test
+npm --prefix better-codex run build
 # Windows 通过 Start-Process -Wait -PassThru 取得退出码：
-node_modules\electron\dist\electron.exe codex-ui/desktop/palette-smoke.test.mjs
+node_modules\electron\dist\electron.exe better-codex/desktop/palette-smoke.test.mjs
 ```
 
 桌面验收使用独立资料目录、真实 Chromium 与合成 RPC，覆盖正文命中、混合结果排序及 25 条上限、归档只读打开、行菜单与归档筛选、触屏筛选、空结果、单侧查询失败及重试、旧后端降级、长查询、多行粘贴、输入竞态、撰写切换、焦点恢复及 320/768/1024/1440px 布局。不连接真实账户或修改现有会话；截图和结果保留在输出的临时目录。
 
-2026-10-25 验证：构建通过；清除测试进程继承的 `CODEX_UI_BROWSER_TOKEN` / `CODEX_UI_EXPERIMENTAL_BACKEND` 后，在正常 Windows 进程环境下单测 385/385 通过。Chromium `152.0.7977.130` 桌面验收通过，已检查宽屏与 320px 截图。沙箱内的 Electron 启动及预热子进程终止曾受权限限制，未为测试修改 ACL 或关闭 Chromium 沙箱。未替换已安装应用，未用真实会话数据验收。
+2026-10-25 验证：构建通过；清除测试进程继承的 `BETTER_CODEX_BROWSER_TOKEN` / `BETTER_CODEX_EXPERIMENTAL_BACKEND` 后，在正常 Windows 进程环境下单测 385/385 通过。Chromium `152.0.7977.130` 桌面验收通过，已检查宽屏与 320px 截图。沙箱内的 Electron 启动及预热子进程终止曾受权限限制，未为测试修改 ACL 或关闭 Chromium 沙箱。未替换已安装应用，未用真实会话数据验收。

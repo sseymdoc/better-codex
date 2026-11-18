@@ -12,6 +12,13 @@ import type { AutomationTask } from "../../context/automation-tools.mjs";
 export type Method = ClientRequest["method"];
 export type ParamsOf<M extends Method> = Extract<ClientRequest, { method: M }>["params"];
 
+/** JSON.parse reviver: a codex_ui_* MCP server and codexUi* _meta keys read as their Better Codex names. */
+export function renamed(key: string, value: unknown): unknown {
+  if (key === "server" && typeof value === "string" && value.startsWith("codex_ui_")) return `better_codex_${value.slice("codex_ui_".length)}`;
+  if (key !== "_meta" || !value || typeof value !== "object" || Array.isArray(value)) return value;
+  return Object.fromEntries(Object.entries(value).map(([name, v]) => [name.startsWith("codexUi") ? `betterCodex${name.slice("codexUi".length)}` : name, v]));
+}
+
 export class RpcError extends Error {
   constructor(
     message: string,
@@ -33,7 +40,7 @@ export interface Hello {
   command: string;
   /** Whether this connection claimed a prestarted app-server (experimental backend only). */
   prewarmed?: boolean;
-  /** The bridge started app-server with CODEX_UI_EXPERIMENTAL_BACKEND=1. */
+  /** The bridge started app-server with BETTER_CODEX_EXPERIMENTAL_BACKEND=1. */
   experimentalBackend?: boolean;
 }
 
@@ -80,7 +87,7 @@ export class Rpc {
     try {
       response = await fetch(this.events, { signal: abort.signal, headers: { accept: "text/event-stream" } });
     } catch {
-      return this.fail(abort, "network", "无法连接到 Codex UI 服务。请确认它仍在运行。");
+      return this.fail(abort, "network", "无法连接到 Better Codex 服务。请确认它仍在运行。");
     }
     if (response.status === 401) {
       return this.fail(abort, "unauthorized", "未授权：请使用启动终端中打印的带 token 的链接打开页面。");
@@ -138,10 +145,11 @@ export class Rpc {
     if (!data) return;
     let payload;
     try {
-      payload = JSON.parse(data);
+      // History from before the rename names the desktop servers and their _meta keys as Codex UI did.
+      payload = data.includes("codex_ui_") || data.includes('"codexUi') ? JSON.parse(data, renamed) : JSON.parse(data);
     } catch {
       // One corrupt frame must not end the read loop.
-      console.warn("codex-ui: skipped a malformed frame", data.slice(0, 200));
+      console.warn("better-codex: skipped a malformed frame", data.slice(0, 200));
       return;
     }
     if (event === "hello") {

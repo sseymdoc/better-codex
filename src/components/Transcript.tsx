@@ -154,7 +154,7 @@ const REWIND_TIPS: Record<RewindMark["variant"], string> = {
  * thread/revert/switch. A switch that is no longer possible drops the line.
  */
 function RewindMarker({ threadId, mark }: { threadId: string; mark: RewindMark }) {
-  const switchable = useStore((s) => s.server.info?.codexUiRevertSwitch === true);
+  const switchable = useStore((s) => s.server.info?.betterCodexRevertSwitch === true);
   const [busy, setBusy] = useState(false);
   const forward = mark.variant === "forward";
   const time = new Date(mark.at).toLocaleTimeString("zh-CN", { hour: "numeric", minute: "2-digit" });
@@ -505,7 +505,7 @@ async function forkFrom(threadId: string, through: string | null, prefill?: stri
 // ---------------------------------------------------------------------------
 // Chapters: pins live in localStorage per thread (the original keeps "epitaxy-chapters-v2").
 
-const CHAPTERS_KEY = "codex-ui:chapters";
+const CHAPTERS_KEY = "better-codex:chapters";
 
 let chapterBook = record(readJson(CHAPTERS_KEY)) as Record<string, ChapterStore>;
 const chapterListeners = new Set<() => void>();
@@ -1139,7 +1139,7 @@ function TurnError({ threadId, error, latest }: { threadId: string; error: NonNu
 
 // ---------------------------------------------------------------------------
 // Read aloud (c4de0b325 _q / shared-2 SpeakAction): Claude reads through its own voice service;
-// codex-ui through the browser's speech synthesis. One reply at a time: 朗读, then 暂停 / 继续.
+// better-codex through the browser's speech synthesis. One reply at a time: 朗读, then 暂停 / 继续.
 
 let speech: { key: string; paused: boolean } | null = null;
 const speechListeners = new Set<() => void>();
@@ -1249,7 +1249,7 @@ function TurnEdits({ turn, threadId, cwd, latest }: { turn: TurnState; threadId:
 
 /** c4de0b325 vq: 在后台运行 in the turn's toolbar while a command it waits on can go to the background. */
 function RunInBackgroundKey({ threadId, items }: { threadId: string; items: TurnState["items"] }) {
-  const supported = useStore((s) => s.server.info?.codexUiBackgroundTerminals === true);
+  const supported = useStore((s) => s.server.info?.betterCodexBackgroundTerminals === true);
   const ids = backgroundable(items).map((item) => item.processId!);
   if (!supported || !ids.length) return null;
   return <Button variant="ghost" muted icon={<Icon name="Tasks" size={16} />} label="在后台运行" kbd="control+b" onClick={() => void backgroundCommands(threadId, ids)} />;
@@ -1726,7 +1726,7 @@ export function Transcript({ thread, dock, scrollRef: scroller }: { thread: Thre
   // c11959232 Wm: Ctrl+B sends the session's waited-on commands to the background while one can go
   // (the experimental backend's 在后台运行), ahead of the sidebar's Ctrl+B: from the composer unless
   // an IME is composing, never from another field or over a dialog.
-  const canBackground = useStore((s) => s.server.info?.codexUiBackgroundTerminals === true);
+  const canBackground = useStore((s) => s.server.info?.betterCodexBackgroundTerminals === true);
   const sendable = (liveTurn ? backgroundable(liveTurn.items) : []).map((item) => item.processId!).join(" ");
   // Split view: the keyboard belongs to the focused column's transcript.
   const focused = use(ColumnFocus);
@@ -2137,7 +2137,7 @@ export function Transcript({ thread, dock, scrollRef: scroller }: { thread: Thre
   const looseNotices = thread.notices.filter((notice) => notice.turnId === null);
   const rewindMark = useStore((s) => s.rewindMarks[threadId]);
   const recap = useStore((s) => s.recaps[threadId]);
-  // The forks codex-ui made from this session, by the last turn each kept (forkPoints).
+  // The forks better-codex made from this session, by the last turn each kept (forkPoints).
   const forkIds = useStore((s) => Object.values(s.threads).flatMap((t) => (t.meta.forkedFromId === threadId ? [t.meta.id] : [])).join(" "));
   const forksAt = useMemo(() => {
     const points = forkPoints();

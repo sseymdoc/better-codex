@@ -11,7 +11,7 @@ const QUERY = `(?:\\?${PARAMS})?`;
 const ROOM = `/messaging/rooms/${ID}`;
 // The library's own ids (libfile_…, libdir_…, file_…): a file id's `#` travels as `*`, as Codex
 // sends it (Taa); `% . / ? # \` never get in. A mounted drive's ids (external-…:…) carry `:` and
-// stay out: codex-ui has no cloud drives. library.mjs and the bridge check ids by this too.
+// stay out: better-codex has no cloud drives. library.mjs and the bridge check ids by this too.
 export const LIBID = "[A-Za-z0-9_*-]+";
 // A favorite's id joins two ids with `~` (as the real library answers: a_9…~a_a9…); a path keeps
 // it as it is (encodeURIComponent leaves `~`), and it moves no path segment.

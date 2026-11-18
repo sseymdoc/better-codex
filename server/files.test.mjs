@@ -34,7 +34,7 @@ test("only a local absolute path is acted on", () => {
 });
 
 test("sizes and ranged media come from the file", async (t) => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-files-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-files-"));
   const clip = path.join(dir, "clip.mp3");
   writeFileSync(clip, "0123456789");
   const server = createServer((req, res) => {
@@ -56,7 +56,7 @@ test("sizes and ranged media come from the file", async (t) => {
 });
 
 test("the default app opens a plain file in the session folder, as Claude's gate allows", async () => {
-  const root = mkdtempSync(path.join(tmpdir(), "codex-ui-open-"));
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-open-"));
   const file = (name) => {
     const full = path.join(root, ...name.split("/"));
     mkdirSync(path.dirname(full), { recursive: true });
@@ -79,7 +79,7 @@ test("the editor writes only a regular file inside the session folder, and only 
   const { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { writeSessionFile } = await import("./files.mjs");
-  const base = mkdtempSync(path.join(tmpdir(), "codex-ui-write-"));
+  const base = mkdtempSync(path.join(tmpdir(), "better-codex-write-"));
   t.after(() => rmSync(base, { recursive: true, force: true }));
   const cwd = path.join(base, "project");
   mkdirSync(cwd);
