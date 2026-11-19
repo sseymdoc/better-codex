@@ -15,7 +15,7 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client"],
     "paths": {
-      "@protocol/*": ["../codex-rs/app-server-protocol/schema/typescript/*"]
+      "@protocol/*": ["./protocol/*"]
     }
   },
   "include": ["src"]

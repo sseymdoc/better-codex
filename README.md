@@ -6,6 +6,10 @@ replicates the **Code tab of Claude Desktop 2.42304.0.0**, read from the package
 [open-claude-ui](https://github.com/sseymdoc/open-claude-ui) as a guide; where the two disagree,
 the bundle wins.
 
+This repository holds the frontend only. The backend it runs, the Codex fork with Better Codex's
+experimental backend, lives in [sseymdoc/codex](https://github.com/sseymdoc/codex), which also
+publishes the backend packages.
+
 - **One variant, the flag-off one.** The bundle's GrowthBook reader returns *off* for a flag the
   server did not send, and one flag (`claudeai_cc_epitaxy_session_presets_main`) switches a whole
   set of screens. better-codex is that flag-off Code tab throughout: the greeting home page, the
@@ -189,11 +193,8 @@ prewarm, title, backend and desktop smoke tests exercise the host adapters and u
 
 ## Usage
 
-From the repository root (the package is part of the pnpm workspace):
-
 ```sh
 pnpm install
-cd better-codex
 pnpm build && pnpm start      # serves dist/ on http://127.0.0.1:7477
 pnpm dev                      # Vite dev server with the same bridge on :5173
 ```
@@ -415,8 +416,11 @@ src/styles/transcript.css  transcript, prose, tool rows, working line, lightbox
 src/styles/composer.css    dock, queue bands, composer and its picker row, approvals, questions
 ```
 
-Protocol types come straight from `codex-rs/app-server-protocol/schema/typescript` through the
-`@protocol/*` path alias, so `pnpm typecheck` catches protocol drift.
+Protocol types are a copy of `codex-rs/app-server-protocol/schema/typescript` from
+[sseymdoc/codex](https://github.com/sseymdoc/codex), kept in `protocol/` and read through the
+`@protocol/*` path alias, so `pnpm typecheck` catches protocol drift. When the backend's protocol
+changes, copy that folder over `protocol/` again. `src/assets/prompt_for_init_command.md` is the
+same repository's `codex-rs/tui/assets/prompt_for_init_command.md`.
 
 Command rows use the model-provided `description` as their title, with the existing command
 summary as a fallback for older servers and history. Only the experimental backend
