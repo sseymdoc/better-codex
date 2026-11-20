@@ -38,7 +38,7 @@ import {
   type RefObject,
 } from "react";
 import { flushSync } from "react-dom";
-import initPrompt from "../../../codex-rs/tui/assets/prompt_for_init_command.md?raw";
+import initPrompt from "../assets/prompt_for_init_command.md?raw";
 import {
   activeTurn,
   addWritableRoot,
