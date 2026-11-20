@@ -418,8 +418,10 @@ src/styles/composer.css    dock, queue bands, composer and its picker row, appro
 
 Protocol types are a copy of `codex-rs/app-server-protocol/schema/typescript` from
 [sseymdoc/codex](https://github.com/sseymdoc/codex), kept in `protocol/` and read through the
-`@protocol/*` path alias, so `pnpm typecheck` catches protocol drift. When the backend's protocol
-changes, copy that folder over `protocol/` again. `src/assets/prompt_for_init_command.md` is the
+`@protocol/*` path alias. The copy is not synced: `pnpm typecheck` checks the UI against this copy
+only, not against the backend's current protocol. It matches sseymdoc/codex `3fbd793e3` (the folder's
+last change); when the backend's protocol changes, copy that folder over `protocol/` again and update
+this commit. `src/assets/prompt_for_init_command.md` is the
 same repository's `codex-rs/tui/assets/prompt_for_init_command.md`.
 
 Command rows use the model-provided `description` as their title, with the existing command
