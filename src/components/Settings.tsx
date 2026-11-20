@@ -68,6 +68,7 @@ import { CODE_THEMES, type CodeTheme, type CodeThemeMode } from "../lib/themes";
 import { EFFORT_LABELS } from "./Composer";
 import { VIEW_LABELS } from "./Main";
 import { MemoryTab, savedSkillRoots } from "./SettingsCustomize";
+import { StorageTab } from "./SettingsStorage";
 import { Button, Dialog, Icon, Kbd, MOTION_KEY, MenuSelect, Segmented, Skeleton, Spark, Spinner, Toggle, UsageRing, applyMotion, type IconName } from "./ui";
 
 const DESKTOP = typeof window !== "undefined" && !!window.codexDesktop;
@@ -142,6 +143,36 @@ function applyCodeFont() {
 }
 
 applyCodeFont();
+
+// 代码字号 (Claude 4.4212 cbc28252c codeFontSize, shared-7 hz / _z): 11–20 px with a line 1.45×
+// as tall, for open files, diffs, code blocks, command output and the terminal; unset follows the density.
+export const CODE_SIZES = [11, 12, 13, 14, 15, 16, 18, 20] as const;
+const CODE_SIZE_KEY = "codex-ui:code-font-size";
+
+export function codeFontSize(): number | null {
+  try {
+    const size = Number(localStorage.getItem(CODE_SIZE_KEY));
+    return (CODE_SIZES as readonly number[]).includes(size) ? size : null;
+  } catch {
+    return null;
+  }
+}
+
+function applyCodeSize() {
+  const size = codeFontSize();
+  const root = document.documentElement;
+  if (size) {
+    root.dataset.codeSize = "";
+    root.style.setProperty("--code-size-override", `${size}px`);
+    root.style.setProperty("--code-leading-override", `${Math.round(size * 1.45)}px`);
+  } else {
+    delete root.dataset.codeSize;
+    root.style.removeProperty("--code-size-override");
+    root.style.removeProperty("--code-leading-override");
+  }
+}
+
+applyCodeSize();
 
 // Code themes (c5d464fa3 r(): one for light mode, one for dark, Claude Light / Dark by default).
 // Both go on <html> as --code-light-* / --code-dark-* (transcript.css picks the page's mode, a
@@ -648,6 +679,7 @@ function CodePreview({ mode }: { mode: CodeThemeMode }) {
 
 function CodeAppearanceSection() {
   const [font, setFont] = useState(codeFont);
+  const [size, setSize] = useState(() => String(codeFontSize() ?? "default"));
   const [themes, setThemes] = useState(() => ({ light: codeThemeOf("light").value, dark: codeThemeOf("dark").value }));
   return (
     <Section id="setting-codex-code-appearance" title="代码外观">
@@ -679,6 +711,18 @@ function CodeAppearanceSection() {
             setFont(event.target.value);
             writePref(CODE_FONT_KEY, event.target.value);
             applyCodeFont();
+          }}
+        />
+      </Row>
+      <Row id="setting-codex-code-font-size" label="代码字号" description="适用于打开的文件、差异、代码块、命令输出和终端。">
+        <MenuSelect
+          label="代码字号"
+          value={size}
+          options={[{ value: "default", label: "默认" }, ...CODE_SIZES.map((n) => ({ value: String(n), label: `${n} px` }))]}
+          onChange={(value) => {
+            setSize(value);
+            writePref(CODE_SIZE_KEY, value === "default" ? "" : value);
+            applyCodeSize();
           }}
         />
       </Row>
@@ -972,8 +1016,40 @@ function SessionsSection() {
           <MenuSelect label="当您请求无关的任务时" value={newTaskPrompt} options={NEW_TASK_PROMPTS} onChange={setNewTaskPrompt} />
         </Row>
       )}
+      {desktop && <WorktreeLocationRow />}
       <LocalSandboxRow />
     </Section>
+  );
+}
+
+/**
+ * 工作树位置 (Claude 4.4212 cbc28252c worktreeLocation): where Codex UI makes session worktrees,
+ * `[desktop] git-worktree-root` in config.toml (Codex desktop's own key, so both apps agree);
+ * unset, $CODEX_HOME/worktrees. Takes effect for worktrees made from now on.
+ */
+function WorktreeLocationRow() {
+  const configured = useStore((s) => (s.config?.desktop as Record<string, unknown> | undefined)?.["git-worktree-root"]);
+  const home = useStore((s) => s.server.info?.codexHome);
+  const custom = typeof configured === "string" && configured.trim() ? configured.trim() : null;
+  const shown = custom ?? (home ? `${home}${home.includes("\\") ? "\\" : "/"}worktrees` : "默认");
+  const save = (value: string | null) =>
+    void writeConfig([{ keyPath: "desktop.git-worktree-root", value, mergeStrategy: value === null ? "replace" : "upsert" }]).catch((error) => toast("warning", "无法更改工作树位置。", errorMessage(error)));
+  return (
+    <Row id="setting-codex-worktree-location" label="工作树位置" description="此电脑上为隔离的编码会话存放 Git 工作树的位置。">
+      <div className="settings-inline">
+        <span className="settings-path" title={shown}>
+          {shown}
+        </span>
+        <Button variant="secondary" size="sm" onClick={() => void window.codexDesktop?.pickFolder?.(custom ?? home ?? undefined).then((folder) => folder && save(folder))}>
+          更改…
+        </Button>
+        {custom && (
+          <Button variant="ghost" size="sm" onClick={() => save(null)}>
+            恢复默认
+          </Button>
+        )}
+      </div>
+    </Row>
   );
 }
 
@@ -1904,6 +1980,7 @@ const PAGES: Record<Page, { label: string; icon: IconName; tab: () => ReactNode 
   import: { label: "导入", icon: "Download", tab: ImportTab },
   labs: { label: "实验性功能", icon: "Beaker", tab: LabsTab },
   system: { label: "系统", icon: "Computer", tab: SystemTab },
+  storage: { label: "存储", icon: "Database", tab: StorageTab },
   about: { label: "关于", icon: "Info", tab: AboutTab },
 };
 
@@ -1920,7 +1997,7 @@ const pageInfo = (page: SearchPage): { label: string; icon: IconName } => (page 
 // shared-19 Nw / Pw: Settings, This computer (the desktop app only). Customize is its own page now.
 const NAV: { title: string; pages: Page[] }[] = [
   { title: "设置", pages: ["general", "account", "capabilities", "memory", "codex", "import", "labs"] },
-  ...(DESKTOP ? [{ title: "此电脑", pages: ["system" as const] }] : []),
+  ...(DESKTOP ? [{ title: "此电脑", pages: ["system" as const, "storage" as const] }] : []),
 ];
 
 // cc011544b Qt: words that find a whole page.
@@ -1956,6 +2033,9 @@ const INDEX: { page: SearchPage; anchor: string; label: string; phrases?: string
   { page: "memory", anchor: "setting-memory-files", label: "记忆文件" },
   { page: "codex", anchor: "setting-codex-code-appearance", label: "代码外观", phrases: ["代码主题", "配色", "语法高亮"] },
   { page: "codex", anchor: "setting-codex-code-font", label: "代码字体", phrases: ["等宽字体", "编辑器字体"] },
+  { page: "codex", anchor: "setting-codex-code-font-size", label: "代码字号", phrases: ["编辑器字号", "终端字号"] },
+  { page: "storage", anchor: "setting-storage-clean", label: "释放空间", phrases: ["清理不活跃的会话", "磁盘空间", "工作树"], when: () => DESKTOP },
+  { page: "codex", anchor: "setting-codex-worktree-location", label: "工作树位置", phrases: ["worktree", "工作树文件夹"], when: () => "codexDesktop" in window },
   { page: "codex", anchor: "setting-codex-appearance", label: "外观" },
   ...(DESKTOP ? [{ page: "codex" as const, anchor: "setting-codex-browser", label: "浏览器", phrases: ["浏览器工具", "Cookie", "站点权限", "自动打开 Codex 写入的文件"] }] : []),
   { page: "codex", anchor: "setting-codex-interface-font", label: "界面字体", phrases: ["UI 字体"], when: () => !getState().claudeFlags.interfaceFontInGeneral },
@@ -2009,6 +2089,11 @@ function searchSections(): SearchSection[] {
       ]),
     })),
   );
+}
+
+/** The setting rows the command palette offers once something is typed (c2771e1f6 gs): each opens its page at the row. */
+export function settingRows(): { page: SettingsTab; anchor: string; label: string; phrases: string[] }[] {
+  return INDEX.filter((entry) => entry.when?.() ?? true).map((entry) => ({ page: entry.page, anchor: entry.anchor, label: entry.label, phrases: [pageInfo(entry.page).label, ...(entry.phrases ?? [])] }));
 }
 
 function Highlight({ text, query }: { text: string; query: string }) {

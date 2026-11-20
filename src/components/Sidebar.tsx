@@ -34,6 +34,8 @@ import {
   archiveThread,
   deleteThread,
   ensureThreads,
+  environmentKind,
+  exportThread,
   fail,
   forkThread,
   isArchivedThread,
@@ -65,6 +67,7 @@ import { resetProfiles } from "../lib/dot-profile";
 import { resetDotWork } from "../lib/dot-work";
 import { loadDot, refreshDotsAvailable, resetDots, selectDot, useDots, type Dot } from "../lib/dots";
 import { MAGNET, STATIC_HINT, advance, edgeLook, magnet, released, resting, settle, snapTiming, staticZone, wheeled } from "../lib/edgeMagnet";
+import { installedEditors, openIn, revealFile, type Editor } from "../lib/files";
 import { threadTitle } from "../lib/format";
 import { useImagesEntry } from "../lib/images";
 import { libraryPrefs, useLibraryEntry } from "../lib/library";
@@ -74,8 +77,8 @@ import { inScratch } from "../lib/scratch";
 import { heartbeatOn, nextRunOf } from "../lib/rail";
 import { dayTime, navMark, type Mark } from "../lib/scheduled-view";
 import { blockedBoxThreads } from "../lib/wrap-up";
-import { dateBuckets, familyOrder, folderBuckets, outliving, rangeIds, spawnRoot, type SessionSort } from "../lib/session";
-import { getState, isShown, isUnread, pluginsOff, readJson, readPref, setState, toast, useStore, writeJson, writePref, type AppState, type ScheduledDialog, type StatusFilter, type ThreadState } from "../lib/store";
+import { ackStamp, dateBuckets, familyOrder, folderBuckets, outliving, rangeIds, spawnRoot, VIEWS, type SessionSort, type TranscriptView } from "../lib/session";
+import { getState, isShown, isUnread, markCompleted, pluginsOff, readJson, readPref, setSessionView, setState, toast, useStore, writeJson, writePref, type AppState, type ScheduledDialog, type StatusFilter, type ThreadState } from "../lib/store";
 import { useWco } from "./Frame";
 import { openPalette, shortcutLabel } from "./Palette";
 import { DotAvatar, DotMark, useDotEvents } from "./Dots";
@@ -131,6 +134,8 @@ interface Local {
   collapsed: string[];
   /** Family roots whose nested sessions are hidden (shared-20 collapsedFamilies). */
   families: string[];
+  /** Sessions moved out of their family to the top level (ce4f4374c XP5vxiZixk 移到顶层). */
+  detached: string[];
   groupBy: GroupBy;
   /** Filter ▸ Show empty groups (shared-16 sp(): off by default). */
   showEmpty: boolean;
@@ -156,6 +161,7 @@ const PERSIST = {
   pins: "codex-ui:pinned",
   collapsed: "codex-ui:collapsed-sections",
   families: "codex-ui:collapsed-families",
+  detached: "codex-ui:detached",
   groupBy: "codex-ui:group-by",
   showEmpty: "codex-ui:show-empty-groups",
 } satisfies Partial<Record<keyof Local, string>>;
@@ -170,6 +176,7 @@ let local: Local = {
   pins: strings(readJson(PERSIST.pins)),
   collapsed: strings(readJson(PERSIST.collapsed)),
   families: strings(readJson(PERSIST.families)),
+  detached: strings(readJson(PERSIST.detached)),
   groupBy: savedGroupBy === "date" || savedGroupBy === "project" || savedGroupBy === "custom" || savedGroupBy === "none" ? savedGroupBy : DEFAULT_GROUP_BY,
   showEmpty: readJson(PERSIST.showEmpty) === true,
   more: {},
@@ -335,6 +342,31 @@ function setDocked(open: boolean) {
   writePref(OPEN_KEY, open ? "open" : "collapsed");
 }
 
+/**
+ * What the model's sidebar and window tools change (DesktopManage.ts): pins, the grouping, the
+ * sidebar folded or docked, a mark's stamp, and a session moved out of its family.
+ */
+export const sidebarTools = {
+  pinned: (): readonly string[] => local.pins,
+  setPinned,
+  groupBy: (): GroupBy => local.groupBy,
+  setGroupBy: (groupBy: GroupBy) => setLocal({ groupBy }),
+  setCollapsed(collapsed: boolean): "changed" | "unchanged" | "narrow" {
+    if (!collapsed && (narrowNow || phoneNow)) return "narrow";
+    if (getState().sidebarOpen === !collapsed) return "unchanged";
+    setDocked(!collapsed);
+    return "changed";
+  },
+  /** 标记为已完成's stamp for the session now, null when there is nothing to mark. */
+  ackStamp(id: string): string | null {
+    const s = getState();
+    const thread = s.threads[id];
+    return thread ? ackable(thread, waitingOn(s).has(id)) : null;
+  },
+  waiting: (id: string): boolean => waitingOn(getState()).has(id),
+  detach: (id: string) => setLocal({ detached: [...local.detached.filter((x) => x !== id), id] }),
+};
+
 /** After choosing a session: close the peek or the phone sheet. */
 export function closeSidebarOnMobile() {
   setPeek(false);
@@ -385,6 +417,7 @@ interface ListShape {
 
 /** A fork hangs under its source, a session another one started under that one (sub-agents are never listed). */
 function parentOf(thread: ThreadState): string | null {
+  if (local.detached.includes(thread.meta.id)) return null;
   return thread.meta.forkedFromId ?? getState().links[thread.meta.id]?.parentId ?? null;
 }
 
@@ -545,6 +578,46 @@ export function sidebarOrder(): string[] {
   return visibleRows(layout(getState(), local), local).map((row) => row.thread.meta.id);
 }
 
+// Ctrl+1…9 hints (shared-21 kN, `[data-jump-hint-row] > kbd`): while Ctrl (⌘ on a Mac) is held
+// alone for a moment, the first nine rows show their digit at the row's end.
+let jumpHeld = false;
+const jumpListeners = new Set<() => void>();
+function holdJump(held: boolean) {
+  if (jumpHeld === held) return;
+  jumpHeld = held;
+  for (const listener of jumpListeners) listener();
+}
+if (typeof window !== "undefined") {
+  const mac = /Mac/.test(navigator.platform);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const stop = () => {
+    clearTimeout(timer);
+    holdJump(false);
+  };
+  window.addEventListener("keydown", (event) => {
+    if (event.key === (mac ? "Meta" : "Control") && !event.repeat && !event.shiftKey && !event.altKey) {
+      clearTimeout(timer);
+      timer = setTimeout(() => holdJump(true), 300);
+    } else if (!/^[1-9]$/.test(event.key)) stop();
+  });
+  window.addEventListener("keyup", (event) => event.key === (mac ? "Meta" : "Control") && stop());
+  window.addEventListener("blur", stop);
+}
+
+/** The row's jump digit while the hints show, else null. */
+function useJumpHint(id: string): number | null {
+  const held = useSyncExternalStore(
+    (listener) => {
+      jumpListeners.add(listener);
+      return () => void jumpListeners.delete(listener);
+    },
+    () => jumpHeld,
+  );
+  if (!held) return null;
+  const at = sidebarOrder().indexOf(id);
+  return at >= 0 && at < 9 ? at + 1 : null;
+}
+
 // ---------------------------------------------------------------------------
 // Row status (shared-20 rD / aD, shared-18 FD): at rest nothing; otherwise a mark at the row's
 // end (a 6px dot: waiting warning, unread accent, running muted and blinking; an error's warning)
@@ -557,8 +630,20 @@ const URGENCY: Status[] = ["blocked", "error", "unread", "running"];
 
 const STATUS_LABEL: Record<Status, string> = { blocked: "等待输入", error: "出现错误", running: "运行中", unread: "未读回复" };
 
-function statusOf(thread: ThreadState, waiting: boolean, agents = false): Status | null {
+/**
+ * 标记为已完成 (shared-20 nO onAckAwaiting): an error, or a wait with no turn running (a question or
+ * plan the turn ended on, a blocked next-step box) can be marked; the stamp it would be marked at.
+ * A request mid-turn cannot: it still needs an answer.
+ */
+export function ackable(thread: ThreadState, waiting: boolean): string | null {
   const { status } = thread.meta;
+  const kind = status.type === "systemError" ? "error" : waiting && !activeTurn(thread) && status.type !== "active" ? "blocked" : null;
+  return kind && ackStamp(kind, thread.meta.updatedAt, thread.turns.at(-1)?.id);
+}
+
+function statusOf(thread: ThreadState, waiting: boolean, agents = false, acked?: string): Status | null {
+  const { status } = thread.meta;
+  if (acked && acked === ackable(thread, waiting)) return isUnread(thread) ? "unread" : null;
   const flags = status.type === "active" ? status.activeFlags : [];
   if (waiting || flags.length) return "blocked";
   if (status.type === "systemError") return "error";
@@ -957,8 +1042,11 @@ function SessionMenu({ row, pinIndex, archived, close, rename }: { row: Row; pin
   };
   const pin = archived ? undefined : act(() => setPinned([id], !pinned));
   // shared-20 LS: not for agents' sessions; while one works or waits on you it stays, dimmed, with
-  // its reason (ce4f4374c qe). Its U then belongs to Mark as completed, which Codex has no use for.
+  // its reason (ce4f4374c qe). Its U then belongs to 标记为已完成, while that is offered.
   const busy = running || waiting;
+  const ackStampNow = archived ? null : ackable(thread, waiting);
+  const acked = useStore((s) => s.completedAcks[id]);
+  const complete = ackStampNow && acked !== ackStampNow ? act(() => markCompleted(id, ackStampNow)) : undefined;
   const read = meta.parentThreadId ? undefined : act(() => void (unread ? markRead(id) : markUnread(id)).catch(fail("更新未读状态失败")));
   const doRename = archived ? undefined : act(() => (rename ? rename() : setState({ dialog: { type: "rename", threadId: id } })));
   const fork = archived ? undefined : act(() => void forkThread(id).catch(fail("无法分叉此会话。")));
@@ -978,14 +1066,16 @@ function SessionMenu({ row, pinIndex, archived, close, rename }: { row: Row; pin
     },
     act(() => createGroup(id)),
   );
-  useMenuKeys({ p: pin, u: busy ? undefined : read, r: doRename, f: fork, a: lifecycle, d: remove, ...(archived ? {} : move.keys) });
+  const exportIt = archived ? undefined : act(() => void exportThread(id).catch(fail("导出会话失败。您可以重试。")));
+  useMenuKeys({ p: pin, u: busy ? complete : read, r: doRename, f: fork, e: exportIt, a: lifecycle, d: remove, ...(archived ? {} : move.keys) });
   const edit = [
     pin && <MenuItem key="pin" label={pinned ? "取消置顶" : "置顶"} kbd="P" onClick={pin} />,
     read && (
       <ReasonTip key="read" reason={busy ? "此会话仍在运行中，或正在等待您的输入。" : undefined}>
-        <MenuItem label={unread ? "标记为已读" : "标记为未读"} kbd="U" disabled={busy} onClick={read} />
+        <MenuItem label={unread ? "标记为已读" : "标记为未读"} kbd={busy ? undefined : "U"} disabled={busy} onClick={read} />
       </ReasonTip>
     ),
+    complete && <MenuItem key="complete" label="标记为已完成" kbd={busy ? "U" : undefined} onClick={complete} />,
     doRename && <MenuItem key="rename" label="重命名" kbd="R" onClick={doRename} />,
     fork && <MenuItem key="fork" label="分叉" kbd="F" onClick={fork} />,
     // Until the tasks are read it cannot tell adding from editing.
@@ -1024,10 +1114,41 @@ function SessionMenu({ row, pinIndex, archived, close, rename }: { row: Row; pin
   ].filter(Boolean);
   // Split view: beside the open session, when it is neither of the two on screen.
   const splittable = useStore((s) => !!s.activeId && !isShown(s, id) && !meta.parentThreadId);
+  // ce4f4374c He / Pe: 打开方式 ▸ 拆分视图, the installed editors, 终端 and the file manager, for a
+  // local session's folder (no new window: Codex UI has one). 终端 copies Codex's resume command.
+  const [editors, setEditors] = useState<Editor[]>([]);
+  useEffect(() => void installedEditors().then(setEditors), []);
+  const folder = archived || environmentKind(id) === "ssh" ? null : (thread.settings?.cwd ?? meta.cwd) || null;
+  const opens = [
+    ...(splittable ? [{ label: "拆分视图", run: () => void openSplit(id) }] : []),
+    ...(folder ? editors.map((editor) => ({ label: editor.name, run: () => void openIn(folder, editor.id).then((ok) => ok || toast("warning", "无法在编辑器中打开")) })) : []),
+    ...(folder
+      ? [
+          { label: "终端", run: () => void navigator.clipboard.writeText(`codex resume ${id}`).then(() => toast("neutral", "命令已复制。请将其粘贴到终端中以打开此会话。"), fail("复制失败")) },
+          { label: FILE_MANAGER, run: () => void revealFile(folder).then((ok) => ok || toast("warning", "无法在文件管理器中显示此文件夹。它可能已被删除或移动。")) },
+        ]
+      : []),
+  ];
+  // XP5vxiZixk: a nested session leaves its family for the top level.
+  const detach = row.place === "nested" ? act(() => setLocal({ detached: [...local.detached.filter((x) => x !== id), id] })) : undefined;
   const groups = [
-    splittable ? [<MenuItem key="split" label="在分屏中打开" onClick={act(() => void openSplit(id))} />] : [],
+    opens.length
+      ? [
+          <Submenu key="open" label="打开方式" className="submenu-fit">
+            {opens.map((open, index) => (
+              <MenuItem key={open.label} label={open.label} kbd={index < 9 ? String(index + 1) : undefined} onClick={act(open.run)} />
+            ))}
+          </Submenu>,
+        ]
+      : [],
     edit,
-    organize,
+    [...organize, ...(detach ? [<MenuItem key="detach" label="移到顶层" onClick={detach} />] : [])],
+    archived
+      ? []
+      : [
+          <MenuItem key="export" label="导出" kbd="E" onClick={exportIt!} />,
+          <ViewSubmenu key="view" threadId={id} close={close} />,
+        ],
     [
       <MenuItem key="archive" label={archived ? "取消归档" : "归档"} kbd="A" onClick={lifecycle} />,
       <MenuItem key="delete" label="删除" kbd="D" danger onClick={remove} />,
@@ -1447,8 +1568,10 @@ const CodeRow = memo(function CodeRow({ row, active, waiting, agents, archived, 
   const { thread, kind, parentTitle } = row;
   const { meta } = thread;
   const title = threadTitle(meta);
+  const acked = useStore((s) => s.completedAcks[meta.id]);
+  const jump = useJumpHint(meta.id);
   // An archived row says so in words, and dims (shared-21 S1).
-  const status = archived ? null : statusOf(thread, waiting, agents);
+  const status = archived ? null : statusOf(thread, waiting, agents, acked);
   // The ChatGPT app's clock on a scheduled run's session or one a heartbeat watches (localTaskRow
   // automation / attachedHeartbeatAutomation), in the status's cell while there is none; the
   // heartbeat's next run is the row's tip (sidebarTaskRow.heartbeatAutomation.nextRun).
@@ -1486,6 +1609,11 @@ const CodeRow = memo(function CodeRow({ row, active, waiting, agents, archived, 
   // menu: the main button, the status in the decoration cell, the ⋯ in the action cell.
   return (
     <div ref={wrap} data-row-key={`code:${meta.id}`} data-jump-hint-row="" className="relative df-drag-shiftable">
+      {jump !== null && (
+        <kbd className="kbd jump-hint" aria-hidden="true">
+          {jump}
+        </kbd>
+      )}
       <div>
         {editing ? (
           <div data-row="" data-editing="" className={`${SESSION_ROW} ${ROW_FILL}${archived ? " text-muted opacity-50" : ""}`} data-selected={selected}>
@@ -2732,6 +2860,40 @@ function DragLabel() {
   );
 }
 
+export const VIEW_LABELS: Record<TranscriptView, string> = { normal: "普通", thinking: "思考", verbose: "详细" };
+
+/** 对话记录视图 ▸ (cf74bc599 DA): the session's view, and making it the default; the title bar's menu and a row's share it. */
+export function ViewSubmenu({ threadId, close }: { threadId: string; close(): void }) {
+  const defaultView = useStore((s) => s.defaultView);
+  const view = useStore((s) => s.threads[threadId]?.view) ?? defaultView;
+  const act = (fn: () => void) => () => {
+    close();
+    fn();
+  };
+  return (
+    <Submenu label="对话记录视图">
+      {VIEWS.map((v) => (
+        <MenuItem key={v} label={VIEW_LABELS[v]} checked={v === view} onClick={act(() => setSessionView(threadId, v))} />
+      ))}
+      {view !== defaultView && (
+        <>
+          <MenuSep />
+          <MenuItem
+            label={`将 ${VIEW_LABELS[view]} 设为默认`}
+            onClick={act(() => {
+              writePref("codex-ui:view", view);
+              setState({ defaultView: view });
+              toast("neutral", `${VIEW_LABELS[view]} 现在是默认视图。`);
+            })}
+          />
+        </>
+      )}
+    </Submenu>
+  );
+}
+
+const FILE_MANAGER = typeof navigator === "undefined" ? "文件管理器" : /Mac/.test(navigator.platform) ? "访达" : navigator.platform.startsWith("Win") ? "资源管理器" : "文件管理器";
+
 // ---------------------------------------------------------------------------
 // The sidebar
 
@@ -2748,6 +2910,7 @@ export function Sidebar() {
   const terminalConsents = useStore((s) => s.terminalConsents);
   const settingConsents = useStore((s) => s.settingConsents);
   const offers = useStore((s) => s.offers);
+  const completedAcks = useStore((s) => s.completedAcks);
   const sidebarOpen = useStore((s) => s.sidebarOpen);
   const ready = useStore((s) => s.conn.status === "ready");
   const state = useLocal((s) => s);
@@ -2905,7 +3068,7 @@ export function Sidebar() {
   const shape = layout({ list, threads, sections, server }, state);
   const keep = keeper(state, activeId, waiting);
   const agents = agentsWorking(threads);
-  const statusFor = (row: Row) => statusOf(row.thread, waiting.has(row.thread.meta.id), agents.has(row.thread.meta.id));
+  const statusFor = (row: Row) => statusOf(row.thread, waiting.has(row.thread.meta.id), agents.has(row.thread.meta.id), completedAcks[row.thread.meta.id]);
   /** What a folded list's label shows (shared-21 HG): the most urgent status among the rows it hides. */
   const badgeOf = (rows: Row[], kept: Row[]) => (rows.length ? URGENCY.find((status) => rows.some((row) => !kept.includes(row) && statusFor(row) === status)) : undefined);
   const selection = new Set(state.selected);

@@ -606,3 +606,88 @@ test("scheduled-task tools are gated like the others, resolve folders, wait for 
   for (const [id, name, args] of [[11, "automation_update", { mode: "list" }], [12, "automation_update", cron], [13, "cloud_task_update", { mode: "list" }]]) assert.equal((await send(id, name, args)).result.isError, true);
   assert.equal(requests(), sent, "a disabled host asks the renderer nothing");
 });
+
+test("management tools are gated like the others, wait for cards where they ask and answer in plain words", async t => {
+  const threads = new Map([["a", { cwd: path.resolve("one"), enabled: true }]]);
+  let enabled = true;
+  const events = [];
+  const host = createDesktopTools({ enabled: () => enabled, context: id => threads.get(id), emit: (event, data) => events.push({ event, ...data }), timeoutMs: 50, startMs: 150, consentMs: 400 });
+  t.after(host.close);
+  const session = host.openSession();
+  const send = (id, name, args) => host.message(call(id, "a", name, args), undefined, session);
+  // Enabled: listed, a read answers with its JSON, a change that may ask waits as long as a card.
+  const names = (await host.message({ id: 1, method: "tools/list" }, undefined, session)).result.tools.map(tool => tool.name);
+  for (const name of ["list_sessions", "archive_session", "move_sessions", "set_sidebar_collapsed", "session_connectors_status", "close_pane"]) assert.ok(names.includes(name), name);
+  const listing = send(2, "list_groups", {});
+  await new Promise(resolve => setTimeout(resolve, 20));
+  const read = events.at(-1);
+  assert.ok(read.deadline - Date.now() <= 150, "a read waits as a start does, not as long as a card");
+  host.respond({ id: read.id, result: { threadId: "a", cwd: read.cwd, outcome: "listed", data: [{ id: "g1", name: "Work", session_count: 2, order: 0 }] } });
+  assert.deepEqual(body(await listing), [{ id: "g1", name: "Work", session_count: 2, order: 0 }]);
+  const archiving = send(3, "archive_session", { session_id: "b" });
+  await new Promise(resolve => setTimeout(resolve, 80));
+  const asked = events.at(-1);
+  assert.ok(asked.deadline - Date.now() > 250, "the card may take longer than a display");
+  host.respond({ id: asked.id, result: { threadId: "a", cwd: asked.cwd, outcome: "declined" } });
+  const declined = (await archiving).result;
+  assert.equal(declined.isError, true);
+  assert.equal(declined.content[0].text, "The user declined; nothing was changed.");
+  // A receipt with an outcome the tool cannot have is refused.
+  const pinning = send(4, "set_pinned", { session_id: "self", pinned: true });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  host.respond({ id: events.at(-1).id, result: { threadId: "a", cwd: events.at(-1).cwd, outcome: "archived" } });
+  assert.equal((await pinning).result.isError, true);
+  // Bad arguments never reach the renderer, and refuse in plain words.
+  const before = events.length;
+  const bad = (await send(5, "delete_session", { session_ids: [] })).result;
+  assert.equal(bad.isError, true);
+  assert.match(bad.content[0].text, /session_ids takes 1 to 25 entries/);
+  assert.equal(events.length, before);
+  // Disabled: nothing listed, and a direct call is refused without reaching the renderer.
+  enabled = false;
+  assert.deepEqual((await host.message({ id: 6, method: "tools/list" }, undefined, session)).result.tools, []);
+  const refused = (await send(7, "list_sessions", {})).result;
+  assert.equal(refused.isError, true);
+  assert.equal(events.length, before);
+});
+
+test("host and folder tools are gated, resolve their paths before asking and refuse bad ones without the renderer", async t => {
+  const root = await mkdtemp(path.join(tmpdir(), "codex-ui-host-"));
+  const elsewhere = await mkdtemp(path.join(tmpdir(), "codex-ui-elsewhere-"));
+  await mkdir(path.join(root, "src"));
+  await writeFile(path.join(root, "src", "a.ts"), "x");
+  const threads = new Map([["a", { cwd: root, enabled: true }]]);
+  let enabled = true;
+  const events = [];
+  const host = createDesktopTools({ enabled: () => enabled, context: id => threads.get(id), emit: (event, data) => events.push({ event, ...data }), timeoutMs: 50, startMs: 150, consentMs: 400 });
+  t.after(host.close);
+  const session = host.openSession();
+  const send = (id, name, args) => host.message({ id, method: "tools/call", params: { name, arguments: args, _meta: { threadId: "a", codexUiDesktopCwd: root } } }, undefined, session);
+  const names = (await host.message({ id: 1, method: "tools/list" }, undefined, session)).result.tools.map(tool => tool.name);
+  for (const name of ["open_in_editor", "reveal_path", "request_keep_awake", "get_storage_usage", "clean_up_worktrees", "request_directory", "change_directory"]) assert.ok(names.includes(name), name);
+  // reveal_path takes a folder inside the session's folder, resolved; a card may follow.
+  const revealing = send(2, "reveal_path", { path: "src" });
+  await new Promise(resolve => setTimeout(resolve, 80));
+  const asked = events.at(-1);
+  assert.equal(asked.args.path, path.join(root, "src"));
+  assert.ok(asked.deadline - Date.now() > 250, "the card may take longer than a display");
+  host.respond({ id: asked.id, result: { threadId: "a", cwd: root, outcome: "revealed" } });
+  assert.equal((await revealing).result.content[0].text, "Showed “src” in the file manager.");
+  // change_directory takes any existing folder on this computer, absolute; a file, a missing path or a share never reach the renderer.
+  const moving = send(3, "change_directory", { path: elsewhere });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(events.at(-1).args.path, elsewhere);
+  host.respond({ id: events.at(-1).id, result: { threadId: "a", cwd: root, outcome: "moving", data: { path: elsewhere } } });
+  assert.match((await moving).result.content[0].text, /moves to/);
+  const before = events.length;
+  for (const [id, name, args] of [[4, "change_directory", { path: path.join(root, "src", "a.ts") }], [5, "change_directory", { path: path.join(root, "missing") }], [6, "request_directory", { path: "//host/share" }], [7, "open_in_editor", { path: "../outside.ts" }], [8, "reveal_path", { path: path.join(elsewhere) }]]) {
+    const refused = (await send(id, name, args)).result;
+    assert.equal(refused.isError, true, name);
+  }
+  assert.equal(events.length, before);
+  // Disabled: nothing listed, and a direct call never reaches the renderer.
+  enabled = false;
+  assert.deepEqual((await host.message({ id: 9, method: "tools/list" }, undefined, session)).result.tools, []);
+  assert.equal((await send(10, "get_storage_usage", {})).result.isError, true);
+  assert.equal(events.length, before);
+});

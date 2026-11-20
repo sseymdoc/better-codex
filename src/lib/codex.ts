@@ -133,7 +133,7 @@ import { environmentOf, type EnvironmentConfig, type EnvironmentKind } from "./e
 import { mintScratch } from "./scratch";
 import { libraryPrefs } from "./library";
 import { sshCommand, sshConnections, sshEnvironmentId, type SshConnection } from "./ssh";
-import { basename, joinPath, meterBalances, meterCredits, normalizePath, parentDir, samePath, threadTitle, type BalanceTracks, type ProviderQuotaReport } from "./format";
+import { basename, joinPath, meterBalances, meterCredits, normalizePath, parentDir, samePath, threadMarkdown, threadTitle, type BalanceTracks, type ProviderQuotaReport } from "./format";
 import { appliedChanges, touchedPaths, undoChanges } from "./rewind";
 import { streamedChange } from "./panes";
 import { commandRunning, parseShells } from "./terminal";
@@ -998,8 +998,8 @@ function rememberThreads(threads: Thread[], current = getState().threads, readSt
 const readStatesOf = (response: ThreadListResponse) => (response as ThreadListResponse & { readStates?: Record<string, ThreadReadState | undefined> | null }).readStates;
 
 /** Title search over every session (the search dialog); the list itself is not filtered. */
-export async function searchThreads(term: string, archived = false): Promise<Thread[]> {
-  const response = await call("thread/list", { limit: 25, sortKey: "recency_at", searchTerm: term || undefined, sourceKinds: LIST_SOURCES, archived });
+export async function searchThreads(term: string, archived = false, limit = 25): Promise<Thread[]> {
+  const response = await call("thread/list", { limit, sortKey: "recency_at", searchTerm: term || undefined, sourceKinds: LIST_SOURCES, archived });
   for (const thread of response.data) archived ? archivedIds.add(thread.id) : archivedIds.delete(thread.id);
   setState((s) => ({ threads: rememberThreads(response.data, s.threads, readStatesOf(response)) }));
   return response.data;
@@ -1778,7 +1778,7 @@ interface Checkouts {
 }
 
 /** codex-worktree's root: `[desktop] git-worktree-root`, else $CODEX_HOME/worktrees. */
-function worktreeRoot(): string {
+export function worktreeRoot(): string {
   const configured = (getState().config?.desktop as Record<string, unknown> | undefined)?.["git-worktree-root"];
   if (typeof configured === "string" && configured.trim()) return configured.trim();
   const home = getState().server.info?.codexHome;
@@ -2184,6 +2184,42 @@ export async function syncThreadWithBase(threadId: string, base?: string): Promi
   const result = await callExperimental<SyncResult>("codexUi/worktree/sync", { cwd: threadCwd(thread), base: base ?? null });
   void refreshThreadGit(threadId, true);
   return result;
+}
+
+/** Runs `then` once desktop call `requestId`'s receipt reached the bridge (change_directory moves after it). */
+export function onReceipt(requestId: string, then: () => void): void {
+  afterReceipt.set(requestId, then);
+}
+
+/** request_keep_awake until "turn_end" (Claude 4.4212 ccd_host): the hold this session's running turn lets go of. */
+const turnKeepAwake = new Map<string, string>();
+export function keepAwakeForTurn(threadId: string): boolean {
+  const turn = activeTurn(getState().threads[threadId]);
+  if (!turn) return false;
+  turnKeepAwake.set(threadId, turn.id);
+  setKeepAwake(threadId, true);
+  return true;
+}
+
+/**
+ * request_directory / /add-dir: `folder` becomes writable for this session, as an extra
+ * workspace-write root (thread/settings/update). Only under 自动; the result says what applied.
+ * shortcut: the grant lives in the running session only (a restart or another permission pick drops it); persist it in thread overrides if users miss it.
+ */
+export async function addWritableRoot(threadId: string, folder: string): Promise<"granted" | "already" | "read_only" | "full_access" | "custom"> {
+  const thread = getState().threads[threadId];
+  if (!thread) throw new Error("This session is not loaded.");
+  const { permission } = effectiveSettings(thread);
+  if (permission === "full-access") return "full_access";
+  if (permission === "read-only") return "read_only";
+  if (permission !== "auto") return "custom";
+  const current = thread.settings?.sandbox?.type === "workspaceWrite" ? thread.settings.sandbox : PRESETS.auto.policy;
+  if (current.type !== "workspaceWrite") return "custom";
+  if (current.writableRoots.some((root) => samePath(root, folder)) || samePath(threadCwd(thread), folder)) return "already";
+  const sandboxPolicy = { ...current, writableRoots: [...current.writableRoots, folder] };
+  if ((await optional("thread/settings/update", { threadId, sandboxPolicy })) === null) throw new Error("This Codex version cannot add a folder to a running session.");
+  updateThread(threadId, (t) => (t.settings ? { ...t, settings: { ...t.settings, sandbox: sandboxPolicy } } : t));
+  return "granted";
 }
 
 /** rpc.ts: a receipt reached the bridge, so its call has its answer. */
@@ -2942,6 +2978,20 @@ const FORK_POINTS = "codex-ui:fork-points";
  */
 export function forkPoints(): Record<string, string> {
   return record(readJson(FORK_POINTS)) as Record<string, string>;
+}
+
+/** Downloads the whole thread as Markdown, paging in older turns first (导出, and export_transcript). */
+export async function exportThread(id: string): Promise<void> {
+  while (getState().threads[id]?.olderCursor) await loadTurns(id, true);
+  const thread = getState().threads[id];
+  if (!thread) return;
+  const title = threadTitle(thread.meta);
+  const url = URL.createObjectURL(new Blob([threadMarkdown(title, thread.turns)], { type: "text/markdown;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${title.replace(/[\\/:*?"<>|\s]+/g, " ").trim().slice(0, 80) || "codex"}.md`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function forkThread(id: string, lastTurnId?: string): Promise<void> {
@@ -4420,6 +4470,10 @@ function onNotification(notification: ServerNotification): void {
         // Stopped or failed, left plan mode, or something of yours comes first: nothing starts.
         if (turn.status === "completed" && (resume.text !== PLAN_RESUME || thread?.planMode) && !thread?.queue.length && !s.pendingMessages[threadId] && !s.requests.some((request) => requestSessionId(request, s.threads) === threadId))
           void sendMessage(threadId, [{ type: "text", text: resume.text, text_elements: [] }]).catch((error) => toast("warning", "发送失败", errorMessage(error)));
+      }
+      if (turnKeepAwake.get(threadId) === turn.id) {
+        turnKeepAwake.delete(threadId);
+        setKeepAwake(threadId, false);
       }
       turnEnded(threadId);
       return;
