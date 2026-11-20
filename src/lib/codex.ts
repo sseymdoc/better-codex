@@ -132,7 +132,7 @@ import {
 import { environmentOf, type EnvironmentConfig, type EnvironmentKind } from "./environments";
 import { mintScratch } from "./scratch";
 import { libraryPrefs } from "./library";
-import { sshCommand, sshConnections, sshEnvironmentId, type SshConnection } from "./ssh";
+import { renamedSshEnvironmentId, sshCommand, sshConnections, sshEnvironmentId, type SshConnection } from "./ssh";
 import { basename, externalUrl, joinPath, meterBalances, meterCredits, normalizePath, parentDir, samePath, threadMarkdown, threadTitle, type BalanceTracks, type ProviderQuotaReport } from "./format";
 import { appliedChanges, touchedPaths, undoChanges } from "./rewind";
 import { streamedChange } from "./panes";
@@ -158,6 +158,9 @@ import {
   setTitleSource,
   forgetAsked,
   forgetTodos,
+  forgetCompleted,
+  holdAwakeForTurn,
+  releaseTurnHold,
   recordTodo,
   toast,
   updateItem,
@@ -345,6 +348,9 @@ export async function optional<R>(method: string, params: unknown): Promise<R | 
   } catch (error) {
     if (!unsupported(error)) throw error;
     missing.add(method);
+    // Only components reading supports() through useStore (`useStore(() => supports(...))`) re-render
+    // and drop what the server lacks; a bare supports() in render shows the change on its next render.
+    setState({});
     return null;
   }
 }
@@ -613,8 +619,9 @@ async function onOpen(hello: Hello): Promise<void> {
     setState((s) => ({ conn: { status: "ready" }, server: { ...s.server, info, version: parseVersion(info.userAgent) } }));
     rewatchFiles();
   } catch (error) {
-    // A connection that dropped meanwhile has been through onClose already.
-    if (getState().conn.status === "connecting") setState({ conn: { status: "closed", error: `初始化失败：${errorMessage(error)}`, kind: "fatal", retryAt: null } });
+    // A connection that dropped meanwhile has been through onClose already; one replaced by a
+    // reconnect (its initialize rejected by Rpc.connect) leaves the new one's state alone.
+    if (rpc.connection === hello.connectionId && getState().conn.status === "connecting") setState({ conn: { status: "closed", error: `初始化失败：${errorMessage(error)}`, kind: "fatal", retryAt: null } });
     return;
   } finally {
     clearTimeout(stalled);
@@ -1214,7 +1221,7 @@ export function environmentKind(threadId: string | null): EnvironmentKind | null
   const id = gitEnvironment(meta);
   // An SSH session's environments echo the id it started with (sshEnvironmentId); "ssh:" is the
   // project's fallback when a thread carries none.
-  return id === "local" ? "local" : id.startsWith("bettercodex-ssh-") || id.startsWith("ssh:") ? "ssh" : id.startsWith("cloud:") ? "cloud" : null;
+  return id === "local" ? "local" : /^(codexui|bettercodex)-ssh-/.test(id) || id.startsWith("ssh:") ? "ssh" : id.startsWith("cloud:") ? "cloud" : null;
 }
 
 const gitSnapshotKey = (cwd: string, environmentId: string) => JSON.stringify([environmentId, cwd]);
@@ -1874,8 +1881,7 @@ export async function sshStatus(connection: SshConnection): Promise<SshStatus> {
 }
 
 /** The backend keeps added environments in memory only: register the host again when it lacks it. */
-export async function ensureSshEnvironment(connection: SshConnection, replace = false): Promise<string> {
-  const environmentId = sshEnvironmentId(connection);
+export async function ensureSshEnvironment(connection: SshConnection, replace = false, environmentId = sshEnvironmentId(connection)): Promise<string> {
   const known = !replace && await callExperimental<{ status: string }>("environment/status", { environmentId }).then((r) => r.status !== "unknown", () => false);
   if (!known) await callExperimental("environment/addStdio", { environmentId, ...sshCommand(connection) });
   return environmentId;
@@ -1903,7 +1909,10 @@ async function sshEnvironments(environment: EnvironmentConfig) {
 /** Before a cold resume or fork: the backend may have restarted and lost the session's SSH host. */
 async function ensureThreadEnvironment(projectId: string | null | undefined): Promise<void> {
   const environment = environmentOf(getState().projects.find((project) => project.id === projectId));
-  if (environment.kind === "ssh") await ensureSshEnvironment(sshConnectionOf(environment));
+  if (environment.kind !== "ssh") return;
+  // Its recorded id is unknown until it resumes: register the one sessions started before the revert kept too.
+  const connection = sshConnectionOf(environment);
+  await Promise.all([ensureSshEnvironment(connection), ensureSshEnvironment(connection, false, renamedSshEnvironmentId(connection))]);
 }
 
 export function hostContextSupported(): boolean {
@@ -2210,14 +2219,11 @@ export function onReceipt(requestId: string, then: () => void): void {
 }
 
 /** request_keep_awake until "turn_end" (Claude 4.4212 ccd_host): the hold this session's running turn lets go of. */
-const turnKeepAwake = new Map<string, string>();
 export function keepAwakeForTurn(threadId: string): boolean {
   const turn = activeTurn(getState().threads[threadId]);
   if (!turn) return false;
-  // Already held (the session menu's 保持计算机唤醒, or session_idle): the turn's end must not let it go.
-  if (getState().keepAwake.has(threadId)) return true;
-  turnKeepAwake.set(threadId, turn.id);
-  setKeepAwake(threadId, true);
+  // Already held (the session menu's 保持计算机唤醒, or session_idle), or taken over later: the turn's end leaves it.
+  holdAwakeForTurn(threadId, turn.id);
   return true;
 }
 
@@ -2269,7 +2275,8 @@ export async function sendMessage(threadId: string | null, input: UserInput[], o
     const clientId = crypto.randomUUID();
     const fresh = opts.fresh || threadId === null;
     setState((s) => ({ pendingMessages: { ...s.pendingMessages, [key]: { item: { type: "userMessage", id: clientId, clientId, content: input }, ...(fresh && { fresh }) } } }));
-    return submitPendingMessage(threadId, opts.stay);
+    if (opts.stay) stayingSends.add(clientId);
+    return submitPendingMessage(threadId);
   }
   await sendToThread(threadId, input, opts);
   return threadId;
@@ -2299,7 +2306,11 @@ export async function retryPendingMessage(threadId: string | null): Promise<void
   }
 }
 
-async function submitPendingMessage(threadId: string | null, stay = false): Promise<string> {
+/** Client ids of new-session sends made with Ctrl+Enter (`stay`), so their retry does not open the session either. */
+// ponytail: ids of pending messages removed unsent stay here (a few UUIDs a page); a `stay` field on store.ts PendingMessage replaces this.
+const stayingSends = new Set<string>();
+
+async function submitPendingMessage(threadId: string | null): Promise<string> {
   let id = threadId;
   const pending = getState().pendingMessages[id ?? ""]!;
   const newlyStarted = pending.fresh ?? false;
@@ -2311,7 +2322,8 @@ async function submitPendingMessage(threadId: string | null, stay = false): Prom
   });
   update({ error: undefined, accepted: false, turnId: undefined });
   try {
-    id ??= await startThread(clientId, undefined, stay);
+    id ??= await startThread(clientId, undefined, stayingSends.has(clientId));
+    stayingSends.delete(clientId);
     await sendToThread(id, pending.item.content, {}, clientId, newlyStarted);
     reconcilePendingMessage(id);
     return id;
@@ -3012,8 +3024,11 @@ export async function exportThread(id: string): Promise<void> {
   const link = document.createElement("a");
   link.href = url;
   link.download = `${title.replace(/[\\/:*?"<>|\s]+/g, " ").trim().slice(0, 80) || "codex"}.md`;
+  document.body.append(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  // As FileMenu's saveImage and downloadFlashcardsCsv: revoked at once, the download may not have read it yet.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** Forks `id` (through `lastTurnId`), opens the fork and returns its id. */
@@ -3193,7 +3208,9 @@ function rewatchFiles(): void {
 export function watchFile(path: string, onChange: () => void): () => void {
   const watchId = crypto.randomUUID();
   watchers.set(watchId, { path, onChange });
-  call("fs/watch", { watchId, path }).catch(() => watchers.delete(watchId));
+  // Refused by this app-server: given up. Lost with its connection (or sent while there was none): kept for rewatchFiles.
+  const connection = rpc.connection;
+  call("fs/watch", { watchId, path }).catch(() => connection && rpc.connection === connection && watchers.delete(watchId));
   return () => {
     if (!watchers.delete(watchId)) return;
     void call("fs/unwatch", { watchId }).catch(() => {});
@@ -3389,7 +3406,7 @@ export async function reloadMcpServers(): Promise<void> {
 /** The latest login attempt per MCP server; completions of older attempts are ignored. */
 const mcpLogins = new Map<string, string>();
 
-/** Pass the session that hit the sign-in so the server reconnects it there. */
+/** The normalized URL (`url.href`) when it is a plain http URL on this machine's loopback (a local MCP server's sign-in page), else null. */
 function loopbackHttp(raw: string): string | null {
   try {
     const url = new URL(raw);
@@ -3400,6 +3417,7 @@ function loopbackHttp(raw: string): string | null {
   }
 }
 
+/** Pass the session that hit the sign-in so the server reconnects it there. */
 export async function loginMcpServer(name: string, threadId?: string | null): Promise<void> {
   const response = await call("mcpServer/oauth/login", { name, threadId: threadId ?? null });
   // The URL comes from the server's OAuth metadata: https, or http on loopback for local MCP servers.
@@ -4188,17 +4206,25 @@ const POSIX_SHELL = 'printf "\\033]7337;%s\\007" "$$"; exec "${1:-${SHELL:-/bin/
 const windowsShell = (program: string | null) =>
   !program || /(?:^|\\)(?:powershell|pwsh)\.exe$/i.test(program) ? [program ?? "powershell.exe", "-NoLogo"] : /bash\.exe$/i.test(program) ? [program, "--login", "-i"] : [program];
 
-/** The shells a terminal may start in (c9bd7af9c Q2jUneEhyD), read once: /etc/shells, or Windows' usual ones that exist. */
+/**
+ * The shells a terminal may start in (c9bd7af9c Q2jUneEhyD): /etc/shells, or Windows' usual ones that
+ * exist. [] until the server's platform is known; read once, but an empty or failed read is asked again.
+ */
 let shellList: Promise<string[]> | undefined;
 export function listShells(): Promise<string[]> {
+  const os = getState().server.info?.platformOs;
+  if (!os) return Promise.resolve([]);
   return (shellList ??= (async () => {
-    const windows = getState().server.info?.platformOs === "windows";
+    const windows = os === "windows";
     const candidates = windows
       ? ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", "C:\\Program Files\\PowerShell\\7\\pwsh.exe", "C:\\Windows\\System32\\cmd.exe", "C:\\Program Files\\Git\\bin\\bash.exe"]
       : parseShells(await readTextFile("/etc/shells").catch(() => ""));
     const found = await Promise.all(candidates.map((path) => exists(path)));
-    return candidates.filter((_, i) => found[i]);
-  })().catch(() => []));
+    const shells = candidates.filter((_, i) => found[i]);
+    // A failed RPC reads as no shells (exists says false): never kept, so the next pane asks again.
+    if (!shells.length) shellList = undefined;
+    return shells;
+  })().catch(() => ((shellList = undefined), [])));
 }
 
 /** Whether a command runs in the terminal whose shell has `pid` (its foreground process group is not the shell's). */
@@ -4279,7 +4305,14 @@ function onServerRequest(request: ServerRequest): void {
     case "item/permissions/requestApproval":
     case "item/tool/requestUserInput":
     case "mcpServer/elicitation/request":
-      setState((s) => ({ requests: [...s.requests, request] }));
+      setState((s) => {
+        // A new wait brings back a session marked 已完成: its ackStamp cannot see one (a sub-agent's
+        // request leaves the session's last turn and updatedAt as they were).
+        const id = requestSessionId(request, s.threads);
+        if (!id || !(id in s.completedAcks)) return { requests: [...s.requests, request] };
+        const { [id]: _, ...completedAcks } = s.completedAcks;
+        return { requests: [...s.requests, request], completedAcks };
+      });
       return;
     default:
       // Experimental, so absent from the stable union: asked only when config picks the external
@@ -4402,8 +4435,12 @@ export async function askSideChat(threadId: string, text: string): Promise<void>
     patchSide(threadId, (current) => ({ status: "thinking", messages: [...current.messages, { role: "assistant", text: "" }] }));
     const { turn } = await call("turn/start", { threadId: forkId, input: [{ type: "text", text: question, text_elements: [] }] });
     const fork = sideForks.get(forkId);
-    if (fork && fork.turnId === null && getState().sideChats[threadId]?.status === "thinking") fork.turnId = turn.id;
+    // 清除 while it started: dropSideFork had no turn to interrupt, and unsubscribing leaves it running.
+    if (!fork) return void call("turn/interrupt", { threadId: forkId, turnId: turn.id }).catch(() => {});
+    if (fork.turnId === null && getState().sideChats[threadId]?.status === "thinking") fork.turnId = turn.id;
   } catch (error) {
+    // 清除 since it was asked: the chat is no longer this question's, so neither is its error.
+    if ((sideEpochs.get(threadId) ?? 0) !== epoch) return;
     // A fork that failed (the app-server restarted, say) is dropped: the next question makes another.
     if (forkId && sideOf.get(threadId) === forkId) dropSideFork(threadId);
     patchSide(threadId, (current) => ({ status: "idle", error: errorMessage(error), messages: current.messages.filter((m) => m.role === "user" || m.text) }));
@@ -4460,8 +4497,12 @@ function onNotification(notification: ServerNotification): void {
       setTitleSource(notification.params.threadId, undefined);
       forgetAsked(notification.params.threadId);
       forgetTodos(notification.params.threadId);
+      forgetCompleted(notification.params.threadId);
       forgetSession(notification.params.threadId);
       forgetLazyWorktree(notification.params.threadId);
+      dropSideFork(notification.params.threadId);
+      // A bump, not a delete: an in-flight first question captured 0 and must not match it again.
+      sideEpochs.set(notification.params.threadId, (sideEpochs.get(notification.params.threadId) ?? 0) + 1);
       forgetFromList(notification.params.threadId);
       automationThreadEvent(notification.params.threadId, "deleted");
       return;
@@ -4621,10 +4662,7 @@ function onNotification(notification: ServerNotification): void {
         if (turn.status === "completed" && (resume.text !== PLAN_RESUME || thread?.planMode) && !thread?.queue.length && !s.pendingMessages[threadId] && !s.requests.some((request) => requestSessionId(request, s.threads) === threadId))
           void sendMessage(threadId, [{ type: "text", text: resume.text, text_elements: [] }]).catch((error) => toast("warning", "发送失败", errorMessage(error)));
       }
-      if (turnKeepAwake.get(threadId) === turn.id) {
-        turnKeepAwake.delete(threadId);
-        setKeepAwake(threadId, false);
-      }
+      releaseTurnHold(threadId, turn.id);
       turnEnded(threadId);
       return;
     }

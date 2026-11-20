@@ -11,6 +11,7 @@ import { createAutomations } from "./automations.mjs";
 import { createBridge } from "./bridge.mjs";
 import { createOrbitFiles } from "./orbit.mjs";
 import { createOrchestrator, installedCodex, profileFields, resolveCodexCommand, transcribeError, withPackageTools } from "./orchestrator.mjs";
+import { createStorage } from "./storage.mjs";
 
 // ChatGPT access tokens as getAuthStatus hands them out: a stale one, then a refreshed one.
 const jwt = (sub) => ["e30", Buffer.from(JSON.stringify({ sub, "https://api.openai.com/auth": { chatgpt_account_id: "acct-1", chatgpt_user_id: "user-1" } })).toString("base64url"), "sig"].join(".");
@@ -1602,6 +1603,11 @@ test("a library file saved for a chat: under CODEX_HOME/attachments by its ids o
       assert.equal(path.basename(mine.path), "notes.md");
       assert.equal(readFileSync(mine.path, "utf8"), "# hi");
       assert.equal((await upload("big.bin", "x", { "content-length": String(47185920 + 1), connection: "close" })).status, 413);
+      assert.equal((await upload("big.bin", "x", { "content-length": "9007199254740992", connection: "close" })).status, 413);
+      // No length (a chunked body): asked for one, not called too large.
+      const unsized = await upload("a", "x", { "transfer-encoding": "chunked", connection: "close" });
+      assert.equal(unsized.status, 411);
+      assert.match(unsized.text, /Content-Length/);
       assert.equal((await request(port, { method: "POST", path: `/api/attachments?${new URLSearchParams({ c, name: "a" })}`, headers, body: "x" })).status, 200);
       assert.equal((await request(port, { method: "POST", path: `/api/attachments?${new URLSearchParams({ c: "nope", name: "a" })}`, headers, body: "x" })).status, 410);
       assert.equal((await detach(mine.path)).status, 204);
@@ -1747,6 +1753,50 @@ async function withPage(port, auth, run) {
   });
   await work;
 }
+
+test("存储's cleanup answers a malformed request as the page's fault, not the service's", async () => {
+  const home = mkdtempSync(path.join(tmpdir(), "better-codex-storage-"));
+  await withBridge(async (port, auth) => {
+    await withPage(port, auth, async (c, json) => {
+      const remove = (type, body) => request(port, { method: "POST", path: `/api/storage/worktrees/remove?c=${c}`, headers: { ...json, "content-type": type }, body });
+      assert.equal((await remove("text/plain", "{}")).status, 415);
+      assert.equal((await remove("application/json", "{")).status, 400);
+      assert.equal((await remove("application/json", JSON.stringify({ root: "relative", paths: [] }))).status, 400);
+      assert.equal((await remove("application/json", JSON.stringify({ root: home, paths: Array(51).fill(home) }))).status, 400);
+      const fine = await remove("application/json", JSON.stringify({ root: home, paths: [] }));
+      assert.deepEqual([fine.status, JSON.parse(fine.text)], [200, { removed: [], skipped: [] }]);
+    });
+  }, fakeCodex, { storage: createStorage({ home }) });
+});
+
+test("存储's cleanup reads no body for a closed connection, and removes nothing for a page gone mid-body", async () => {
+  let removals = 0;
+  const storage = { usage: async () => ({}), removeWorktrees: async () => (removals++, { removed: [], skipped: [] }) };
+  await withBridge(async (port, auth) => {
+    await withPage(port, auth, async (c, json) => {
+      // A closed connection is told so at once, before a body that never finishes arriving.
+      const closed = await new Promise((resolve, reject) => {
+        const req = http.request({ port, method: "POST", path: "/api/storage/worktrees/remove?c=nope", headers: { ...json, "content-type": "application/json", "content-length": "64" } }, (res) => {
+          clearTimeout(watchdog);
+          res.resume();
+          req.destroy();
+          resolve(res.statusCode);
+        });
+        req.on("error", () => {});
+        req.write('{"root":');
+        const watchdog = setTimeout(() => { req.destroy(); reject(new Error("no answer before the body")); }, 2000);
+      });
+      assert.equal(closed, 410);
+      await new Promise((resolve) => {
+        const req = http.request({ port, method: "POST", path: `/api/storage/worktrees/remove?c=${c}`, headers: { ...json, "content-type": "application/json", "content-length": "64" } });
+        req.on("error", () => {});
+        req.write('{"root":');
+        setTimeout(() => { req.destroy(); setTimeout(resolve, 200); }, 100);
+      });
+      assert.equal(removals, 0);
+    });
+  }, fakeCodex, { storage });
+});
 
 test("show_widget's frame is served without a token, sandboxed by its own CSP, GET only", async () => {
   await withBridge(async (port, auth) => {

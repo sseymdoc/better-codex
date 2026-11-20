@@ -60,7 +60,7 @@ export async function hostRequest(request: DesktopRequest, args: Args, check: Ch
     }
     case "get_storage_usage": {
       const usage = await readStorage(true);
-      return done("found", { ...usage, worktrees: usage.worktrees.map((tree) => ({ path: tree.path, repository: tree.repository, session: tree.owner, uncommittedChanges: tree.changes, bytes: tree.bytes })) });
+      return done("found", { ...usage, worktrees: usage.worktrees.map((tree) => ({ path: tree.path, repository: tree.repository, session: tree.owner, unsavedChanges: tree.changes, bytes: tree.bytes })) });
     }
     case "clean_up_worktrees":
     case "discard_kept_worktree": {
@@ -70,13 +70,16 @@ export async function hostRequest(request: DesktopRequest, args: Args, check: Ch
       if (request.name === "discard_kept_worktree") {
         const tree = usage.worktrees.find((entry) => entry.path === path);
         if (!tree) throw desktopError("NOT_FOUND", "No session worktree at that path; get_storage_usage lists them.");
+        // A clean worktree loses nothing and is clean_up_worktrees' to remove; one that could not be checked (null) the server never removes.
+        if (tree.changes === 0) throw desktopError("CLEAN", "That worktree has no uncommitted changes or unbranched commits, so it was not kept for them; clean_up_worktrees removes it once its session has been inactive long enough. Nothing was removed.");
+        if (tree.changes === null) throw desktopError("UNCHECKED", "That worktree's changes could not be checked, so it can't be removed safely; nothing was removed.");
         if (tree.owner) await ensureThreads([tree.owner]);
         // Never one a session still works in: this one, or a running or on-screen one.
         if (!inactiveWorktrees(usage, 0, []).includes(tree) || inWorktree(cwd, tree.path)) throw desktopError("IN_USE", "That worktree belongs to this session or one that is running or on screen; nothing was removed.");
         trees = [tree];
       } else {
         await ensureThreads(usage.worktrees.flatMap((tree) => (tree.owner ? [tree.owner] : [])));
-        trees = inactiveWorktrees(usage, (args.older_than_days as number | undefined) ?? 30, sidebarTools.pinned()).filter((tree) => force || tree.changes === 0);
+        trees = inactiveWorktrees(usage, (args.older_than_days as number | undefined) ?? 30, sidebarTools.pinned()).filter((tree) => tree.changes === 0 || (force && tree.changes !== null));
         if (!trees.length) return done("nothing");
       }
       const lost = trees.filter((tree) => tree.changes !== 0).length;
@@ -89,6 +92,9 @@ export async function hostRequest(request: DesktopRequest, args: Args, check: Ch
     case "request_directory": {
       const { permission } = effectiveSettings(check());
       if (permission === "full-access") return done("full_access");
+      const custom = () => desktopError("CUSTOM_PROFILE", "This session uses a custom permission profile, so a folder can't be added from here; ask the user to change it in Settings.");
+      // Only 自动 can add a folder (addWritableRoot): a custom profile is refused before any card or picker.
+      if (permission !== "auto" && permission !== "read-only") throw custom();
       let folder = path;
       if (!folder) {
         folder = (await window.codexDesktop?.pickFolder?.(cwd)) ?? "";
@@ -96,7 +102,7 @@ export async function hostRequest(request: DesktopRequest, args: Args, check: Ch
         if (!folder) return done("cancelled");
       } else if (permission !== "read-only" && !(await ask(request, check, signal, "允许 Codex 写入此文件夹吗？", [["文件夹", folder]]))) return done("declined");
       const outcome = await addWritableRoot(threadId, folder);
-      if (outcome === "custom") throw desktopError("CUSTOM_PROFILE", "This session uses a custom permission profile, so a folder can't be added from here; ask the user to change it in Settings.");
+      if (outcome === "custom") throw custom();
       return done(outcome === "full_access" ? "full_access" : outcome, { path: folder });
     }
     case "change_directory": {

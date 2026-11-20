@@ -12,6 +12,8 @@ import { Button, Icon, Spinner, fileGlyph } from "./ui";
 type Entry = { name: string; path: string; dir: boolean };
 type Found = { kind: "names"; paths: string[] } | { kind: "contents"; files: ContentHits[]; truncated: boolean } | { kind: "error"; message: string };
 
+// Never reused, so a read from a folder shown before answers nothing now.
+let readCount = 0;
 const sorted = (entries: Entry[]) => entries.toSorted((a, b) => (a.dir === b.dir ? a.name.localeCompare(b.name) : a.dir ? -1 : 1));
 
 export function FileTree({ cwd, reveal, onOpen }: { cwd: string; reveal?: { path: string; nonce: number } | null; onOpen(path: string, line?: number): void }) {
@@ -23,12 +25,20 @@ export function FileTree({ cwd, reveal, onOpen }: { cwd: string; reveal?: { path
   const [searching, setSearching] = useState(false);
   const seq = useRef(0);
 
-  const read = (dir: string) =>
+  // The last read of each folder: an older one answering late is dropped.
+  const reads = useRef(new Map<string, number>());
+  const read = (dir: string) => {
+    const mine = ++readCount;
+    reads.current.set(dir, mine);
+    const latest = () => reads.current.get(dir) === mine;
     void readDirectory(dir).then(
-      (entries) => setChildren((map) => new Map(map).set(dir, sorted(entries.filter((e) => e.fileName !== ".git").map((e) => ({ name: e.fileName, path: joinPath(dir, e.fileName), dir: e.isDirectory }))))),
-      () => setChildren((map) => new Map(map).set(dir, "error")),
+      (entries) => latest() && setChildren((map) => new Map(map).set(dir, sorted(entries.filter((e) => e.fileName !== ".git").map((e) => ({ name: e.fileName, path: joinPath(dir, e.fileName), dir: e.isDirectory }))))),
+      // A folder read before keeps what it showed.
+      () => latest() && setChildren((map) => (Array.isArray(map.get(dir)) ? map : new Map(map).set(dir, "error"))),
     );
+  };
   useEffect(() => {
+    reads.current.clear();
     setChildren(new Map());
     setOpen(new Set());
     read(cwd);
@@ -45,14 +55,20 @@ export function FileTree({ cwd, reveal, onOpen }: { cwd: string; reveal?: { path
     const dirs = parts.reduce<string[]>((list, part) => [...list, joinPath(list.at(-1) ?? cwd, part)], []);
     setFilter("");
     setOpen((current) => new Set([...current, ...dirs]));
-    for (const dir of dirs) if (!children.has(dir)) read(dir);
+    // Read afresh, cached or not: the file shown may be one made since the folder was last read.
+    for (const dir of [cwd, ...dirs]) read(dir);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the nonce asks again
   }, [reveal?.nonce]);
 
   const contents = filter.startsWith("?");
   const query = contents ? filter.slice(1).trim() : filter.trim();
   useEffect(() => {
-    if (!query) return void setFound(null);
+    if (!query) {
+      // A search still running answers nothing now, nor the next query.
+      seq.current += 1;
+      setSearching(false);
+      return void setFound(null);
+    }
     const mine = ++seq.current;
     setSearching(true);
     const timer = setTimeout(() => {
@@ -84,7 +100,7 @@ export function FileTree({ cwd, reveal, onOpen }: { cwd: string; reveal?: { path
     if (list === undefined) return <div className="file-tree-note" style={{ paddingInlineStart: 8 + depth * 12 }}><Spinner size={12} /></div>;
     if (list === "error") return <div className="file-tree-note" style={{ paddingInlineStart: 8 + depth * 12 }}>无法读取此文件夹</div>;
     return list.map((entry) => (
-      <div key={entry.path} role="none">
+      <div key={entry.path}>
         <button
           type="button"
           className="file-tree-row"
@@ -125,7 +141,7 @@ export function FileTree({ cwd, reveal, onOpen }: { cwd: string; reveal?: { path
           </div>
         )}
       </div>
-      <div className="file-tree-body scroll-fade-y" role="tree" aria-label="文件">
+      <div className="file-tree-body scroll-fade-y" role="region" aria-label="文件">
         {!query ? (
           contents ? <div className="file-tree-note">在 ? 后输入内容以搜索文件</div> : rows(cwd, 0)
         ) : searching && !found ? (

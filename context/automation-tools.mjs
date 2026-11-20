@@ -25,7 +25,7 @@ export const AUTOMATION_TOOLS = [
   { name: "automation_update", description: "Create, list, read, change or delete the scheduled tasks Better Codex runs on this computer (its 定时任务 page). Use it when the user wants something done on a schedule or later: a reminder, a recurring check, monitoring, \"look again in an hour\", \"keep an eye on this\". A heartbeat, the usual choice, sends its prompt into a session (this chat unless targetThreadId names another) each time it is due, so the follow-up stays with the work. A cron task starts a fresh session in a folder at each run; use it only when the user wants a new session per run or standalone recurring work on a project. Tasks run while Better Codex is open; a missed run runs once when it next is. Call list first and update a task that exists rather than creating a second one; an update changes only the fields you send. suggested_create and suggested_update show the user the task on a card and save it only if they allow it: use them when the user should confirm the details, and suggested_create for a schedule anchored with DTSTART. In a turn the user did not start (a heartbeat, a scheduled run, an event), any other create or change also waits on that card; a bare pause (status PAUSED and no other field) and deleting never do. The prompt is shown to the user and sent as written at every run: the task itself in plain words, without the schedule, folder or session. Never show RRULE text to the user; say the schedule in words.",
     inputSchema: { type: "object", additionalProperties: false, required: ["mode"], properties: {
       mode: { type: "string", enum: [...AUTOMATION_MODES], description: "list: every task with its id. view: one task. create, update, delete: save at once (except where the description says a card asks first). suggested_create, suggested_update: the user allows it on a card first. run: start a task now, as its 立即运行 does (a card asks first in a turn the user did not start). runs: a task's latest runs (cron tasks keep them; heartbeats keep none)." },
-      id: text(128, "The task's id from list. Required for view, update, delete and suggested_update."),
+      id: text(128, "The task's id from list. Required for view, update, delete, suggested_update, run and runs."),
       kind: { type: "string", enum: ["heartbeat", "cron"], description: "Required to create: heartbeat (the usual choice: runs in a session) or cron (a fresh session in a folder at each run). A task's kind never changes." },
       name: text(250, "A short readable name. Required to create."),
       prompt: text(100_000, "What to do at each run, standalone and in plain words, with no schedule, folder or session in it. Required to create."),
@@ -68,7 +68,7 @@ function checkRrule(rrule, onlyInvalid) {
 /**
  * Whether automation_update waits on the user's card: suggested_* always; in a turn they did not
  * start (`origin` other than "person": a heartbeat, a scheduled run, an event), anything but a list,
- * a view, a delete or a bare pause (status PAUSED and nothing else), since an injected prompt must
+ * a view, a delete, a runs or a bare pause (status PAUSED and nothing else), since an injected prompt must
  * not shape a task that runs unattended, paused or not (the user may switch it back on).
  */
 export function automationAsks(args, origin) {
@@ -120,7 +120,7 @@ export function automationInput(name, value) {
   readText(value, args, [["name", 250], ["prompt", 100_000], ["rrule", 2000], ["model", 200]]);
   if (value.rrule !== undefined) {
     // Only suggested_create takes DTSTART: the anchor's wall clock would read as UTC, so the user confirms it on the card.
-    if (mode !== "suggested_create" && /(^|[;\n])\s*DTSTART\b/i.test(value.rrule)) refuse(`${mode} takes no DTSTART: write the time with BYHOUR and BYMINUTE on the user's wall clock, or use suggested_create for a schedule anchored to a start date, which the user confirms on a card.`);
+    if (mode !== "suggested_create" && /(^|[;\n])\s*DTSTART\b/i.test(value.rrule)) refuse(`${mode} takes no DTSTART: write the time with BYHOUR and BYMINUTE on the user's wall clock${creating ? ", or use suggested_create for a schedule anchored to a start date, which the user confirms on a card" : ""}.`);
     checkRrule(args.rrule, false);
   }
   const choice = (key, options) => {
@@ -200,8 +200,10 @@ export function automationReceipt(name, value, request, invalid) {
   if (Object.keys(value).some((key) => !["threadId", "cwd", "outcome", "task", "tasks", "runs"].includes(key))) invalid();
   const { mode } = request.args;
   if (!OUTCOMES[name]?.[mode]?.includes(value.outcome)) invalid();
-  // runs: the task, and its latest runs as RUN_KEYS objects.
-  if (value.outcome === "runs" && (!Array.isArray(value.runs) || value.runs.length > 50 || value.runs.some((run) => !run || typeof run !== "object" || Object.keys(run).some((key) => !RUN_KEYS.includes(key))))) invalid();
+  // runs: the task, and its latest runs, each exactly RUN_KEYS of RUN_TYPES (title and summary may be null).
+  const run = (entry) => !!entry && typeof entry === "object" && !Array.isArray(entry) && Object.keys(entry).length === RUN_KEYS.length
+    && RUN_KEYS.every((key, i) => typeof entry[key] === RUN_TYPES[i] || (entry[key] === null && (key === "title" || key === "summary")));
+  if (value.outcome === "runs" && (!Array.isArray(value.runs) || value.runs.length > 50 || !value.runs.every(run))) invalid();
   if (value.outcome !== "runs" && value.runs !== undefined) invalid();
   if (value.outcome === "listed") {
     if (!Array.isArray(value.tasks) || value.tasks.length > LIST_MAX || !value.tasks.every(task) || value.task !== undefined) invalid();
@@ -212,6 +214,7 @@ export function automationReceipt(name, value, request, invalid) {
 
 const VERBS = { create: "creating", suggested_create: "creating", update: "changing", suggested_update: "changing", pause: "pausing", resume: "resuming", delete: "deleting", run: "starting" };
 const RUN_KEYS = ["sessionId", "status", "title", "startedAt", "updatedAt", "read", "summary"];
+const RUN_TYPES = ["string", "string", "string", "string", "string", "boolean", "string"];
 
 /**
  * The task a call was about as its transcript row names it, { id?, name } (a cloud task's title as

@@ -76,7 +76,7 @@ test("the default app opens a plain file in the session folder, as Claude's gate
 
 test("the editor writes only a regular file inside the session folder, and only over the bytes it opened", async (t) => {
   const { createHash } = await import("node:crypto");
-  const { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } = await import("node:fs");
+  const { chmodSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { writeSessionFile } = await import("./files.mjs");
   const base = mkdtempSync(path.join(tmpdir(), "better-codex-write-"));
@@ -94,10 +94,44 @@ test("the editor writes only a regular file inside the session folder, and only 
   // Changed on disk since it was opened: nothing is written.
   assert.deepEqual(await writeSessionFile(cwd, { path: file, text: "mine\n", expected: sha("old\n") }), { conflict: true });
   assert.equal(readFileSync(file, "utf8"), "new\n");
+  // A read-only file that changed too is a conflict, not a refused open.
+  chmodSync(file, 0o444);
+  assert.deepEqual(await writeSessionFile(cwd, { path: file, text: "mine\n", expected: sha("old\n") }), { conflict: true });
+  chmodSync(file, 0o644);
   // A link out of the folder, a path outside it, a relative path or a bad hash never write.
   await assert.rejects(writeSessionFile(cwd, { path: path.join(cwd, "link.txt"), text: "x", expected: sha("keep\n") }), /工作目录/);
   await assert.rejects(writeSessionFile(cwd, { path: secret, text: "x", expected: sha("keep\n") }), /工作目录/);
   await assert.rejects(writeSessionFile(cwd, { path: "a.txt", text: "x", expected: sha("new\n") }), /无效/);
   await assert.rejects(writeSessionFile(cwd, { path: file, text: "x", expected: "nope" }), /无效/);
   assert.equal(readFileSync(secret, "utf8"), "keep\n");
+});
+
+test("a parent folder swapped for a link after the path checks cannot send the save outside", async (t) => {
+  const { createHash } = await import("node:crypto");
+  const { readFileSync, renameSync, rmSync, symlinkSync } = await import("node:fs");
+  const fsp = (await import("node:fs/promises")).default;
+  const { syncBuiltinESMExports } = await import("node:module");
+  const { writeSessionFile } = await import("./files.mjs");
+  const base = mkdtempSync(path.join(tmpdir(), "better-codex-swap-"));
+  const { lstat } = fsp;
+  const restore = () => { fsp.lstat = lstat; syncBuiltinESMExports(); };
+  t.after(() => { restore(); rmSync(base, { recursive: true, force: true }); });
+  const cwd = path.join(base, "project"), elsewhere = path.join(base, "elsewhere");
+  mkdirSync(path.join(cwd, "sub"), { recursive: true });
+  mkdirSync(elsewhere);
+  // The same bytes outside, so only the path checks stand between the save and that file.
+  writeFileSync(path.join(cwd, "sub", "a.txt"), "old\n");
+  writeFileSync(path.join(elsewhere, "a.txt"), "old\n");
+  // A concurrent process swaps the folder for a junction right after the file passes its first lstat.
+  fsp.lstat = async (...args) => {
+    const info = await lstat(...args);
+    restore();
+    renameSync(path.join(cwd, "sub"), path.join(cwd, "sub.old"));
+    symlinkSync(elsewhere, path.join(cwd, "sub"), "junction");
+    return info;
+  };
+  syncBuiltinESMExports();
+  const expected = createHash("sha256").update("old\n").digest("hex");
+  await assert.rejects(writeSessionFile(cwd, { path: path.join(cwd, "sub", "a.txt"), text: "x", expected }), /工作目录/);
+  assert.equal(readFileSync(path.join(elsewhere, "a.txt"), "utf8"), "old\n");
 });

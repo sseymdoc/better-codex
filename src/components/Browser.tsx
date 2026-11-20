@@ -97,7 +97,8 @@ export function BrowserPane({ view, cwd }: { view: string; cwd: string }) {
   }, [url, editing]);
   // The configured servers and 自动验证更改 live in launch.json: read it again as the server menu
   // opens, the start page comes back and the servers dialog (which edits it) closes.
-  // The pane is not remounted per session or folder: an answer for the previous one is dropped.
+  // The pane is not remounted per session or folder: a new scope reads its own, open page or not
+  // (自动验证更改 shows in the menu over a page), and an answer for the previous one is dropped.
   const scope = useRef("");
   scope.current = `${view}\n${cwd}`;
   const loadServers = () => {
@@ -113,7 +114,7 @@ export function BrowserPane({ view, cwd }: { view: string; cwd: string }) {
   };
   const page = !!tab && tab.url !== "about:blank" && !tab.error;
   useEffect(() => {
-    if (!servers && !page) loadServers();
+    if (!servers) loadServers();
   }, [view, cwd, servers, page]);
   // cf580efe9 ki: the configured servers with their processes, then processes no entry names.
   const processes = state?.servers ?? [];
@@ -123,6 +124,7 @@ export function BrowserPane({ view, cwd }: { view: string; cwd: string }) {
   ].map(({ name, port, server }) => ({
     name,
     port: server?.port || port,
+    host: server?.host ?? "127.0.0.1",
     live: server?.status === "running" || server?.status === "starting",
     starting: server?.status === "starting",
   }));
@@ -130,10 +132,12 @@ export function BrowserPane({ view, cwd }: { view: string; cwd: string }) {
     setPending(row.name);
     void act(row.live ? "stopServer" : "startServer", { name: row.name }).finally(() => setPending(undefined));
   };
-  // cf580efe9 fa's 打开: the tab already on the server, or a new one.
+  // cf580efe9 fa's 打开: the tab already on the server, or a new one on the host it answered on.
   const openServer = (row: ServerRow) => {
-    const open = state?.tabs.find((item) => [`http://127.0.0.1:${row.port}`, `http://localhost:${row.port}`].some((origin) => item.url.startsWith(origin)));
-    void act(open ? "select" : "new", open ? { tabId: open.id } : { url: `http://127.0.0.1:${row.port}` });
+    // By origin, not prefix: port 80's server is not the tab on 8080.
+    const origin = (url: string) => { try { return new URL(url).origin; } catch { return null; } };
+    const open = state?.tabs.find((item) => [`http://${row.host}:${row.port}`, `http://localhost:${row.port}`].some((server) => origin(item.url) === origin(server)));
+    void act(open ? "select" : "new", open ? { tabId: open.id } : { url: `http://${row.host}:${row.port}` });
   };
   useEffect(() => {
     const receive = (event: Event) => {
@@ -643,6 +647,7 @@ export function BrowserPane({ view, cwd }: { view: string; cwd: string }) {
 interface ServerRow {
   name: string;
   port: number;
+  host: string;
   live: boolean;
   starting: boolean;
 }

@@ -125,3 +125,103 @@ test("the wake message, the family line and the openers parse back", () => {
   assert.equal(parseBrief("Do Z"), null);
   assert.match(startedFromText({ parentId: "p", shared: true }), /send_message \(`to`: `p`\).*"user_asked" needs the user's own words/);
 });
+
+/** linked.ts reaches codex.ts, which needs the esbuild hooks codex.test.mjs uses; once, for whichever test runs first. */
+let hooked = false;
+async function setup() {
+  if (hooked) return;
+  hooked = true;
+  const { readFileSync } = await import("node:fs");
+  const { registerHooks } = await import("node:module");
+  const { transformSync } = await import("esbuild");
+  registerHooks({
+    resolve: (specifier, context, next) => next(/^\.\.?\/[^.]+$/.test(specifier) && context.parentURL?.endsWith(".ts") ? `${specifier}.ts` : specifier, context),
+    load: (url, context, next) =>
+      url.startsWith("file:") && url.endsWith(".ts") ? { format: "module", shortCircuit: true, source: transformSync(readFileSync(new URL(url), "utf8"), { loader: "ts", format: "esm" }).code } : next(url, context),
+  });
+  globalThis.requestAnimationFrame ??= (callback) => setTimeout(callback, 0);
+}
+
+test("a send_message whose send fails leaves no pending message in the target, so the next one goes", async (t) => {
+  await setup();
+  const { Rpc } = await import("./rpc.ts");
+  const { emptyThreadState, getState, setState } = await import("./store.ts");
+  const { sendPeerMessage } = await import("./linked.ts");
+  const meta = (id) => ({ id, preview: "", cwd: "D:/test", status: { type: "idle" }, source: "cli", ephemeral: false, parentThreadId: null, name: id });
+  t.mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+  t.mock.method(globalThis, "fetch", async () => ({ ok: true, json: async () => ({ title: null }) }));
+  const thread = (id) => ({ ...emptyThreadState(meta(id)), subscribed: true, loaded: true });
+  setState({ threads: { from: thread("from"), to: thread("to") }, activeId: "from", pendingMessages: {}, modes: [], conn: { status: "ready" } });
+  setState((s) => ({ list: { ...s.list, archived: false, status: "active", ids: ["from", "to"] } }));
+  let attempts = 0;
+  t.mock.method(Rpc.prototype, "request", async (method) => {
+    if (method === "command/exec") return { exitCode: 128, stdout: "", stderr: "not a git repository" };
+    if (method === "turn/start" && ++attempts === 1) throw new Error("临时失败");
+    if (method === "turn/start") return { turn: { id: "turn-1", items: [], status: "inProgress", error: null } };
+    return {};
+  });
+  await assert.rejects(sendPeerMessage("from", "to", "first"), /临时失败/);
+  assert.equal(getState().pendingMessages.to, undefined);
+  await sendPeerMessage("from", "to", "second");
+  assert.equal(attempts, 2);
+  // An unconfirmed send (lost connection) may have gone: its echo and 重试 stay, so no re-send repeats it.
+  const { RpcError } = await import("./rpc.ts");
+  setState((s) => ({ threads: { ...s.threads, to: thread("to") }, pendingMessages: {} }));
+  Rpc.prototype.request.mock.mockImplementation(async (method) => {
+    if (method === "turn/start") throw new RpcError("连接中断", -32001);
+    return method === "command/exec" ? { exitCode: 128, stdout: "", stderr: "not a git repository" } : {};
+  });
+  await assert.rejects(sendPeerMessage("from", "to", "third"), /连接中断/);
+  assert.ok(getState().pendingMessages.to?.error);
+});
+
+test("an offer withdrawn while its session opens marks that session unbriefed and, with wake_when_done, notes the parent", async (t) => {
+  await setup();
+  const { Rpc } = await import("./rpc.ts");
+  const { emptyThreadState, getState, setState } = await import("./store.ts");
+  const { acceptOffer, awaitOffer, sideContext } = await import("./linked.ts");
+  const meta = (id) => ({ id, preview: "", cwd: "D:/test", status: { type: "idle" }, source: "cli", ephemeral: false, parentThreadId: null, name: id });
+  t.mock.method(globalThis, "fetch", async () => ({ ok: true, json: async () => ({ title: null }) }));
+  setState({ threads: { parent: { ...emptyThreadState(meta("parent")), subscribed: true, loaded: true } }, proposals: { parent: [proposal("task-w", { offer: true, wake: true })] }, conn: { status: "ready" } });
+  let opened;
+  const opening = new Promise((resolve) => (opened = resolve));
+  t.mock.method(Rpc.prototype, "request", async (method) => {
+    if (method === "thread/start") return opening.then(() => ({ thread: meta("child") }));
+    if (method === "command/exec") return { exitCode: 128, stdout: "", stderr: "not a git repository" };
+    return {};
+  });
+  const call = new AbortController();
+  const answer = awaitOffer("parent", "task-w", call.signal);
+  const accepting = acceptOffer("parent", "task-w");
+  call.abort();
+  assert.deepEqual(await answer, { kind: "abandoned" });
+  opened();
+  assert.equal(await accepting, false);
+  assert.equal(getState().links.child?.unbriefed, true);
+  assert.match(sideContext("parent")?.notes.join("\n") ?? "", /child/);
+});
+
+test("an offer answered here while its session opens marks that session unbriefed, with no note of an ended turn", async (t) => {
+  await setup();
+  const { Rpc } = await import("./rpc.ts");
+  const { emptyThreadState, getState, setState } = await import("./store.ts");
+  const { acceptOffer, awaitOffer, keepOffer, sideContext } = await import("./linked.ts");
+  const meta = (id) => ({ id, preview: "", cwd: "D:/test", status: { type: "idle" }, source: "cli", ephemeral: false, parentThreadId: null, name: id });
+  t.mock.method(globalThis, "fetch", async () => ({ ok: true, json: async () => ({ title: null }) }));
+  setState({ threads: { kept: { ...emptyThreadState(meta("kept")), subscribed: true, loaded: true } }, proposals: { kept: [proposal("task-k", { offer: true, wake: true })] }, conn: { status: "ready" } });
+  let opened;
+  const opening = new Promise((resolve) => (opened = resolve));
+  t.mock.method(Rpc.prototype, "request", async (method) => {
+    if (method === "thread/start") return opening.then(() => ({ thread: meta("kept-child") }));
+    if (method === "command/exec") return { exitCode: 128, stdout: "", stderr: "not a git repository" };
+    return {};
+  });
+  const answer = awaitOffer("kept", "task-k", new AbortController().signal);
+  const accepting = acceptOffer("kept", "task-k");
+  keepOffer("task-k");
+  assert.deepEqual(await answer, { kind: "kept" });
+  opened();
+  assert.equal(await accepting, false);
+  assert.equal(getState().links["kept-child"]?.unbriefed, true);
+  assert.doesNotMatch(sideContext("kept")?.notes.join("\n") ?? "", /kept-child/);
+});

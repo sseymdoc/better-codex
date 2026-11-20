@@ -139,9 +139,12 @@ export async function createWorktree(cwd, base, root, signal) {
   return { cwd: path.resolve(worktree, prefix), worktree, repository, base: from || null };
 }
 
-/** Where better-codex keeps a worktree's base branch: beside codex-thread.json, which only Codex's own fields may fill. */
+/**
+ * Where better-codex keeps a worktree's base branch: beside codex-thread.json, which only Codex's own fields may fill.
+ * The name is kept from before the rename, so worktrees made then still know their base.
+ */
 async function baseFile(cwd, signal) {
-  const located = await runGit(cwd, ["rev-parse", "--path-format=absolute", "--git-path", "better-codex-base.json"], signal);
+  const located = await runGit(cwd, ["rev-parse", "--path-format=absolute", "--git-path", "codex-ui-base.json"], signal);
   return located.code === 0 ? located.stdout.trim() : null;
 }
 
@@ -152,12 +155,14 @@ async function writeBase(cwd, base, signal) {
 
 async function recordedBase(cwd, signal) {
   const file = await baseFile(cwd, signal);
-  try {
-    const base = file ? JSON.parse(fs.readFileSync(file, "utf8")).base : null;
-    return branchName(base) ? base : null;
-  } catch {
-    return null;
+  // PR #6 briefly wrote better-codex-base.json; read it when the kept name is missing.
+  for (const at of file ? [file, path.join(path.dirname(file), "better-codex-base.json")] : []) {
+    try {
+      const base = JSON.parse(fs.readFileSync(at, "utf8")).base;
+      return branchName(base) ? base : null;
+    } catch {}
   }
+  return null;
 }
 
 /** The files a merge left conflicted. */

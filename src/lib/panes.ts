@@ -223,17 +223,22 @@ function diffArrays(old: string[], next: string[], limit: number): Part[] | unde
 const WORD_CHARS = "a-zA-Z0-9_\\u{AD}\\u{C0}-\\u{D6}\\u{D8}-\\u{F6}\\u{F8}-\\u{2C6}\\u{2C8}-\\u{2D7}\\u{2DE}-\\u{2FF}\\u{1E00}-\\u{1EFF}";
 const WORD_TOKEN = new RegExp(`(\\r?\\n)|[${WORD_CHARS}]+|[^\\S\\n\\r]+|[^${WORD_CHARS}]`, "gu");
 
+// Myers costs about edits² per line, and up to 1000 line pairs run in one render: past this many
+// token edits a line is mostly rewritten, and marking its words would only paint it all.
+// ponytail: fixed per-line cap (about 1000 pairs x 100² steps worst case); move to a worker or a shared budget if wider marks are wanted.
+const WORD_EDITS = 100;
+
 export type WordRanges = { del: [number, number][]; add: [number, number][] };
 
 /**
  * 突出显示更改的字词 for a removed line and the added one it pairs with: the diffs library's
  * "word-alt" (cc8da1d42 J / w). Changed runs absorb a one-character gap between them; the last
- * piece stands alone. Lines past 1000 characters get none.
+ * piece stands alone. Lines past 1000 characters, or more than WORD_EDITS tokens apart, get none.
  */
 export function changedWords(del: string, add: string): WordRanges | undefined {
   if (del.length > 1000 || add.length > 1000) return undefined;
   const old = del.match(WORD_TOKEN) ?? [], next = add.match(WORD_TOKEN) ?? [];
-  const parts = diffArrays(old, next, old.length + next.length);
+  const parts = diffArrays(old, next, WORD_EDITS);
   if (!parts) return undefined;
   const sides: Record<"del" | "add", [number, string][]> = { del: [], add: [] };
   const push = (side: [number, string][], value: string, neutral: boolean, last: boolean) => {
@@ -359,6 +364,12 @@ function foldRuns(diff: string, same: (line: string) => string): string {
 }
 
 /**
+ * What 已查看 remembers of a file: its whole diff, so any later edit to it, one of the same length
+ * in the middle of a hunk too, makes it unviewed again. The string is the FileDiff's own, not a copy.
+ */
+export const viewedFingerprint = (file: Pick<FileDiff, "diff">): string => file.diff;
+
+/**
  * A changes-pane card's rows, the diff they come from and its counts. 隐藏空白更改 (`ws`) folds the
  * hunks, never the counts: the head shows the file's own (c44d00c7f ml). Folded to no change left,
  * the file is whitespace only and has no rows (Nr: vr's whitespaceOnly gives Cr, no hunks).
@@ -409,7 +420,7 @@ export function splitRows(rows: DiffRow[]): SplitRow[] {
 // shortcut: path patterns stand in for Claude's classifier (not traced); widen them as projects show up.
 const TEST_FILE = /(^|\/)(tests?|__tests__|__mocks__|spec|specs|e2e)\/|\.(test|spec|e2e)\.[^/]+$|_test\.(go|py|rs)$|(^|\/)test_[^/]+\.py$|Tests?\.(java|kt|swift|cs)$/i;
 const GENERATED_FILE = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|Cargo\.lock|go\.sum|poetry\.lock|uv\.lock|Pipfile\.lock|Gemfile\.lock|composer\.lock|MODULE\.bazel\.lock|flake\.lock)$|\.min\.(js|css)$|\.(pb|generated|g)\.[^/]+$|_pb2\.py$|(^|\/)(generated|__generated__|__snapshots__)\/|\.snap$/i;
-const BUILD_FILE = /(^|\/)(dist|build|out|target|coverage|\.next)\/|(^|\/)(Makefile|Dockerfile|Containerfile|CMakeLists\.txt|BUILD(\.bazel)?|WORKSPACE|MODULE\.bazel|justfile|Taskfile\.ya?ml)$|\.(gradle|cmake|bzl)$|(^|\/)\.github\/workflows\/|(^|\/)(vite|webpack|rollup|esbuild|babel|jest|vitest|eslint|prettier|tsconfig)[^/]*\.(c?[jt]s|mjs|json)$/i;
+const BUILD_FILE = /(^|\/)(dist|build|out|target|coverage|\.next)\/|(^|\/)(Makefile|Dockerfile|Containerfile|CMakeLists\.txt|BUILD(\.bazel)?|WORKSPACE|MODULE\.bazel|justfile|Taskfile\.ya?ml)$|\.(gradle|cmake|bzl)$|(^|\/)\.github\/workflows\/|(^|\/)(vite|webpack|rollup|esbuild|babel|jest|vitest|eslint|prettier)\.config\.[cm]?[jt]s$|(^|\/)(babel|prettier)\.config\.json$|(^|\/)tsconfig[^/]*\.json$/i;
 
 export type FileKind = "test" | "build" | "generated" | null;
 export const FILE_KIND_LABELS: Record<Exclude<FileKind, null>, string> = { test: "测试文件", build: "构建文件", generated: "生成的文件" };
@@ -425,7 +436,9 @@ export function byFolder<T extends { path: string; movePath?: string | null }>(f
   for (const file of files) {
     const path = (file.movePath ?? file.path).replaceAll("\\", "/");
     const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
-    groups.set(folder, [...(groups.get(folder) ?? []), file]);
+    const group = groups.get(folder);
+    if (group) group.push(file);
+    else groups.set(folder, [file]);
   }
   return [...groups].sort(([a], [b]) => a.localeCompare(b));
 }

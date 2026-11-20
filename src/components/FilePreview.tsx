@@ -257,7 +257,11 @@ export function FilesPane({ thread }: { thread: ThreadState }) {
       </Submenu>
     </>
   );
-  const [treeWidth, setTreeWidth] = useState(() => Number(readPref("better-codex:files-tree-width", ["180", "220", "260", "300", "340"], "220")));
+  const [treeWidth, setTreeWidthState] = useState(() => Number(readPref("better-codex:files-tree-width", TREE_WIDTHS, "220")));
+  const setTreeWidth = (width: number) => {
+    setTreeWidthState(width);
+    writePref("better-codex:files-tree-width", String(width));
+  };
   const treeEl = useRef<HTMLDivElement>(null);
   const treeStart = useRef(0);
   const editable = environmentKind(key) !== "ssh";
@@ -332,13 +336,16 @@ export function FilesPane({ thread }: { thread: ThreadState }) {
   );
 }
 
+/** The widths the tree's edge drags between (140 to 480 px). */
+const TREE_WIDTHS = Array.from({ length: 341 }, (_, i) => String(140 + i));
+
 function FileView({ file, wrap, cwd }: { file: OpenFile; wrap: boolean; cwd: string | null }) {
   const [text, setText] = useState<string | null>(null);
   // The editor's starting text, read afresh byte for byte when 编辑 is pressed.
   const [editing, setEditing] = useState<string | null>(null);
   const editingRef = useRef(false);
   editingRef.current = editing !== null;
-  // Bumped when an edit is given up: the reads skipped while editing are made up for.
+  // Bumped when the editor closes (完成 or 放弃): the reads skipped while editing are made up for.
   const [reloads, setReloads] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [marks, setMarks] = useState<Marks>(NO_MARKS);
@@ -384,7 +391,7 @@ function FileView({ file, wrap, cwd }: { file: OpenFile; wrap: boolean; cwd: str
   const props = { text, marks, line: file.line, nonce: file.nonce, scroller };
   // Editable: a file of the session's own (local) folder, small enough to format.
   const inside = cwd !== null && relativePath(file.path, cwd) !== file.path;
-  if (editing !== null && cwd) return <CodeEditor path={file.path} cwd={cwd} initial={editing} wrap={wrap} onDone={(saved) => { if (saved !== undefined) setText(saved); else setReloads((n) => n + 1); setEditing(null); }} />;
+  if (editing !== null && cwd) return <CodeEditor path={file.path} cwd={cwd} initial={editing} wrap={wrap} onDone={(saved) => { if (saved !== undefined) { latest.current = saved; setText(saved); } setReloads((n) => n + 1); setEditing(null); }} />;
   const view = isMarkdown(file.path) && !plain ? <MarkdownDoc {...props} /> : <CodeDoc {...props} path={file.path} plain={plain} wrap={wrap} />;
   if (!inside || plain) return view;
   return (
@@ -397,6 +404,32 @@ function FileView({ file, wrap, cwd }: { file: OpenFile; wrap: boolean; cwd: str
   );
 }
 
+/**
+ * The textarea reads every CR and CRLF back as LF: `typed` (in either form) gets `base`'s own line endings back, so an
+ * untouched file is written as it was. Lines kept at the start and the end keep theirs; edited lines
+ * take the ending most of the file uses.
+ */
+// ponytail: only the common head and tail of lines keep their endings; a mixed file edited in several places gets the majority ending in between, a line diff would keep them all.
+export function restoreNewlines(base: string, typed: string): string {
+  const ends = base.match(/\r\n|\r|\n/g) ?? [];
+  if (ends.every((end) => end === "\n")) return typed;
+  // Before the first keystroke the editor's text is still the file's own, CRs and all.
+  const lines = base.split(/\r\n|\r|\n/), next = typed.split(/\r\n|\r|\n/);
+  let head = 0;
+  while (head < lines.length && head < next.length && lines[head] === next[head]) head++;
+  let tail = 0;
+  while (tail < lines.length - head && tail < next.length - head && lines[lines.length - 1 - tail] === next[next.length - 1 - tail]) tail++;
+  const count = (kind: string) => ends.filter((end) => end === kind).length;
+  const fresh = ["\r\n", "\r", "\n"].reduce((best, kind) => (count(kind) > count(best) ? kind : best));
+  // Ending i follows line i; in the kept tail it is the old one as far from the end.
+  const shift = lines.length - next.length;
+  const end = (i: number) => (i < head ? ends[i] : i >= next.length - 1 - tail ? ends[i + shift] : undefined) ?? fresh;
+  return next.map((line, i) => (i === next.length - 1 ? line : line + end(i))).join("");
+}
+
+/** Edits an editor left without saving (a conflict, a failed write), by path: 编辑 on the file again brings them back. */
+const drafts = new Map<string, { text: string; base: string }>();
+
 const hashText = async (text: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, "0")).join("");
 
 /**
@@ -405,9 +438,13 @@ const hashText = async (text: string) => [...new Uint8Array(await crypto.subtle.
  * meanwhile is refused (+0+47o3Ngm) and the edits stay here.
  */
 function CodeEditor({ path, cwd, initial, wrap, onDone }: { path: string; cwd: string; initial: string; wrap: boolean; onDone(saved?: string): void }) {
-  const [text, setText] = useState(initial);
-  const [status, setStatus] = useState<"saved" | "dirty" | "saving" | "conflict">("saved");
-  const base = useRef(initial);
+  // Its base stays the text the edits were made on, so a file changed since still refuses the save.
+  const [draft] = useState(() => drafts.get(path));
+  // A draft whose file changed on disk since opens in conflict; 保留我的更改 rebases it on the text just read.
+  const reread = useRef(draft && draft.base !== initial ? initial : null);
+  const [text, setText] = useState(draft?.text ?? initial);
+  const [status, setStatus] = useState<"saved" | "dirty" | "saving" | "conflict">(!draft ? "saved" : reread.current === null ? "dirty" : "conflict");
+  const base = useRef(draft?.base ?? initial);
   const latest = useRef(text);
   latest.current = text;
   const escaped = useRef(false);
@@ -415,15 +452,17 @@ function CodeEditor({ path, cwd, initial, wrap, onDone }: { path: string; cwd: s
   const area = useRef<HTMLTextAreaElement>(null);
   useSyncExternalStore(subscribe, () => version);
 
-  // The textarea reads CRLF back as LF; a CRLF file is saved with its own line endings.
-  const crlf = initial.includes("\r\n");
   // One write at a time: a second ⌘S waits for the first and then compares with what it saved.
   const queue = useRef(Promise.resolve(true));
   const save = (): Promise<boolean> => (queue.current = queue.current.then(write, write));
   const write = async (): Promise<boolean> => {
     const typed = latest.current;
-    const value = crlf ? typed.replace(/\r?\n/g, "\r\n") : typed;
-    if (value === base.current) return true;
+    const value = restoreNewlines(base.current, typed);
+    if (value === base.current) {
+      // Typed back to the text on disk: nothing to write, and nothing unsaved either.
+      setStatus((now) => (now === "dirty" && latest.current === typed ? "saved" : now));
+      return true;
+    }
     setStatus("saving");
     try {
       const result = await callExperimental<{ conflict: boolean }>("betterCodex/files/write", { cwd, path, text: value, expected: await hashText(base.current) });
@@ -448,8 +487,17 @@ function CodeEditor({ path, cwd, initial, wrap, onDone }: { path: string; cwd: s
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- save reads the latest text
   }, [text, status]);
-  // Leaving with edits saves them (the tab closed, another file shown), 自动保存 or not: no edit is dropped unasked.
-  useEffect(() => () => void (discarded.current || save()), []);
+  // Leaving with edits saves them (the tab closed, another file shown), 自动保存 or not: no edit is dropped
+  // unasked. One that fails is kept for the next 编辑 of the file.
+  useEffect(() => {
+    return () => {
+      if (discarded.current) return void (drafts.get(path) === draft && drafts.delete(path));
+      // Kept before the save settles, so a quick 编辑 again picks it up; a saved one goes unless replaced since.
+      const kept = { text: latest.current, base: base.current };
+      drafts.set(path, kept);
+      void save().then((saved) => saved && drafts.get(path) === kept && drafts.delete(path));
+    };
+  }, []);
   useEffect(() => area.current?.focus(), []);
 
   const label = status === "saving" ? "正在保存…" : status === "conflict" ? "文件已在磁盘上更改" : status === "dirty" ? "未保存的更改" : "已保存";
@@ -469,6 +517,19 @@ function CodeEditor({ path, cwd, initial, wrap, onDone }: { path: string; cwd: s
             }}
           >
             放弃更改
+          </Button>
+        )}
+        {status === "conflict" && reread.current !== null && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              base.current = reread.current!;
+              reread.current = null;
+              setStatus("dirty");
+            }}
+          >
+            保留我的更改
           </Button>
         )}
         {!prefs.autoSave && status === "dirty" && (

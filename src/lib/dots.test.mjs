@@ -560,6 +560,28 @@ test("the activity stream: an upsert adds or updates a task in order, a removal 
   assert.deepEqual(dots.dotsState().activity.map(({ id }) => id), ["th_done"]);
 });
 
+test("overlapping loads: an older answer that lands last changes nothing", async (t) => {
+  dots.resetDots();
+  // Every call waits for its answer, in the order the test gives them.
+  const held = [];
+  t.mock.method(globalThis, "fetch", () => new Promise((resolve) => held.push((body) => resolve(new Response(JSON.stringify({ status: 200, body }), { status: 200 })))));
+  const dotList = (id) => ({ items: [{ id, aeon_kind: "orbit" }] });
+  const older = dots.loadDot(), newer = dots.loadDot();
+  held[2](dotList("tbo_new")), held[3]({});
+  await newer;
+  held[0](dotList("tbo_old")), held[1]({});
+  await older;
+  assert.deepEqual(dots.dotsState().dots.map((dot) => dot.id), ["tbo_new"]);
+  assert.equal(dots.dotsState().dot.id, "tbo_new");
+  const tasks = (status) => ({ data: [{ thread_id: "th_1", status, updated_at: 1 }] });
+  const first = dots.loadDotActivity(), second = dots.loadDotActivity();
+  held[5](tasks("completed"));
+  await second;
+  held[4](tasks("in_progress"));
+  await first;
+  assert.deepEqual(dots.dotsState().activity.map(({ status }) => status), ["succeeded"]);
+});
+
 test("a dot's desktops: only the user's own, for its root thread; this one offline until its relay is up", () => {
   const listed = {
     thread_id: "th_root",
@@ -582,4 +604,49 @@ test("a dot's desktops: only the user's own, for its root thread; this one offli
   assert.equal(profile.desktopStatus(computers[1], local), "disconnected");
   assert.equal(profile.desktopStatus({ ...computers[1], status: "offline" }), "offline");
   assert.equal(profile.desktopStatus(undefined), "unknown");
+});
+
+test("a create or availability check that answers after resetDots leaves the new account's state alone", async (t) => {
+  dots.resetDots();
+  const pending = [];
+  t.mock.method(globalThis, "fetch", (url) => new Promise((resolve) => pending.push({ url, resolve })));
+  const available = dots.refreshDotsAvailable();
+  const created = dots.createDot();
+  await new Promise((resolve) => setImmediate(resolve));
+  dots.resetDots();
+  pending[0].resolve(new Response(JSON.stringify({ available: true, accountUserId: "user-old" }), { status: 200 }));
+  pending[1].resolve(new Response(JSON.stringify({ status: 200, body: { id: "tbo_old", root_thread_id: "th_old" } }), { status: 200 }));
+  await available;
+  await new Promise((resolve) => setImmediate(resolve));
+  await created;
+  // The old create stops there: no room is made for it.
+  assert.equal(pending.length, 2);
+  const state = dots.dotsState();
+  assert.deepEqual([state.available, state.accountUserId, state.dots, state.dot, state.creating], [null, null, [], undefined, false]);
+});
+
+test("a deletion recovery or an activity list that answers after resetDots goes no further, even for the same dot id", async (t) => {
+  dots.resetDots();
+  let emptied;
+  const calls = chatgpt(t, {
+    "GET /tbo?limit=25&include_room_preview=false": { items: [{ id: "tbo_1", aeon_kind: "orbit" }] },
+    "GET /tbo/primary": () => [404, {}],
+    "POST /tbo/deletion-recovery": () => (dots.resetDots(), [200, {}]),
+    "GET /tbo/tbo_1/activity?limit=5": () => {
+      const dot = dots.dotsState().dot;
+      dots.resetDots();
+      emptied = dots.dotsState().activity;
+      dots.putDot(dot);
+      dots.selectDot(dot.id);
+      return [200, { data: [{ thread_id: "th_old", title: "旧账号的任务", status: "completed", updated_at: 1 }] }];
+    },
+  });
+  await dots.loadDot();
+  dots.putDot({ ...dots.dotsState().dot, deleting: true });
+  await dots.createDot();
+  assert.equal(calls.some(({ method, path }) => method === "POST" && path === "/tbo"), false);
+  await dots.loadDot();
+  await dots.loadDotActivity();
+  assert.equal(dots.dotsState().dot.id, "tbo_1");
+  assert.equal(dots.dotsState().activity, emptied);
 });

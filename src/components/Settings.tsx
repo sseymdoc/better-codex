@@ -49,6 +49,7 @@ import {
   startWindowsSandboxSetup,
   syncHostContexts,
   windowsSandboxReadiness,
+  worktreeRoot,
   writeConfig,
   type RemoteClient,
   type RemotePairing,
@@ -480,16 +481,25 @@ function useDesktopSettings() {
   useEffect(() => {
     void window.codexDesktop?.getDesktopSettings().then(setSettings);
   }, []);
+  // The saves still out, oldest first: a re-read shows the shell's settings with these on top.
+  const pending = useRef(new Set<Partial<CodexDesktopSettings>>());
+  const reread = async () => {
+    const persisted = await window.codexDesktop!.getDesktopSettings();
+    setSettings(Object.assign({ ...persisted }, ...pending.current));
+  };
   const save = async (patch: Partial<CodexDesktopSettings>): Promise<string | null> => {
-    const previous = settings;
+    const mine = { ...patch };
+    pending.current.add(mine);
     setSettings((current) => current && { ...current, ...patch });
     const result = await window.codexDesktop?.setDesktopSettings(patch).catch((error: unknown) => ({ ok: false as const, error: errorMessage(error) }));
+    pending.current.delete(mine);
     if (!result || result.ok) {
-      if (patch.backendChannel !== undefined && window.codexDesktop) setSettings(await window.codexDesktop.getDesktopSettings());
+      // Re-read every time: the shell may accept a key it does not keep (runOnStartup on Linux).
+      if (window.codexDesktop) await reread().catch(() => {});
       return null;
     }
-    // Only the refused keys go back: another save that landed meanwhile stays.
-    setSettings((current) => current && previous && { ...current, ...Object.fromEntries(Object.keys(patch).map((key) => [key, previous[key as keyof CodexDesktopSettings]])) });
+    // A refused key goes back to what the shell keeps, or to a save of it still out.
+    await reread().catch(() => {});
     return result.error;
   };
   return [settings, save] as const;
@@ -1032,7 +1042,7 @@ function WorktreeLocationRow() {
   const configured = useStore((s) => (s.config?.desktop as Record<string, unknown> | undefined)?.["git-worktree-root"]);
   const home = useStore((s) => s.server.info?.codexHome);
   const custom = typeof configured === "string" && configured.trim() ? configured.trim() : null;
-  const shown = custom ?? (home ? `${home}${home.includes("\\") ? "\\" : "/"}worktrees` : "默认");
+  const shown = custom || home ? worktreeRoot() : "默认";
   const save = (value: string | null) =>
     void writeConfig([{ keyPath: "desktop.git-worktree-root", value, mergeStrategy: value === null ? "replace" : "upsert" }]).catch((error) => toast("warning", "无法更改工作树位置。", errorMessage(error)));
   return (
@@ -2108,7 +2118,12 @@ function searchSections(): SearchSection[] {
 
 /** The setting rows the command palette offers once something is typed (c2771e1f6 gs): each opens its page at the row. */
 export function settingRows(): { page: SettingsTab; anchor: string; label: string; phrases: string[] }[] {
-  return INDEX.filter((entry) => entry.when?.() ?? true).map((entry) => ({ page: entry.page, anchor: entry.anchor, label: entry.label, phrases: [pageInfo(entry.page).label, ...(entry.phrases ?? [])] }));
+  // The pages the search lists (no 此电脑 in the browser, no 插件 while plugins are off).
+  const pages = new Set(searchSections().map((section) => section.id));
+  const rows = INDEX.filter((entry) => pages.has(entry.page) && (entry.when?.() ?? true));
+  // A label two pages share (外观) reads「页 → 行」so the rows tell apart.
+  const shared = (label: string) => rows.filter((entry) => entry.label === label).length > 1;
+  return rows.map((entry) => ({ page: entry.page, anchor: entry.anchor, label: shared(entry.label) ? `${pageInfo(entry.page).label} → ${entry.label}` : entry.label, phrases: [pageInfo(entry.page).label, ...(entry.phrases ?? [])] }));
 }
 
 function Highlight({ text, query }: { text: string; query: string }) {

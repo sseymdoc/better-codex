@@ -77,6 +77,7 @@ import { inScratch } from "../lib/scratch";
 import { heartbeatOn, nextRunOf } from "../lib/rail";
 import { dayTime, navMark, type Mark } from "../lib/scheduled-view";
 import { blockedBoxThreads } from "../lib/wrap-up";
+import { detachLink } from "../lib/linked";
 import { ackStamp, dateBuckets, familyOrder, folderBuckets, outliving, rangeIds, spawnRoot, VIEWS, type SessionSort, type TranscriptView } from "../lib/session";
 import { getState, isShown, isUnread, markCompleted, pluginsOff, readJson, readPref, setSessionView, setState, toast, useStore, writeJson, writePref, type AppState, type ScheduledDialog, type StatusFilter, type ThreadState } from "../lib/store";
 import { useWco } from "./Frame";
@@ -364,7 +365,11 @@ export const sidebarTools = {
     return thread ? ackable(thread, waitingOn(s).has(id)) : null;
   },
   waiting: (id: string): boolean => waitingOn(getState()).has(id),
-  detach: (id: string) => setLocal({ detached: [...local.detached.filter((x) => x !== id), id] }),
+  /** Out of its family, and off its link so it no longer reports back to its starter. */
+  detach: (id: string) => {
+    detachLink(id);
+    setLocal({ detached: [...local.detached.filter((x) => x !== id), id] });
+  },
 };
 
 /** After choosing a session: close the peek or the phone sheet. */
@@ -1130,7 +1135,7 @@ function SessionMenu({ row, pinIndex, archived, close, rename }: { row: Row; pin
       : []),
   ];
   // XP5vxiZixk: a nested session leaves its family for the top level.
-  const detach = row.place === "nested" ? act(() => setLocal({ detached: [...local.detached.filter((x) => x !== id), id] })) : undefined;
+  const detach = row.place === "nested" ? act(() => sidebarTools.detach(id)) : undefined;
   const groups = [
     opens.length
       ? [

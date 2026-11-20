@@ -75,7 +75,10 @@ export function portError(raw: string): string | undefined {
   if (!Number.isInteger(value) || value < 1 || value > 65535) return "端口必须是 1 到 65535 之间的数字。";
 }
 
-export const sshEnvironmentId = (connection: SshConnection) => `bettercodex-ssh-${connection.id}`;
+// Kept from before the rename: sessions record it, and resuming one registers the host under it again.
+export const sshEnvironmentId = (connection: SshConnection) => `codexui-ssh-${connection.id}`;
+// What sessions started between the rename and its revert recorded instead; resuming one registers it too.
+export const renamedSshEnvironmentId = (connection: SshConnection) => `bettercodex-ssh-${connection.id}`;
 
 /**
  * ssh, never asking (the protocol owns its stdin: keys or the agent only), accepting a first-seen

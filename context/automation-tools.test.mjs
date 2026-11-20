@@ -24,7 +24,7 @@ test("automation_update takes ChatGPT's fields per mode", () => {
   assert.throws(() => input(anchored), /create takes no DTSTART[^]*suggested_create/);
   assert.equal(input({ ...anchored, mode: "suggested_create" }).rrule, anchored.rrule);
   for (const mode of ["update", "suggested_update"]) {
-    assert.throws(() => input({ mode, id: "nightly", rrule: anchored.rrule }), new RegExp(`${mode} takes no DTSTART`));
+    assert.throws(() => input({ mode, id: "nightly", rrule: anchored.rrule }), new RegExp(`${mode} takes no DTSTART[^]*wall clock\\.$`));
   }
   for (const [args, message] of [
     [{ mode: "list", id: "x" }, /list takes only mode/],
@@ -97,6 +97,11 @@ test("receipts answer their call", () => {
   assert.throws(() => check("automation_update", { mode: "delete", id: "watch" }, { outcome: "declined", task: { id: "watch", name: "Watch CI" } }));
   assert.doesNotThrow(() => check("cloud_task_update", { mode: "resume", id: "a1" }, { outcome: "resumed", task: { id: "a1", title: "T", status: "active" } }));
   assert.throws(() => check("cloud_task_update", { mode: "resume", id: "a1" }, { outcome: "paused", task: { id: "a1" } }));
+  // runs: each run has all seven fields, typed as declared.
+  const run = { sessionId: "s1", status: "ACCEPTED", title: null, startedAt: "2026-11-19T00:00:00.000Z", updatedAt: "2026-11-19T00:01:00.000Z", read: true, summary: null };
+  const runs = (list) => check("automation_update", { mode: "runs", id: "watch" }, { outcome: "runs", task, runs: list });
+  assert.doesNotThrow(() => runs([run, { ...run, title: "Nightly", summary: "Done" }]));
+  for (const bad of [{}, { ...run, read: "yes" }, { ...run, title: 1 }, { ...run, summary: undefined }, { ...run, extra: 1 }]) assert.throws(() => runs([bad]), JSON.stringify(bad));
 });
 
 test("a turn the user did not start asks on a card for anything but a list, a view, a delete or a bare pause", () => {

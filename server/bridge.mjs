@@ -123,13 +123,7 @@ export function createBridge(orchestrator, { token, orbit = createOrbitFiles(), 
     if (url.pathname === "/api/scratch/remove" && req.method === "POST") return void answer(res, url.searchParams.get("c"), () => scratch.remove(url.searchParams.get("path")));
     // 存储 (server/storage.mjs): what Codex takes on this computer; removing session worktrees Better Codex made.
     if (url.pathname === "/api/storage" && req.method === "GET") return void answer(res, url.searchParams.get("c"), (_id, signal) => storage.usage({ root: url.searchParams.get("root"), refresh: url.searchParams.has("refresh") }, signal));
-    if (url.pathname === "/api/storage/worktrees/remove" && req.method === "POST") {
-      return void answer(res, url.searchParams.get("c"), async (_id, signal) => {
-        if (!(req.headers["content-type"] ?? "").startsWith("application/json")) throw Object.assign(new Error("Not JSON."), { status: 415 });
-        const body = JSON.parse((await readBody(req, 256 * 1024)).toString("utf8"));
-        return storage.removeWorktrees({ root: body?.root, paths: body?.paths, force: body?.force === true }, signal);
-      });
-    }
+    if (url.pathname === "/api/storage/worktrees/remove" && req.method === "POST") return void removeWorktrees(req, res, url.searchParams.get("c"));
     if (url.pathname === "/api/events" && req.method === "GET") return openEvents(req, res, url.searchParams.get("durable"));
     if (url.pathname === "/api/account/profile" && req.method === "GET") return void answer(res, url.searchParams.get("c"), orchestrator.accountProfile);
     if (url.pathname === "/api/dots/available" && req.method === "GET") return void answer(res, url.searchParams.get("c"), orchestrator.dotsAvailable);
@@ -290,6 +284,20 @@ export function createBridge(orchestrator, { token, orbit = createOrbitFiles(), 
       catch (error) { return serviceError(res, error); }
       res.writeHead(204).end();
     });
+  }
+
+  /** 存储's cleanup: a malformed request is the page's fault (415 / 400), never the service's 502. */
+  async function removeWorktrees(req, res, id) {
+    if (!orchestrator.hasConnection(id)) return deny(res, 410, "Connection closed.");
+    if (!(req.headers["content-type"] ?? "").startsWith("application/json")) return deny(res, 415, "Not JSON.");
+    // A page that leaves while its body is read removes nothing: its close comes before answer() watches for one.
+    const gone = new AbortController();
+    res.on("close", () => gone.abort());
+    let body;
+    try { body = JSON.parse((await readBody(req, 256 * 1024)).toString("utf8")); }
+    catch { return deny(res, 400, "Invalid cleanup request."); }
+    if (gone.signal.aborted) return;
+    return answer(res, id, (_id, signal) => storage.removeWorktrees({ root: body?.root, paths: body?.paths, force: body?.force === true }, signal));
   }
 
   /** A read for this connection's page (`run(id, signal)`), answered as JSON. */
@@ -523,6 +531,7 @@ export function createBridge(orchestrator, { token, orbit = createOrbitFiles(), 
     const id = params.get("c");
     if (!orchestrator.hasConnection(id)) return deny(res, 410, "Connection closed.");
     const size = Number(req.headers["content-length"] ?? NaN);
+    if (!Number.isInteger(size) || size < 0) return deny(res, 411, "需要有效的 Content-Length。");
     const abort = new AbortController();
     res.on("close", () => { if (!res.writableEnded) abort.abort(); });
     try {
@@ -680,6 +689,6 @@ function libraryStatus(error) {
 }
 
 function serviceError(res, error) {
-  const status = error.code === "CONNECTION_CLOSED" ? 410 : error.code === "CHATGPT_REQUIRED" ? 403 : error.code === "UNAVAILABLE" ? 404 : 502;
+  const status = error.code === "CONNECTION_CLOSED" ? 410 : error.code === "CHATGPT_REQUIRED" ? 403 : error.code === "UNAVAILABLE" ? 404 : error.code === "INVALID" ? 400 : 502;
   deny(res, status, error.message);
 }

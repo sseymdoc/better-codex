@@ -23,7 +23,7 @@ const { connect, isArchivedThread, refreshThreads, unarchiveThread, sendMessage,
   terminateBackground,
   stopBackgroundTask,
   openThread, forkThread, loadTurns, loadAgent, updateProject, setOverride, syncHostContext, syncHostContexts, renameThread, resumeInPlanMode, environmentKind, removePullRequest,
-  askSideChat, clearSideChat, } = await import("./codex.ts");
+  askSideChat, clearSideChat, listShells, watchFile, } = await import("./codex.ts");
 const { PLAN_RESUME } = await import("./questions.ts");
 const legacyContext = JSON.parse(readFileSync(new URL("../../context/fixtures/legacy.json", import.meta.url), "utf8"));
 const currentContext = JSON.parse(readFileSync(new URL("../../context/fixtures/current.json", import.meta.url), "utf8"));
@@ -248,11 +248,11 @@ test("an SSH environment registers its host once and starts its sessions in the 
   const added = calls.filter(({ method }) => method === "environment/addStdio");
   assert.equal(added.length, 1);
   assert.deepEqual(added[0].params, {
-    environmentId: "bettercodex-ssh-c1",
+    environmentId: "codexui-ssh-c1",
     program: "ssh",
     args: ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-p", "2222", "--", "me@box", "sh -lc 'exec codex exec-server --listen stdio'"],
   });
-  assert.deepEqual(start().environments, [{ environmentId: "bettercodex-ssh-c1", cwd: "/srv/app", runtimeWorkspaceRoots: ["/srv/app", "/srv/lib"] }]);
+  assert.deepEqual(start().environments, [{ environmentId: "codexui-ssh-c1", cwd: "/srv/app", runtimeWorkspaceRoots: ["/srv/app", "/srv/lib"] }]);
   assert.deepEqual(start().config["shell_environment_policy.set"], { A: "1" });
   assert.equal("runtimeWorkspaceRoots" in start(), false);
 });
@@ -334,7 +334,7 @@ test("an SSH environment without folders starts in the host's own folder; withou
   setState((s) => ({ server: { ...s.server, info: { ...s.server.info, betterCodexStdioEnvironments: true } } }));
   await settle();
   await startThread();
-  assert.deepEqual(start().environments, [{ environmentId: "bettercodex-ssh-c2", cwd: "/home/dev user", runtimeWorkspaceRoots: ["/home/dev user"] }]);
+  assert.deepEqual(start().environments, [{ environmentId: "codexui-ssh-c2", cwd: "/home/dev user", runtimeWorkspaceRoots: ["/home/dev user"] }]);
   calls.length = 0;
   setState((s) => ({ server: { ...s.server, info: { ...s.server.info, betterCodexStdioEnvironments: undefined } } }));
   await assert.rejects(startThread(), /实验型后端/);
@@ -359,6 +359,25 @@ test("an environment's variables come back with every cold resume and fork of it
   assert.deepEqual(requests.findLast((r) => r.method === "thread/resume").params.config["shell_environment_policy.set"], { TOKEN: "abc" });
   await forkThread("cold", "turn");
   assert.deepEqual(requests.findLast((r) => r.method === "thread/fork").params.config["shell_environment_policy.set"], { TOKEN: "abc" });
+});
+
+test("a cold resume registers the SSH host under both ids a session may have recorded", async (t) => {
+  const { saveSshConnection } = await import("./ssh.ts");
+  saveSshConnection({ id: "c3", name: "", host: "me@box" });
+  const { calls } = environmentStart(t, { kind: "ssh", ssh: { connectionId: "c3", folders: ["/srv"] } }, [], {
+    "environment/status": () => ({ status: "unknown" }),
+    "thread/resume": (params) => ({ thread: meta(params.threadId) }),
+    "thread/turns/list": () => ({ data: [], nextCursor: null }),
+  });
+  setState((s) => ({
+    server: { ...s.server, info: { ...s.server.info, betterCodexStdioEnvironments: true } },
+    threads: { ...s.threads, cold: emptyThreadState({ ...meta("cold"), status: { type: "notLoaded" }, projectId: "env-project" }) },
+  }));
+  await settle();
+  await openThread("cold", true);
+  const order = calls.map(({ method }) => method);
+  assert.deepEqual(calls.filter(({ method }) => method === "environment/addStdio").map(({ params }) => params.environmentId).sort(), ["bettercodex-ssh-c3", "codexui-ssh-c3"]);
+  assert.ok(order.lastIndexOf("environment/addStdio") < order.indexOf("thread/resume"));
 });
 
 test("failed project refresh keeps the selection; external deletion clears only its ID", async (t) => {
@@ -567,19 +586,20 @@ test("a session's environment kind: the id an SSH session started with, a projec
     prefs: { ...s.prefs, projectId: "p-ssh" },
     threads: {
       local: thread("local", { environments: [{ environmentId: "local" }] }),
-      ssh: thread("ssh", { environments: [{ environmentId: "bettercodex-ssh-c1" }] }),
+      ssh: thread("ssh", { environments: [{ environmentId: "codexui-ssh-c1" }] }),
+      renamed: thread("renamed", { environments: [{ environmentId: "bettercodex-ssh-c1" }] }),
       legacy: thread("legacy", { projectId: "p-ssh" }),
       other: thread("other", { environments: [{ environmentId: "elsewhere" }] }),
     },
   }));
-  assert.deepEqual(["local", "ssh", "legacy", "other", "missing"].map(environmentKind), ["local", "ssh", "ssh", null, null]);
+  assert.deepEqual(["local", "ssh", "renamed", "legacy", "other", "missing"].map(environmentKind), ["local", "ssh", "ssh", "ssh", null, null]);
   assert.equal(environmentKind(null), "ssh");
 });
 
 test("a list's environments: null (an unloaded thread) keeps the selection its resume reported; an empty list replaces it", async (t) => {
   const before = getState();
   t.after(() => setState(before));
-  setState({ threads: { local: emptyThreadState({ ...meta("local"), environments: [{ environmentId: "local" }] }), ssh: emptyThreadState({ ...meta("ssh"), environments: [{ environmentId: "bettercodex-ssh-c1" }] }), fresh: emptyThreadState({ ...meta("fresh"), environments: [] }) } });
+  setState({ threads: { local: emptyThreadState({ ...meta("local"), environments: [{ environmentId: "local" }] }), ssh: emptyThreadState({ ...meta("ssh"), environments: [{ environmentId: "codexui-ssh-c1" }] }), fresh: emptyThreadState({ ...meta("fresh"), environments: [] }) } });
   const listed = (environments) => ["local", "ssh", "fresh"].map((id) => ({ ...meta(id), environments }));
   const mock = t.mock.method(Rpc.prototype, "request", async () => ({ data: listed(null), nextCursor: null }));
   await refreshThreads();
@@ -1027,6 +1047,47 @@ test("thread creation failure keeps the new-session input and retry moves it int
   await retryPendingMessage(null);
   assert.equal(getState().pendingMessages[""], undefined);
   assert.deepEqual(getState().pendingMessages["retried-chat"].item.content, input);
+});
+
+test("a Ctrl+Enter send that failed to start its session retries without opening it", async (t) => {
+  let attempts = 0;
+  sendingFixture(t, async (method) => {
+    if (method === "thread/start") {
+      if (++attempts === 1) throw new Error("启动失败");
+      return { thread: meta("stay-chat") };
+    }
+    if (method === "turn/start") return { turn: turn() };
+    return {};
+  });
+  const before = getState().prefs;
+  t.after(() => setState({ prefs: before }));
+  setState({ activeId: null, projects: [], prefs: { ...before, cwd: "D:/stay", projectId: null } });
+  await assert.rejects(sendMessage(null, input, { stay: true }), /启动失败/);
+  await retryPendingMessage(null);
+  assert.deepEqual(getState().pendingMessages["stay-chat"].item.content, input);
+  assert.equal(getState().activeId, null, "the new-session page stays");
+});
+
+test("shell discovery waits for the platform and asks again after a failed read", async (t) => {
+  let fail = true;
+  sendingFixture(t, async (method, params) => {
+    if (method === "fs/getMetadata") {
+      if (fail) throw new Error("暂时不可用");
+      return /bash|cmd/.test(params.path) ? {} : Promise.reject(new Error("missing"));
+    }
+    return {};
+  });
+  const before = getState().server;
+  t.after(() => setState({ server: before }));
+  setState({ server: { ...before, info: null } });
+  assert.deepEqual(await listShells(), []);
+  setState({ server: { ...before, info: { ...before.info, platformOs: "windows" } } });
+  assert.deepEqual(await listShells(), []);
+  fail = false;
+  const shells = await listShells();
+  assert.deepEqual(shells, ["C:\\Windows\\System32\\cmd.exe", "C:\\Program Files\\Git\\bin\\bash.exe"]);
+  fail = true;
+  assert.deepEqual(await listShells(), shells, "a found list is kept");
 });
 
 test("retry never submits when history cannot be checked", async (t) => {
@@ -1969,4 +2030,206 @@ test("cleaning skips a worktree a fork still works in, though its owner is long 
   setState({ threads: { ...getState().threads, fork: idle("fork", `${tree.path}/src`, Date.now() / 1000) } });
   assert.deepEqual(inactiveWorktrees({ worktrees: [tree] }, 30, []), []);
   setState({ threads: before });
+});
+
+test("cleaning skips a worktree a fork's running turn is in, though a pending move points elsewhere", async () => {
+  const { inactiveWorktrees } = await import("./storage.ts");
+  const old = Date.now() / 1000 - 60 * 86_400;
+  const tree = { path: "D:/wt/ab13/repo", repository: "D:/repo", owner: "owner", changes: 0, bytes: 1 };
+  const before = getState().threads;
+  // Older servers apply overrides.cwd from the next turn: this one still runs in the worktree.
+  const fork = { ...emptyThreadState({ ...meta("fork"), cwd: `${tree.path}/src`, updatedAt: old }), overrides: { cwd: "D:/elsewhere" }, turns: [turn()] };
+  setState({ threads: { owner: emptyThreadState({ ...meta("owner"), cwd: tree.path, updatedAt: old }), fork } });
+  try {
+    assert.deepEqual(inactiveWorktrees({ worktrees: [tree] }, 30, []), []);
+  } finally {
+    setState({ threads: before });
+  }
+});
+
+test("cleaning sends at most 50 worktrees a request, and none a session has started using since", async (t) => {
+  const { removeWorktrees } = await import("./storage.ts");
+  const paths = Array.from({ length: 51 }, (_, i) => `D:/wt/${i.toString(16).padStart(4, "0")}/repo`);
+  const sent = [];
+  t.mock.method(globalThis, "fetch", async (_url, init) => {
+    const asked = JSON.parse(init.body).paths;
+    sent.push(asked);
+    return Response.json({ removed: asked, skipped: [] });
+  });
+  const { config, threads } = getState();
+  // Woke while the confirmation waited: a turn runs in the second worktree.
+  setState({ config: { desktop: { "git-worktree-root": "D:/wt" } }, threads: { busy: { ...emptyThreadState({ ...meta("busy"), cwd: `${paths[1]}/src` }), turns: [turn()] } } });
+  try {
+    const { removed, skipped } = await removeWorktrees(paths, false);
+    assert.deepEqual(sent.map((batch) => batch.length), [49, 1]);
+    assert.ok(!sent.flat().includes(paths[1]));
+    assert.equal(removed.length, 50);
+    assert.deepEqual(skipped, [{ path: paths[1], reason: "a session is using it" }]);
+    // A later batch refused: the earlier removals still come back, its paths as skipped.
+    let calls = 0;
+    t.mock.method(globalThis, "fetch", async (_url, init) => (++calls === 1 ? Response.json({ removed: JSON.parse(init.body).paths, skipped: [] }) : new Response("busy", { status: 500 })));
+    const partial = await removeWorktrees(paths, false);
+    assert.equal(partial.removed.length, 49);
+    assert.deepEqual(partial.skipped.at(-1), { path: paths[50], reason: "busy" });
+  } finally {
+    setState({ config, threads });
+  }
+});
+
+test("clearing a side chat while its question starts interrupts the turn that comes back", async (t) => {
+  const calls = [], started = deferred();
+  const before = getState();
+  t.after(() => setState(before));
+  sendingFixture(t, async (method, params) => {
+    calls.push({ method, params });
+    if (method === "thread/fork") return { thread: meta("late-fork") };
+    if (method === "turn/start") return started.promise;
+    return {};
+  });
+  const asked = askSideChat("late-chat", "问题");
+  await settle();
+  clearSideChat("late-chat");
+  started.resolve({ turn: turn("late-turn") });
+  await asked;
+  await settle();
+  assert.deepEqual(calls.filter((call) => call.method === "turn/interrupt").map((call) => call.params), [{ threadId: "late-fork", turnId: "late-turn" }]);
+});
+
+test("a side question that fails after 清除 leaves the next question's chat alone", async (t) => {
+  const calls = [], started = deferred();
+  const before = getState();
+  t.after(() => setState(before));
+  sendingFixture(t, async (method, params) => {
+    calls.push({ method, params });
+    if (method === "thread/fork") return { thread: meta(`stale-fork-${calls.length}`) };
+    if (method === "turn/start" && params.threadId === "stale-fork-1") return started.promise;
+    if (method === "turn/start") return { turn: turn("stale-new") };
+    return {};
+  });
+  const asked = askSideChat("stale-chat", "旧问题");
+  await settle();
+  clearSideChat("stale-chat");
+  await askSideChat("stale-chat", "新问题");
+  started.reject(new Error("连接断开"));
+  await asked;
+  const chat = getState().sideChats["stale-chat"];
+  assert.equal(chat.error, null);
+  assert.equal(chat.status, "thinking");
+  assert.deepEqual(chat.messages, [{ role: "user", text: "新问题" }, { role: "assistant", text: "" }]);
+});
+
+test("a fork made for a question cleared before it came back is not the next question's", async (t) => {
+  const calls = [], forks = [deferred(), deferred()];
+  const before = getState();
+  t.after(() => setState(before));
+  sendingFixture(t, async (method, params) => {
+    calls.push({ method, params });
+    if (method === "thread/fork") return forks[calls.filter((call) => call.method === "thread/fork").length - 1].promise;
+    if (method === "turn/start") return { turn: turn(`gen-turn-${params.threadId}`) };
+    return {};
+  });
+  const first = askSideChat("gen-chat", "旧问题");
+  await settle();
+  clearSideChat("gen-chat");
+  const second = askSideChat("gen-chat", "新问题");
+  await settle();
+  // Back in order: the cleared one first, while the new question is "starting" too.
+  forks[0].resolve({ thread: meta("gen-old") });
+  await first;
+  forks[1].resolve({ thread: meta("gen-new") });
+  await second;
+  await settle();
+  assert.deepEqual(calls.filter((call) => call.method === "turn/start").map((call) => call.params), [{ threadId: "gen-new", input: [{ type: "text", text: "新问题", text_elements: [] }] }]);
+  assert.deepEqual(calls.filter((call) => call.method === "thread/unsubscribe").map((call) => call.params), [{ threadId: "gen-old" }]);
+  assert.equal(getState().sideChats["gen-chat"].status, "thinking");
+});
+
+test("a reconnect while initializing leaves the new connection connecting, not failed by the old initialize", async (t) => {
+  const before = getState(), streams = [];
+  t.after(() => setState(before));
+  t.mock.method(globalThis, "fetch", async (url) => (url === "/api/events" ? new Response(new ReadableStream({ start(controller) { streams.push(controller); } })) : new Response(null, { status: 204 })));
+  // initialize stays out, as Rpc.request leaves it, until the reconnect rejects it.
+  t.mock.method(Rpc.prototype, "request", function () { return new Promise((resolve, reject) => this.pending.set(this.nextId++, { resolve, reject })); });
+  connect();
+  await settle();
+  streams[0].enqueue(new TextEncoder().encode(`event: hello\ndata: ${JSON.stringify({ connectionId: "old", cwd: "D:/test", command: "fake" })}\n\n`));
+  await settle();
+  await settle();
+  connect();
+  await settle();
+  assert.equal(getState().conn.status, "connecting");
+});
+
+test("a sub-agent's new request brings back its session marked 已完成", async (t) => {
+  const before = getState();
+  t.after(() => setState(before));
+  setState({ threads: { acked: emptyThreadState(meta("acked")), "acked-child": emptyThreadState({ ...meta("acked-child"), parentThreadId: "acked" }) }, completedAcks: { acked: "blocked:turn-1:0", other: "error::0" }, requests: [] });
+  t.mock.method(Rpc.prototype, "connect", function () {
+    this.handlers.request({ id: 1, method: "item/commandExecution/requestApproval", params: { threadId: "acked-child", turnId: "child-turn", itemId: "cmd" } });
+    return Promise.resolve();
+  });
+  connect();
+  assert.equal(getState().requests.length, 1);
+  assert.deepEqual(getState().completedAcks, { other: "error::0" });
+});
+
+test("a voice start stopped while starting stops its thread before a newer start there goes out", async (t) => {
+  const { startVoice, stopVoice } = await import("./voice.ts");
+  const calls = [], first = deferred();
+  t.mock.method(Rpc.prototype, "request", (method) => {
+    calls.push(method);
+    return method === "thread/realtime/start" && calls.length === 1 ? first.promise : Promise.resolve({});
+  });
+  globalThis.RTCPeerConnection = class { addTrack() {} createOffer() { return { sdp: "offer" }; } setLocalDescription() {} close() {} };
+  Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: async () => ({ getTracks: () => [] }) } });
+  t.after(() => { delete globalThis.RTCPeerConnection; delete navigator.mediaDevices; });
+  const one = startVoice("voice-chat");
+  await settle();
+  await stopVoice();
+  const two = startVoice("voice-chat");
+  await settle();
+  first.resolve({});
+  await one;
+  await two;
+  assert.deepEqual(calls, ["thread/realtime/start", "thread/realtime/stop", "thread/realtime/stop", "thread/realtime/start"]);
+  await stopVoice();
+});
+
+test("a watch refused by this app-server is dropped, one lost with its connection is kept for the rewatch", async (t) => {
+  let connection = "one";
+  const calls = [];
+  const rejects = [];
+  t.mock.getter(Rpc.prototype, "connection", () => connection);
+  t.mock.method(Rpc.prototype, "request", (method) => {
+    calls.push(method);
+    return method === "fs/watch" ? new Promise((_, reject) => rejects.push(reject)) : Promise.resolve({});
+  });
+  const refused = watchFile("D:/repo/gone.txt", () => {});
+  const lost = watchFile("D:/repo/kept.txt", () => {});
+  rejects[0](new Error("no such file"));
+  await new Promise((resolve) => setImmediate(resolve));
+  connection = undefined;
+  rejects[1](new Error("与 app-server 的连接已断开。"));
+  await new Promise((resolve) => setImmediate(resolve));
+  connection = "two";
+  refused();
+  lost();
+  await new Promise((resolve) => setImmediate(resolve));
+  // Only the kept one was still registered, so only it is unwatched.
+  assert.deepEqual(calls, ["fs/watch", "fs/watch", "fs/unwatch"]);
+});
+
+test("a send that returns takes only the sent words out of the box", async () => {
+  const { stripTypeScriptTypes } = await import("node:module");
+  const source = readFileSync(new URL("../components/Composer.tsx", import.meta.url), "utf8");
+  const { unsentText } = await import(`data:text/javascript,${encodeURIComponent(stripTypeScriptTypes(source.match(/^export function unsentText[\s\S]*?^}\r?$/m)[0]))}`);
+  assert.equal(unsentText("你好", "你好"), "");
+  assert.equal(unsentText("你好\n再问一句", "你好"), "\n再问一句");
+  // Emptied by the page as it returned (the 图像 page): nothing typed is left, nothing comes back.
+  assert.equal(unsentText("", "你好"), "");
+  assert.equal(unsentText("你好  \n", "你好"), "");
+  // Edited inside the sent words: all of it stays, nothing typed is lost.
+  assert.equal(unsentText("你们好", "你好"), "你们好");
+  // Attachments alone were sent: the words stay.
+  assert.equal(unsentText("留着", ""), "留着");
 });

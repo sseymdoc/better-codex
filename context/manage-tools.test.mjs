@@ -16,6 +16,9 @@ test("arguments are checked against each tool's own schema", () => {
   assert.throws(() => manageInput("delete_session", { session_ids: Array.from({ length: 26 }, (_, i) => `s${i}`) }), /1 to 25 entries/);
   assert.throws(() => manageInput("create_group", { name: "a\nb" }), /plain text/);
   assert.throws(() => manageInput("close_pane", { pane: "files", extra: 1 }), /Unknown close_pane arguments: extra/);
+  // Inherited names are not declared arguments either.
+  assert.throws(() => manageInput("close_pane", { pane: "files", toString: 1 }), /Unknown close_pane arguments: toString/);
+  assert.throws(() => manageInput("list_groups", JSON.parse('{"__proto__":1}')), /Unknown list_groups arguments: __proto__/);
 });
 
 test("a receipt carries one of the tool's outcomes; a declined call is an error result", () => {
@@ -36,4 +39,10 @@ test("every tool is listed with a closed schema, and none asks Codex for MCP app
     assert.equal(tool.annotations.openWorldHint, false, tool.name);
   }
   for (const name of MANAGE_ASKS) assert.ok(MANAGE_TOOL_NAMES.includes(name), name);
+});
+
+test("create_group is not idempotent: each call makes another group", () => {
+  const annotations = (name) => MANAGE_TOOLS.find((tool) => tool.name === name).annotations;
+  assert.equal(annotations("create_group").idempotentHint, false);
+  assert.equal(annotations("rename_group").idempotentHint, true);
 });

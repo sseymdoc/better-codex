@@ -219,7 +219,9 @@ function copyReply(thread: ThreadState, args: string) {
 /** /cd [path]: a path (relative to the session's folder), or on desktop a picked folder. */
 async function moveSessionTo(threadId: string, args: string, cwd: string | null) {
   const typed = args.trim().replace(/^(["'])(.*)\1$/, "$2");
-  const target = typed ? (/^(?:[a-zA-Z]:[\\/]|[\\/]|~)/.test(typed) || !cwd ? typed : joinPath(cwd, typed)) : await window.codexDesktop?.pickFolder?.(cwd ?? undefined);
+  // The client never learns the home folder, and the server takes ~ literally.
+  if (typed.startsWith("~")) return toast("warning", "/cd 不支持 ~ 开头的路径，请输入完整路径。");
+  const target = typed ? (/^(?:[a-zA-Z]:[\\/]|[\\/])/.test(typed) || !cwd ? typed : joinPath(cwd, typed)) : await window.codexDesktop?.pickFolder?.(cwd ?? undefined);
   if (target === undefined) return toast("neutral", "请在 /cd 后输入要移到的文件夹路径。");
   if (target) await changeThreadFolder(threadId, target);
 }
@@ -227,7 +229,8 @@ async function moveSessionTo(threadId: string, args: string, cwd: string | null)
 /** /add-dir [path]: another folder this session may write (addWritableRoot; under 自动 only). */
 async function addFolder(threadId: string, args: string, cwd: string | null) {
   const typed = args.trim().replace(/^(["'])(.*)\1$/, "$2");
-  const folder = typed ? (/^(?:[a-zA-Z]:[\\/]|[\\/]|~)/.test(typed) || !cwd ? typed : joinPath(cwd, typed)) : await window.codexDesktop?.pickFolder?.(cwd ?? undefined);
+  if (typed.startsWith("~")) return toast("warning", "/add-dir 不支持 ~ 开头的路径，请输入完整路径。");
+  const folder = typed ? (/^(?:[a-zA-Z]:[\\/]|[\\/])/.test(typed) || !cwd ? typed : joinPath(cwd, typed)) : await window.codexDesktop?.pickFolder?.(cwd ?? undefined);
   if (folder === undefined) return toast("neutral", "请在 /add-dir 后输入文件夹路径。");
   if (!folder) return;
   try {
@@ -319,6 +322,16 @@ function readDraft(key: string): string {
   }
 }
 
+/**
+ * The box's text once `sent` (the box's text when it was sent) went: what was typed after it while
+ * it was on its way, so the sent words cannot go a second time; nothing left but blanks is nothing.
+ */
+// ponytail: an edit inside the sent words keeps the whole box (nothing typed is lost; the sent part is the user's to delete), a diff against `sent` would take only that part.
+export function unsentText(now: string, sent: string): string {
+  const rest = now.startsWith(sent) ? now.slice(sent.length) : now;
+  return rest.trim() ? rest : "";
+}
+
 function saveDraft(key: string, text: string) {
   try {
     if (text) localStorage.setItem(key, text);
@@ -335,7 +348,7 @@ function saveDraft(key: string, text: string) {
 const keptAttachments = new Map<string, Attachment[]>();
 
 /** Long pastes per draft by their placeholder's number, kept in memory across the composer's remount on a session switch. */
-// shortcut: a draft's pastes stay until the app restarts (a failed send puts the placeholders back); prune them if long sessions pile up big pastes.
+// ponytail: emptied when the draft is sent or run (clearDraft); a draft left unsent keeps its pastes until the app restarts, prune by age if many such drafts pile up big pastes.
 const keptPastes = new Map<string, Map<number, string>>();
 
 async function readDraftImages(id: string): Promise<Attachment[]> {
@@ -2925,8 +2938,8 @@ export function Composer({ threadId, form, autoFocus }: { threadId: string | nul
         run: (args) => threadId && (args ? renameThread(threadId, args).catch(fail("重命名失败。您可以重试。")) : setState({ dialog: { type: "rename", threadId } })),
       },
       { name: "rewind", description: "将会话回退到较早的消息", needsThread: true, run: () => sent.length && setRewinding(0) },
-      { name: "add-dir", description: "为此会话再添加一个文件夹", needsThread: true, run: (args) => threadId && addFolder(threadId, args, cwd) },
-      { name: "cd", description: "将此会话移到新的工作目录", needsThread: true, run: (args) => threadId && moveSessionTo(threadId, args, cwd) },
+      { name: "add-dir", description: "为此会话再添加一个文件夹", needsThread: true, run: (args) => threadId && addFolder(threadId, args, cwd).catch(fail("无法将该文件夹添加到此会话。")) },
+      { name: "cd", description: "将此会话移到新的工作目录", needsThread: true, run: (args) => threadId && moveSessionTo(threadId, args, cwd).catch(fail("无法更改会话目录。")) },
       { name: "diff", description: "显示或隐藏此会话的更改", needsThread: true, run: () => togglePane("diff") },
       { name: "tasks", aliases: ["bashes"], description: "显示此会话的后台任务", needsThread: true, run: () => threadId && openPane("background", threadId) },
       // cc183b3ab workflows (alias workflow, cc43287c9 gye): 后台任务 with its finished section open.
@@ -3044,9 +3057,11 @@ export function Composer({ threadId, form, autoFocus }: { threadId: string | nul
 
   /** Files that are not images: chips the message names by path (library-chat's file block). */
   function attachOtherFiles(list: File[]) {
+    // Too large ones out first, so they take none of the room a smaller file after them could use.
+    const small = list.filter((file) => file.size <= MAX_FILE_BYTES || void toast("warning", `“${file.name}”过大，无法附加。最大为 45 MB。`));
     const room = MAX_FILES - files.length;
-    if (list.length > room) toast("warning", `最多可附加 ${MAX_FILES} 个文件。`);
-    const fit = list.slice(0, Math.max(0, room)).filter((file) => file.size <= MAX_FILE_BYTES || void toast("warning", `“${file.name}”过大，无法附加。最大为 45 MB。`));
+    if (small.length > room) toast("warning", `最多可附加 ${MAX_FILES} 个文件。`);
+    const fit = small.slice(0, Math.max(0, room));
     void attachDiskFiles(draftId, fit.map((file) => ({ file, path: window.codexDesktop?.pathForFile?.(file) || undefined })));
   }
 
@@ -3160,8 +3175,20 @@ export function Composer({ threadId, form, autoFocus }: { threadId: string | nul
    */
   function clearDraft() {
     saveDraft(draftKey, "");
+    // Its placeholders went with the text (expanded, if sent): their pastes are not needed again.
+    pastes.clear();
     setText("");
     setHistory(null);
+  }
+
+  /** Sent once a request returned: only the words sent leave; what was typed meanwhile stays (stored too, the composer may be gone). */
+  function clearSent(sent: string) {
+    const rest = unsentText(drafted.current, sent);
+    if (!rest) return clearDraft();
+    // As clearDraft: the pastes whose placeholders went with the words sent are not needed again.
+    for (const [n, pasted] of pastes) if (!rest.includes(pastePlaceholder(n, pasted))) pastes.delete(n);
+    saveDraft(draftKey, rest);
+    setText(rest);
   }
 
   /**
@@ -3178,7 +3205,7 @@ export function Composer({ threadId, form, autoFocus }: { threadId: string | nul
         await runShellCommand(threadId, body);
         const key = getState().activeId ?? threadId ?? "";
         shellRuns.set(key, [...(shellRuns.get(key) ?? []), body]);
-        if (drafted.current === text) clearDraft();
+        clearSent(text);
       } catch (error) {
         toast("warning", "命令未运行", errorMessage(error));
       } finally {
@@ -3211,7 +3238,7 @@ export function Composer({ threadId, form, autoFocus }: { threadId: string | nul
       setSending(true);
       try {
         openCloudTask(await startCloudTask(cloud, body));
-        clearDraft();
+        clearSent(text);
       } catch (error) {
         toast("warning", "发送失败", errorMessage(error));
       } finally {
@@ -3253,7 +3280,7 @@ export function Composer({ threadId, form, autoFocus }: { threadId: string | nul
       echoed = getState().pendingMessages[target ?? ""]?.item.content === inputs;
       // Without a local echo this runs once the request returns: what was typed or added meanwhile stays.
       const clearSubmitted = () => {
-        if (drafted.current === text) clearDraft();
+        clearSent(text);
         // Directly too: sending from the new-session page may unmount this composer first.
         clearDraftImages(draftId);
         setAttachments((current) => current.filter((item) => !attachments.includes(item)));

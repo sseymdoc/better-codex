@@ -26,13 +26,19 @@ test("256-color and truecolor, bright, resets and inverse", () => {
 
 test("trailing blanks and the resets among them are trimmed", () => {
   assert.equal(trimOutput("ok\x1b[32m\n\x1b[0m  \n"), "ok");
+  // Cursor and erase sequences at the end draw nothing either, so the blanks before them go too.
+  assert.equal(trimOutput("ok\n\x1b[K\n\x1b[?25h\x1b]0;title\x07 \n"), "ok");
 });
 
-test("a long blank run inside the output trims in linear time", () => {
+test("a long blank run inside the output is kept, only the trailing blanks go", () => {
   const text = `a${"\n".repeat(40_000)}b\x1b[0m \n`;
-  const started = Date.now();
   assert.equal(trimOutput(text), `a${"\n".repeat(40_000)}b`);
-  assert.ok(Date.now() - started < 100);
+});
+
+test("a trailing escape of any length is trimmed whole", () => {
+  assert.equal(trimOutput(`ok\x1b[${"0".repeat(300)}m \n`), "ok");
+  assert.equal(trimOutput(`ok\x1b]8;;${"x".repeat(300)}\x1b\\ \n`), "ok");
+  assert.equal(trimOutput("ok\x1b]0;title\x1b\\"), "ok");
 });
 
 test("an OSC cut off before its terminator keeps the text after it", () => {

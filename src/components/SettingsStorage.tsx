@@ -100,9 +100,10 @@ function CleanDialog({ usage, onClose, onDone }: { usage: StorageUsage; onClose(
   }, [usage]);
   const candidates = ready ? inactiveWorktrees(usage, Number(days), sidebarTools.pinned()) : [];
   const clean = candidates.filter((tree) => tree.changes === 0);
-  const dirty = candidates.filter((tree) => tree.changes !== 0);
-  const chosen: StoredWorktree[] = dirtyToo ? candidates : clean;
-  const bytes = (trees: StoredWorktree[]) => fileSize(sum(trees.map((tree) => tree.bytes)));
+  // A tree whose status could not be read (changes null) is in neither: the server would skip it.
+  const dirty = candidates.filter((tree) => tree.changes !== null && tree.changes > 0);
+  const chosen: StoredWorktree[] = dirtyToo ? [...clean, ...dirty] : clean;
+  const bytes = (trees: StoredWorktree[]) => sized(trees.some((tree) => tree.bytes === null) ? null : sum(trees.map((tree) => tree.bytes)));
   const remove = async () => {
     setBusy(true);
     try {
@@ -143,6 +144,7 @@ function CleanDialog({ usage, onClose, onDone }: { usage: StorageUsage; onClose(
         ) : candidates.length ? (
           <p className="settings-section-desc">
             {clean.length} 个来自不活跃会话的工作树 · {bytes(clean)}
+            {candidates.length > clean.length + dirty.length && `；另有 ${candidates.length - clean.length - dirty.length} 个无法读取状态，不会移除`}
           </p>
         ) : (
           <p className="settings-section-desc">没有已不活跃 {days} 天的 Code 会话的工作树。</p>
@@ -157,7 +159,7 @@ function CleanDialog({ usage, onClose, onDone }: { usage: StorageUsage; onClose(
             label={`同时移除 ${dirty.length} 个有未提交更改或未入分支提交的工作树（${bytes(dirty)}）；这些更改将丢失`}
           />
         )}
-        {dirtyToo && <Checkbox checked={understood} onChange={setUnderstood} label="我了解未提交的更改无法恢复" />}
+        {dirtyToo && <Checkbox checked={understood} onChange={setUnderstood} label="我了解未提交的更改和未入分支的提交都无法恢复" />}
       </div>
     </Dialog>
   );

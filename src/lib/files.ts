@@ -57,15 +57,11 @@ export interface Editor {
   name: string;
 }
 
-let editors: Promise<Editor[]> | undefined;
-
-/** The editors installed (VS Code, Cursor, Zed, Windsurf), asked once. */
-export function installedEditors(): Promise<Editor[]> {
-  editors ??= fetch("/api/files/editors")
+/** The editors installed (VS Code, Cursor, Zed, Windsurf), asked each time: the server caches its probe for a minute. */
+export const installedEditors = (): Promise<Editor[]> =>
+  fetch("/api/files/editors")
     .then((response) => (response.ok ? (response.json() as Promise<Editor[]>) : []))
     .catch(() => []);
-  return editors;
-}
 
 const post = (route: string, params: Record<string, string>) =>
   fetch(`/api/files/${route}?${new URLSearchParams(params)}`, { method: "POST" }).then(
@@ -110,20 +106,26 @@ export function groupMatches(stdout: string, total = 200, perFile = 5): { files:
   return { files, truncated };
 }
 
+type SearchOptions = { caseSensitive?: boolean; wholeWord?: boolean; regex?: boolean };
+
+/** The rg command for a content search: the query always after -e, so one starting with - is searched, not read as a flag. */
+export const searchCommand = (query: string, options: SearchOptions = {}) =>
+  ["rg", "--null", "-n", "--column", "--no-heading", "--color=never", "-m", "6", "--max-columns", "250", "--max-filesize", "1M", ...(options.caseSensitive ? ["-s"] : ["-i"]), ...(options.wholeWord ? ["-w"] : []), ...(options.regex ? [] : ["-F"]), "-e", query, "."];
+
 /** ? in the file tree's filter: the session folder's contents searched with rg, read-only and bounded. */
-export async function searchFiles(cwd: string, query: string, options: { caseSensitive?: boolean; wholeWord?: boolean; regex?: boolean } = {}): Promise<{ files: ContentHits[]; truncated: boolean }> {
-  if (options.regex) new RegExp(query); // a bad pattern throws here, in the user's words below
+export async function searchFiles(cwd: string, query: string, options: SearchOptions = {}): Promise<{ files: ContentHits[]; truncated: boolean }> {
+  // No JS pre-check of the pattern: rg's syntax is not JavaScript's ((?i), say); its exit 2 says it is bad.
   const { call } = await import("./codex");
   const result = (await call("command/exec", {
-    command: ["rg", "--null", "-n", "--column", "--no-heading", "--color=never", "-m", "6", "--max-columns", "250", "--max-filesize", "1M", ...(options.caseSensitive ? ["-s"] : ["-i"]), ...(options.wholeWord ? ["-w"] : []), ...(options.regex ? [] : ["-F"]), "-e", query, "."],
+    command: searchCommand(query, options),
     cwd,
     timeoutMs: 10_000,
     outputBytesCap: 1 << 20,
     sandboxPolicy: { type: "readOnly", networkAccess: false },
   })) as { exitCode: number; stdout: string; stderr: string };
   // rg exits 1 for no match, 2 for an error (a bad pattern, a missing rg reads as 127); a file it
-  // could not read also makes 2, so what it did find still counts.
-  if (result.exitCode === 2 && !result.stdout && options.regex) throw new Error("无效的正则表达式");
+  // could not read also makes 2, so what it did find still counts. Only its parse error is the pattern's.
+  if (result.exitCode === 2 && !result.stdout && options.regex && /regex parse error|error compiling pattern|exceeds size limit/i.test(result.stderr)) throw new Error("无效的正则表达式");
   if (result.exitCode !== 0 && result.exitCode !== 1 && !(result.exitCode === 2 && result.stdout)) throw new Error(result.stderr.trim().split("\n")[0] || "无法搜索文件内容");
   return groupMatches(result.stdout);
 }

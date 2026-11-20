@@ -128,6 +128,16 @@ test("changed words follow the diffs library's word-alt joins", () => {
   assert.equal(changedWords("x".repeat(1001), "y"), undefined);
 });
 
+test("word marks skip dense rewrites instead of running Myers to its quadratic end", () => {
+  const start = performance.now();
+  // Every token differs: 998 edits per pair, past the cap, so no marks and no multi-second render.
+  const rows = [...Array(50)].map(() => ({ kind: "del", text: "1,".repeat(499) })).concat([...Array(50)].map(() => ({ kind: "add", text: "2;".repeat(499) })));
+  assert.equal(changedWords(rows[0].text, rows[50].text), undefined);
+  assert.equal(rowWords(rows).size, 0);
+  // node:test cannot stop synchronous code, so the bound is measured.
+  assert.ok(performance.now() - start < 2000);
+});
+
 test("row words pair the n-th removed line of a run with the n-th added one", () => {
   const rows = [
     { kind: "ctx", text: "keep" },
@@ -149,5 +159,19 @@ test("changed files sort into tests, build files and generated files", async () 
   assert.equal(fileKind("Dockerfile"), "build");
   assert.equal(fileKind(".github/workflows/ci.yml"), "build");
   assert.equal(fileKind("src/main.ts"), null);
+  assert.equal(fileKind("vite.config.ts"), "build");
+  assert.equal(fileKind("tsconfig.app.json"), "build");
+  assert.equal(fileKind("src/vite-env.d.ts"), null, "a Vite source file is not a build file");
+  assert.equal(fileKind("src/lib/jest-helpers.ts"), null);
   assert.deepEqual(byFolder([{ path: "src/b.ts" }, { path: "README.md" }, { path: "src/a.ts" }]).map(([folder, files]) => [folder, files.map((f) => f.path)]), [["", ["README.md"]], ["src", ["src/b.ts", "src/a.ts"]]]);
+});
+
+test("已查看 remembers the whole diff: a same-length edit in the middle of a hunk unviews the file", async () => {
+  const { viewedFingerprint } = await import("./panes.ts");
+  const pad = "x".repeat(80);
+  const hunk = (limit) => ({ diff: ["@@ -1,3 +1,3 @@", ` ${pad}`, `+limit = ${limit}`, ` ${pad}`, ""].join("\n") });
+  const before = hunk(20);
+  const after = hunk(30);
+  assert.notEqual(viewedFingerprint(after), viewedFingerprint(before));
+  assert.equal(viewedFingerprint({ diff: before.diff }), viewedFingerprint(before));
 });

@@ -9,6 +9,10 @@ import { Button, Dialog, Spinner } from "./ui";
 
 type Test = { state: "idle" } | { state: "testing" } | { state: "ok" } | { state: "failed"; error: string };
 
+// Every test shares the one scratch environment id, so a second host's addStdio would replace the
+// first's mid-test: tests run one after another, across the dialog closing and opening again too.
+let lastTest: Promise<unknown> = Promise.resolve();
+
 export function SshConnectionDialog({ connection, onClose, onSaved, onDeleted }: {
   connection?: SshConnection;
   onClose(): void;
@@ -23,6 +27,8 @@ export function SshConnectionDialog({ connection, onClose, onSaved, onDeleted }:
   // A result holds only for the host, port and key it was run against.
   const [tested, setTested] = useState<{ target: string; test: Test }>({ target: "", test: { state: "idle" } });
   const [deleting, setDeleting] = useState(false);
+  // One test at a time from this dialog, whatever target it was run against.
+  const [running, setRunning] = useState(false);
 
   const draft: SshConnection = {
     id: connection?.id ?? crypto.randomUUID(),
@@ -35,19 +41,31 @@ export function SshConnectionDialog({ connection, onClose, onSaved, onDeleted }:
   const portProblem = portError(port);
   const twin = sshConnections().find((other) => other.id !== connection?.id && other.host.trim().toLowerCase() === draft.host.toLowerCase() && (other.port ?? 22) === (draft.port ?? 22));
   const valid = !hostProblem && !portProblem;
-  const target = JSON.stringify([draft.host, draft.port, draft.identityFile]);
+  // A valid port as its number ("022" is 22); an invalid one as typed, apart from a blank one (null).
+  const target = JSON.stringify([draft.host, portProblem ? port.trim() : draft.port, draft.identityFile]);
   const test: Test = tested.target === target ? tested.test : { state: "idle" };
 
   const runTest = async () => {
     const setTest = (next: Test) => setTested((last) => (last.target === target || next.state === "testing" ? { target, test: next } : last));
     setTest({ state: "testing" });
+    setRunning(true);
     try {
       const environmentId = "bettercodex-ssh-test";
-      await callExperimental("environment/addStdio", { environmentId, ...sshCommand(draft) });
-      await callExperimental("environment/info", { environmentId });
+      // Each run is bounded once its turn comes, so one that stalls cannot hold the queue.
+      const run = lastTest.then(() => Promise.race([
+        (async () => {
+          await callExperimental("environment/addStdio", { environmentId, ...sshCommand(draft) });
+          await callExperimental("environment/info", { environmentId });
+        })(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("连接测试超时（30 秒）")), 30_000)),
+      ]));
+      lastTest = run.catch(() => {});
+      await run;
       setTest({ state: "ok" });
     } catch (error) {
       setTest({ state: "failed", error: errorMessage(error) });
+    } finally {
+      setRunning(false);
     }
   };
 
@@ -102,7 +120,7 @@ export function SshConnectionDialog({ connection, onClose, onSaved, onDeleted }:
             "私钥的路径。留空则使用您的 SSH 配置或代理。",
           )}
           <div className="ssh-test">
-            <Button variant="secondary" size="sm" disabled={!valid || test.state === "testing" || !sshSupported()} onClick={() => void runTest()}>
+            <Button variant="secondary" size="sm" disabled={!valid || running || !sshSupported()} onClick={() => void runTest()}>
               {test.state === "testing" && <Spinner inherit />}测试连接
             </Button>
             <span role="status" className={test.state === "failed" ? "env-footnote env-error" : "env-footnote"}>

@@ -41,7 +41,7 @@ Scripts run in order once the code is in place. Load a library with \`<script sr
 Headings are preset: h1 22px, h2 18px, h3 16px, weight 500. Body text is 16px at line-height 1.6.
 
 ## sendPrompt(text) and links
-\`sendPrompt(text)\` sends text as the user's next message, only from a click or key press. Use it when the next step needs Codex to think (a choice, "explain this part"); do filtering, sorting and arithmetic in JavaScript. Links (\`<a href="https://…">\`) or \`openLink(url)\` open in the user's browser.`;
+\`sendPrompt(text)\` sends text as the user's next message, only from a click or key press and once the user confirms it. Use it when the next step needs Codex to think (a choice, "explain this part"); do filtering, sorting and arithmetic in JavaScript. Links (\`<a href="https://…">\`) or \`openLink(url)\` open in the user's browser.`;
 
 const palette = `## Color ramps
 Nine ramps, from lightest to darkest stop: 50, 100, 200, 400, 600, 800, 900.
@@ -67,15 +67,18 @@ const svg = (w) => `## SVG setup
 - H = the lowest point of any shape or text baseline + 30. Keep content within x 20 to ${w - 20}, never at negative coordinates.
 - Text classes, one on every \`<text>\`: \`t\` (14px, primary), \`th\` (14px, weight 500), \`ts\` (12px, secondary). No other sizes.
 - Shapes: \`box\` (card fill, strong border), \`arr\` (1.5px connector; add \`marker-end="url(#arrow)"\`), \`leader\` (thin dashed line), \`node\` (a clickable group: pointer and hover), \`c-*\` ramps. Corners \`rx="4"\`; larger only for pills.
-- Arrowheads: start the SVG with \`<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>\`.
+- Arrowheads: right after \`<title>\` and \`<desc>\` (they stay the first children), add \`<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>\`.
 - \`<text>\` never wraps: break lines with \`<tspan x="…" dy="1.2em">\`, or shorten the label.
 - Text widths at 14px: about 7.5px per Latin character (8px at weight 500), 14px per CJK character; at 12px, about 6.5px. A box needs the text width plus 24px each side; check before placing it.
 - Labels never overlap other labels, arrows or unrelated boxes; an arrow ends at the edge of the box it points to.`;
 
+// Boxes of 140px with 20px gaps that fit the safe area (x 20 to w - 20): 4 on desktop, 2 on mobile.
+const perRow = (w) => Math.floor((w - 40 + 20) / 160);
+
 const diagram = (w) => `## Diagrams
-- Pick the form from the question: steps in order → flowchart (top to bottom, or left to right for 3 to 4 steps); parts of a whole → nested boxes; how something works physically → a simple illustration with labels; comparison → two columns.
-- Keep it sparse: box titles of a few words, subtitles of five words at most, at most 4 boxes in a row (about 140px each with 20px gaps) and about 12 boxes in all. More detail → split into an overview and a second diagram, or put it in your reply.
-- Box: \`<g class="c-teal"><rect x="…" y="…" width="160" height="56" rx="4"/><text class="th" x="…" y="…" text-anchor="middle">Title</text><text class="ts" x="…" y="…" text-anchor="middle">Subtitle</text></g>\`; one line of text needs 40px of height, two need 56.
+- Pick the form from the question: steps in order → flowchart (top to bottom${perRow(w) > 2 ? `, or left to right for 3 to ${perRow(w)} steps` : ""}); parts of a whole → nested boxes; how something works physically → a simple illustration with labels; comparison → two columns.
+- Keep it sparse: box titles of a few words, subtitles of five words at most, at most ${perRow(w)} boxes in a row (about 140px each with 20px gaps) and about 12 boxes in all. More detail → split into an overview and a second diagram, or put it in your reply.
+- Box: \`<g class="c-teal"><rect x="…" y="…" width="140" height="56" rx="4"/><text class="th" x="…" y="…" text-anchor="middle">Title</text><text class="ts" x="…" y="…" text-anchor="middle">Subtitle</text></g>\`; one line of text needs 40px of height, two need 56.
 - Connectors: \`<line class="arr" …>\` or \`<path class="arr" fill="none" d="…">\` with the arrow marker; label them with \`ts\` text set beside the line, not on it. Leave 30px or more between rows for arrows.
 - If colors encode meaning, add a one-line legend under the diagram.
 - A click that should lead somewhere: \`<g class="node c-purple" onclick="sendPrompt('Explain the cache layer')">\`.

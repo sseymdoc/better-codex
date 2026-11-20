@@ -1,6 +1,6 @@
 // Run with `pnpm test`.
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
@@ -125,5 +125,31 @@ test("macOS: Claude.app's ion-dist.asar gives its fonts and working mark as a fo
     for (const rel of ["assets/v1/none.css", "assets", "constructor", "assets/v1/__proto__"]) assert.throws(() => dist.read(rel), /ENOENT/, rel);
   } finally {
     rmSync(apps, { recursive: true, force: true });
+  }
+});
+
+test("a Claude package that fails to read is read again on the next request, not cached as missing", { skip: process.platform === "darwin" }, async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "claude-fonts-retry-"));
+  const before = process.env.ProgramW6432;
+  try {
+    const dist = path.join(root, "WindowsApps", "Claude_2.0.0.0_x64__pub", "app", "resources", "ion-dist");
+    mkdirSync(path.join(dist, "assets", "v1"), { recursive: true });
+    writeFileSync(path.join(dist, "index.html"), '<link rel="stylesheet" href="/assets/v1/main.css">'); // main.css not written yet
+    process.env.ProgramW6432 = root;
+    const { claudeFontCss } = await import(`./claude-fonts.mjs?retry=${Date.now()}`);
+    assert.equal(claudeFontCss(), STAND_INS);
+    writeFileSync(path.join(dist, "assets", "v1", "main.css"), "@font-face{font-family:x;src:url(/assets/v1/a.woff2)}");
+    assert.equal(claudeFontCss(), "@font-face{font-family:x;src:url(/claude-fonts/a.woff2)}");
+    // Gone for several requests (an update), then back: still found without a restart.
+    const pkg = path.join(root, "WindowsApps", "Claude_2.0.0.0_x64__pub");
+    renameSync(pkg, path.join(root, "away"));
+    assert.equal(claudeFontCss(), STAND_INS);
+    assert.equal(claudeFontCss(), STAND_INS);
+    renameSync(path.join(root, "away"), pkg);
+    assert.equal(claudeFontCss(), "@font-face{font-family:x;src:url(/claude-fonts/a.woff2)}");
+  } finally {
+    if (before === undefined) delete process.env.ProgramW6432;
+    else process.env.ProgramW6432 = before;
+    rmSync(root, { recursive: true, force: true });
   }
 });

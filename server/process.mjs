@@ -1,15 +1,17 @@
 import { execFileSync, spawn } from "node:child_process";
-import { createInterface } from "node:readline";
-import { Transform } from "node:stream";
+import { Writable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
 
-/** Bound unfinished output before readline can build a string large enough to crash the host. */
+/**
+ * Newline-delimited output, one `line` per CR, LF or CRLF, with each unfinished line bounded to `maxBytes`
+ * so a runaway child cannot build a string large enough to crash the host. U+2028 / U+2029 stay in the
+ * line: they are legal inside JSON strings, and readline (Node 24+) would split the protocol frame there.
+ */
 export function readLines(input, { maxBytes, line, error }) {
   const decoder = new StringDecoder("utf8");
-  let bytes = 0, closed = false;
-  const bounded = new Transform({
-    readableObjectMode: true,
-    transform(chunk, _encoding, done) {
+  let bytes = 0, closed = false, cr = false, pending = "";
+  const bounded = new Writable({
+    write(chunk, _encoding, done) {
       try {
         for (let offset = 0; offset < chunk.length; offset += 64 * 1024) {
           append(decoder.write(chunk.subarray(offset, offset + 64 * 1024)));
@@ -17,14 +19,17 @@ export function readLines(input, { maxBytes, line, error }) {
         done();
       } catch (cause) { done(cause); }
     },
-    flush(done) {
-      try { append(decoder.end()); done(); }
-      catch (cause) { done(cause); }
+    final(done) {
+      try {
+        append(decoder.end());
+        if (pending && !closed) line(pending);
+        done();
+      } catch (cause) { done(cause); }
     },
   });
   function append(text) {
     let start = 0;
-    for (const match of text.matchAll(/[\r\n\u2028\u2029]/gu)) {
+    for (const match of text.matchAll(/[\r\n]/g)) {
       push(text.slice(start, match.index), match[0]);
       start = match.index + 1;
     }
@@ -33,12 +38,14 @@ export function readLines(input, { maxBytes, line, error }) {
   function push(text, ending) {
     bytes += Buffer.byteLength(text);
     if (bytes > maxBytes) throw Object.assign(new Error(`Output line exceeded ${maxBytes} bytes`), { code: "OUTPUT_TOO_LARGE" });
-    // readline splits at U+2028 / U+2029 only from Node 24 on: they reach it as \n on every version.
-    if (text || ending) bounded.push(text + (ending === "\u2028" || ending === "\u2029" ? "\n" : ending));
-    if (ending) bytes = 0;
+    pending += text;
+    if (!ending) return;
+    // The \n of a CRLF (even split across chunks) ends nothing: its \r already ended the line.
+    if (!(cr && !pending && ending === "\n") && !closed) line(pending);
+    cr = ending === "\r";
+    pending = "";
+    bytes = 0;
   }
-  const lines = createInterface({ input: bounded, crlfDelay: Infinity });
-  lines.on("line", line);
   function close() {
     if (closed) return;
     closed = true;
@@ -46,7 +53,6 @@ export function readLines(input, { maxBytes, line, error }) {
     input.pause();
     input.off("error", fail);
     input.off("close", close);
-    lines.close();
     bounded.destroy();
   }
   function fail(cause) {
@@ -54,7 +60,6 @@ export function readLines(input, { maxBytes, line, error }) {
     close();
     error(cause);
   }
-  lines.on("error", fail);
   bounded.on("error", fail);
   input.on("error", fail);
   input.once("close", close);
@@ -80,11 +85,12 @@ export function stop(child, force) {
 /**
  * Args for spawn(): a shell launch (npm's .cmd shim through cmd.exe) gets each one quoted as
  * CommandLineToArgvW reads it back, so -c values keep their quotes. cmd.exe leaves quoted text alone
- * except %; none of better-codex's args carry one.
+ * except %VAR%, which it expands even there: each % goes as %%cd:~,% (an empty slice of %cd% after
+ * a literal %, as Rust's std escapes .bat args), so a user's -c value arrives unchanged.
  */
 export function spawnArgs(command, args) {
   if (!command.shell) return args;
-  return args.map((arg) => `"${String(arg).replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`);
+  return args.map((arg) => `"${String(arg).replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1").replace(/%/g, "%%cd:~,%")}"`);
 }
 
 /**
