@@ -136,6 +136,7 @@ import { sshCommand, sshConnections, sshEnvironmentId, type SshConnection } from
 import { basename, joinPath, meterBalances, meterCredits, normalizePath, parentDir, samePath, threadTitle, type BalanceTracks, type ProviderQuotaReport } from "./format";
 import { appliedChanges, touchedPaths, undoChanges } from "./rewind";
 import { streamedChange } from "./panes";
+import { commandRunning, parseShells } from "./terminal";
 import { keptTargets } from "./plugins";
 import { keySegment, recommendedSkills, type RecommendedSkill } from "./customize";
 import { autoMergeCommand, createdPrs, ghProblem, ghProblemText, githubRemote, mergeMethod, mergeMethodCommand, parsePr, parsePrExtra, parsePrView, prExtraCommand, prIdentity, prViewCommand, type GhProblem, type PrStatus } from "./pr";
@@ -322,6 +323,10 @@ export const connectionId = () => rpc.connection;
 export function callExperimental<R>(method: string, params: unknown): Promise<R> {
   return rpc.request<R>(method as Method, params);
 }
+
+/** The repository `cwd` is in, null outside one, undefined when it could not be asked. */
+export const gitRoot = (cwd: string): Promise<string | null | undefined> =>
+  callExperimental<{ root: string | null }>("codexUi/git/branches", { cwd }).then((info) => info.root, () => undefined);
 
 /** Methods this server rejected as unknown, gated or unimplemented; cleared on every connect. */
 const missing = new Set<string>();
@@ -1923,7 +1928,8 @@ export async function syncHostContexts(): Promise<void> {
  * `plain` (the 图像 page): a session outside the draft page's project, environment, permissions
  * and plan pick, read-only, on the given model; the draft page's own picks stay as they are.
  */
-export async function startThread(pendingMessageId?: string, plain?: { model: string | null }): Promise<string> {
+/** `stay`: Ctrl+Enter on the new-session page (c518a31cc 4cA0613U5L) starts it without opening it. */
+export async function startThread(pendingMessageId?: string, plain?: { model: string | null }, stay = false): Promise<string> {
   const { prefs } = getState();
   const preset = plain ? PRESETS["read-only"] : prefs.permission ? PRESETS[prefs.permission] : null;
   const projectId = plain ? null : prefs.projectId ?? projectFor(prefs.cwd)?.id ?? null;
@@ -1979,11 +1985,13 @@ export async function startThread(pendingMessageId?: string, plain?: { model: st
       },
     },
     list: s.list.archived ? s.list : { ...s.list, ids: [id, ...s.list.ids.filter((x) => x !== id)] },
-    activeId: id,
-    scheduledRoute: null,
-    libraryRoute: null,
-    // The 图像 page that started it goes with it, even when syncHostContext below fails.
-    imagesOpen: false,
+    ...(stay ? {} : {
+      activeId: id,
+      scheduledRoute: null,
+      libraryRoute: null,
+      // The 图像 page that started it goes with it, even when syncHostContext below fails.
+      imagesOpen: false,
+    }),
     // Plan is the draft's own pick (Claude keeps it out of the folder's and the landing page's mode).
     ...(plain ? {} : { prefs: { ...s.prefs, planMode: false } }),
   }));
@@ -2196,16 +2204,19 @@ export function forgetLazyWorktree(threadId: string): void {
  * Throws when queueing is needed but the server has no queue. `fresh`: `threadId` was just started
  * for this message (startThread's plain session), so it gets a title like one started here.
  */
-export async function sendMessage(threadId: string | null, input: UserInput[], opts: { queue?: boolean; fresh?: boolean } = {}): Promise<void> {
+/** Resolves with the session it went to (a new one's id from the new-session page). */
+export async function sendMessage(threadId: string | null, input: UserInput[], opts: { queue?: boolean; fresh?: boolean; stay?: boolean } = {}): Promise<string> {
   const key = threadId ?? "";
   if (getState().pendingMessages[key]) throw new Error("请先处理上一条待发送的消息。");
   // Keep busy-turn steering/queueing on its existing path; only idle sends need a local echo.
   if (!threadId || !activeTurn(getState().threads[threadId])) {
     const clientId = crypto.randomUUID();
-    setState((s) => ({ pendingMessages: { ...s.pendingMessages, [key]: { item: { type: "userMessage", id: clientId, clientId, content: input } } } }));
-    return submitPendingMessage(threadId, opts.fresh);
+    const fresh = opts.fresh || threadId === null;
+    setState((s) => ({ pendingMessages: { ...s.pendingMessages, [key]: { item: { type: "userMessage", id: clientId, clientId, content: input }, ...(fresh && { fresh }) } } }));
+    return submitPendingMessage(threadId, opts.stay);
   }
-  return sendToThread(threadId, input, opts);
+  await sendToThread(threadId, input, opts);
+  return threadId;
 }
 
 /** Retry only on request: a lost connection may have delivered the original message. */
@@ -2232,11 +2243,10 @@ export async function retryPendingMessage(threadId: string | null): Promise<void
   }
 }
 
-async function submitPendingMessage(threadId: string | null, fresh = false): Promise<void> {
+async function submitPendingMessage(threadId: string | null, stay = false): Promise<string> {
   let id = threadId;
-  // ponytail: retryPendingMessage passes no `fresh`, so a plain session whose first send is retried gets no automatic title
-  const newlyStarted = fresh || id === null;
   const pending = getState().pendingMessages[id ?? ""]!;
+  const newlyStarted = pending.fresh ?? false;
   const clientId = pending.item.id;
   const update = (patch: Partial<typeof pending>) => setState((s) => {
     const key = id ?? "";
@@ -2245,9 +2255,10 @@ async function submitPendingMessage(threadId: string | null, fresh = false): Pro
   });
   update({ error: undefined, accepted: false, turnId: undefined });
   try {
-    id ??= await startThread(clientId);
+    id ??= await startThread(clientId, undefined, stay);
     await sendToThread(id, pending.item.content, {}, clientId, newlyStarted);
     reconcilePendingMessage(id);
+    return id;
   } catch (error) {
     update({ error: error instanceof RpcError && error.code === -32001 ? "连接中断，发送状态未确认。请检查会话后重试，以免重复发送。" : errorMessage(error) });
     throw error;
@@ -2312,7 +2323,8 @@ async function sendToThread(id: string, input: UserInput[], opts: SendOptions, c
   // (files alone: their names, as the sidebar shows the server's preview of them, threadTitle).
   const typed = input.find((part): part is Extract<UserInput, { type: "text" }> => part.type === "text")?.text;
   const text = typed === undefined ? undefined : requestSummary(typed);
-  const needsTitle = newlyStarted && text && !thread.meta.preview && !thread.meta.name;
+  // A retried first send finds the preview its failed try set.
+  const needsTitle = newlyStarted && text && (!thread.meta.preview || thread.meta.preview === text) && !thread.meta.name;
   if (text && !thread.meta.preview) updateThread(id, (t) => ({ ...t, meta: { ...t.meta, preview: text } }));
   updateThread(id, (t) => ({ ...t, sending: true }));
   let response;
@@ -3146,10 +3158,14 @@ function dismissedPrs(): Record<string, string[]> {
 
 /** The rail's 移除 on a PR row (Claude's Dismiss): the attachment goes, the PR on GitHub stays. */
 export async function removePullRequest(threadId: string, identityKey: string): Promise<void> {
-  // Kept first, so a lookup the removal sets off already leaves it out.
-  // ponytail: one key per removed PR, never pruned; trim like the pane views if it ever grows.
+  // Kept first, so a lookup the removal sets off already leaves it out. The 200 sessions that removed
+  // one last are kept, as the pane views are.
   const dismissed = dismissedPrs();
-  dismissed[threadId] = [...new Set([...(dismissed[threadId] ?? []), identityKey])];
+  const removed = [...new Set([...(dismissed[threadId] ?? []), identityKey])];
+  delete dismissed[threadId];
+  dismissed[threadId] = removed;
+  const threads = Object.keys(dismissed);
+  for (const id of threads.slice(0, Math.max(0, threads.length - 200))) delete dismissed[id];
   writePref(DISMISSED_KEY, JSON.stringify(dismissed));
   await call("thread/attachment/remove", { threadId, attachmentType: "pull_request", identityKey });
 }
@@ -4058,6 +4074,37 @@ interface TerminalCallbacks {
 }
 const terminals = new Map<string, TerminalCallbacks>();
 
+// The shell first prints its pid as OSC 7337 (Terminal.tsx reads it for 关闭终端？), then becomes
+// the chosen shell, or $SHELL, as a login shell; exec keeps the pid.
+const POSIX_SHELL = 'printf "\\033]7337;%s\\007" "$$"; exec "${1:-${SHELL:-/bin/bash}}" -l';
+const windowsShell = (program: string | null) =>
+  !program || /(?:^|\\)(?:powershell|pwsh)\.exe$/i.test(program) ? [program ?? "powershell.exe", "-NoLogo"] : /bash\.exe$/i.test(program) ? [program, "--login", "-i"] : [program];
+
+/** The shells a terminal may start in (c9bd7af9c Q2jUneEhyD), read once: /etc/shells, or Windows' usual ones that exist. */
+let shellList: Promise<string[]> | undefined;
+export function listShells(): Promise<string[]> {
+  return (shellList ??= (async () => {
+    const windows = getState().server.info?.platformOs === "windows";
+    const candidates = windows
+      ? ["C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe", "C:\\Program Files\\PowerShell\\7\\pwsh.exe", "C:\\Windows\\System32\\cmd.exe", "C:\\Program Files\\Git\\bin\\bash.exe"]
+      : parseShells(await readTextFile("/etc/shells").catch(() => ""));
+    const found = await Promise.all(candidates.map((path) => exists(path)));
+    return candidates.filter((_, i) => found[i]);
+  })().catch(() => []));
+}
+
+/** Whether a command runs in the terminal whose shell has `pid` (its foreground process group is not the shell's). */
+export async function terminalBusy(pid: number): Promise<boolean> {
+  if (!Number.isInteger(pid) || pid <= 0 || getState().server.info?.platformOs === "windows") return false;
+  try {
+    const result = (await call("command/exec", { command: ["ps", "-o", "tpgid=,pgid=", "-p", String(pid)], cwd: "/", timeoutMs: 3000, sandboxPolicy: { type: "dangerFullAccess" } })) as CommandExecResponse;
+    return result.exitCode === 0 && commandRunning(result.stdout);
+  } catch {
+    // Unreadable: closing goes ahead, as before this check existed.
+    return false;
+  }
+}
+
 /**
  * A shell in `cwd`. Returns at once; writes and resizes wait for the spawn. onData receives raw
  * PTY bytes (xterm's term.write(Uint8Array) handles UTF-8 split across chunks).
@@ -4067,6 +4114,8 @@ export function openTerminal(
   size: { rows: number; cols: number },
   onData: (bytes: Uint8Array) => void,
   onExit: (code: number) => void,
+  /** 选择 shell (c9bd7af9c Q2jUneEhyD): a path from listShells; null for the default. */
+  program: string | null = null,
 ): { write(data: string): void; resize(rows: number, cols: number): void; kill(): void } {
   const processHandle = crypto.randomUUID();
   terminals.set(processHandle, { onData, onExit });
@@ -4079,7 +4128,7 @@ export function openTerminal(
   };
   // optional(): a server without process/spawn is remembered, so supports("process/spawn") turns false.
   const spawned = optional("process/spawn", {
-    command: windows ? ["powershell.exe", "-NoLogo"] : ["/bin/sh", "-c", 'exec "${SHELL:-/bin/bash}" -l'],
+    command: windows ? windowsShell(program) : ["/bin/sh", "-c", POSIX_SHELL, "sh", program ?? ""],
     processHandle,
     cwd,
     tty: true,

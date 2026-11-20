@@ -1351,13 +1351,22 @@ button.sent-file:hover {
   --hq-h3: 1;
 }
 
-/* ponytail: on macOS Claude hangs the system font too ([data-hang-face=system]); codex-ui does
-   not tell macOS apart here, so the system font never hangs. */
-:root[data-system-font] [data-hang-face] {
+/* System: no hang off macOS, the system face's metrics on it ([data-hang-face=system]). */
+:root[data-system-font]:not([data-system-hang]) [data-hang-face] {
   --hq-dq: 0px;
   --hq-dq-b: 0px;
   --hq-sq: 0px;
   --hq-sq-b: 0px;
+}
+
+:root[data-system-hang] [data-hang-face] {
+  --hq-dq: 0.4349em;
+  --hq-dq-b: 0.4947em;
+  --hq-sq: 0.2769em;
+  --hq-sq-b: 0.3077em;
+  --hq-h1: 0.852;
+  --hq-h2: 0.912;
+  --hq-h3: 0.97;
 }
 
 [data-hang-face] blockquote {
@@ -1494,6 +1503,53 @@ span[data-hang-quote="sq"] {
   transition:
     color var(--cds-dur-fast) ease-out,
     background-color var(--cds-dur-fast) ease-out;
+}
+
+/* c19e90103 n_: 在终端中运行 left of the copy key, 3px apart (gap-0.75), only where a terminal can
+   start; the code makes room for the second key (dg(2)). */
+.md-run {
+  display: none;
+}
+
+[data-can-run] .md-code[data-runnable] pre {
+  padding-right: calc(var(--cds-h-control) * 2 + var(--cds-pad-xs) * 3 + 5px + 1ch);
+}
+
+[data-can-run] .md-run {
+  position: sticky;
+  top: calc(var(--epitaxy-top-fade-height, 0px) + 5px);
+  grid-area: 1 / 1;
+  align-self: start;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: var(--cds-h-control);
+  height: var(--cds-h-control);
+  margin: 5px calc(7px + var(--cds-h-control) + 3px) 0 0;
+  border-radius: var(--cds-radius);
+  color: var(--cds-text-muted);
+  transition:
+    color var(--cds-dur-fast) ease-out,
+    background-color var(--cds-dur-fast) ease-out;
+}
+
+[data-can-run] .md-code[data-single] .md-run {
+  margin-top: calc(var(--cds-pad-md) + var(--cds-leading-code) / 2 - var(--cds-h-control) / 2);
+}
+
+.markdown[data-streaming] > .md-block:last-child .md-run {
+  display: none;
+}
+
+.md-run:hover {
+  background: var(--cds-fill-ghost-hover);
+  color: var(--cds-text-primary);
+}
+
+.md-run [data-cds="Icon"] {
+  font-size: var(--cds-icon);
+  font-weight: var(--cds-icon-wght);
+  pointer-events: none;
 }
 
 .md-code[data-single] .md-copy {
@@ -4818,4 +4874,13 @@ button.fork-marker-link:not(.fork-marker-title) {
   font-size: var(--cds-font-size-footnote);
   font-style: italic;
   overflow-wrap: break-word;
+}
+
+/* 突出显示更改的字词 (cc8da1d42 [data-diff-span]): the base git color at 15% (light) / 20% (dark). */
+::highlight(diff-word-add) {
+  background-color: light-dark(color-mix(in srgb, var(--cds-text-git-added) 15%, transparent), color-mix(in srgb, var(--cds-text-git-added) 20%, transparent));
+}
+
+::highlight(diff-word-del) {
+  background-color: light-dark(color-mix(in srgb, var(--cds-text-git-removed) 15%, transparent), color-mix(in srgb, var(--cds-text-git-removed) 20%, transparent));
 }
