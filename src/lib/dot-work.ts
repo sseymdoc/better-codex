@@ -70,7 +70,7 @@ function durable(): Promise<Rpc> {
   const opening = new Promise<Rpc>((resolve, reject) => {
     const client: Rpc = new Rpc({
       open: () => {
-        client.request("initialize", { clientInfo: { name: "codex_ui", title: "Codex UI", version: VERSION }, capabilities: { experimentalApi: true } }).then(() => {
+        client.request("initialize", { clientInfo: { name: "better_codex", title: "Better Codex", version: VERSION }, capabilities: { experimentalApi: true } }).then(() => {
           client.notify("initialized");
           set({ status: "ready" });
           resolve(client);

@@ -1,5 +1,5 @@
 // Scratch workspaces (server/scratch.mjs), as Claude Desktop's: a session started on 本电脑 with no
-// folder works in a fresh one under <CODEX_HOME>/codex-ui/scratch-workspaces. The sweep (Claude's
+// folder works in a fresh one under <CODEX_HOME>/better-codex/scratch-workspaces. The sweep (Claude's
 // startScratchWorkspaceSweep: two minutes in, then every six hours) removes the old ones no session
 // works in, archived ones included, whatever their provider or source.
 import type { ThreadListResponse } from "@protocol/v2/ThreadListResponse";
@@ -11,7 +11,8 @@ const SOURCES: ThreadSourceKind[] = ["cli", "vscode", "exec", "appServer", "subA
 
 /** Whether `path` is a scratch workspace: the sidebar and the 环境 card say 无文件夹 / 不在项目中工作, recent folders leave it out. */
 export function inScratch(path: string | null | undefined, codexHome: string | null | undefined): boolean {
-  return !!path && !!codexHome && normalizePath(path).startsWith(`${normalizePath(joinPath(joinPath(codexHome, "codex-ui"), "scratch-workspaces"))}/`);
+  // One recorded before the rename names Codex UI's folder, which a junction keeps pointing here.
+  return !!path && !!codexHome && ["better-codex", "codex-ui"].some((dir) => normalizePath(path).startsWith(`${normalizePath(joinPath(joinPath(codexHome, dir), "scratch-workspaces"))}/`));
 }
 
 async function api<T>(path: string, method: "GET" | "POST", query = ""): Promise<T> {
@@ -27,6 +28,9 @@ export async function mintScratch(): Promise<string> {
   return (await api<{ cwd: string }>("/api/scratch", "POST")).cwd;
 }
 
+/** The same workspace as a session from before the rename recorded it: under Codex UI's folder, a junction to it. */
+export const legacyScratch = (path: string) => path.replace(/([\\/])better-codex([\\/]scratch-workspaces[\\/])/, "$1codex-ui$2");
+
 /** Removes the stale scratch workspaces no session (Codex's thread/list, by cwd) works in. */
 export async function sweepScratch(): Promise<void> {
   const { paths } = await api<{ paths: string[] }>("/api/scratch", "GET");
@@ -35,13 +39,13 @@ export async function sweepScratch(): Promise<void> {
   for (const archived of [false, true]) {
     let cursor: string | null = null;
     do {
-      const page: ThreadListResponse = await call("thread/list", { cwd: paths, archived, modelProviders: [], sourceKinds: SOURCES, cursor, limit: 100 });
+      const page: ThreadListResponse = await call("thread/list", { cwd: [...paths, ...paths.map(legacyScratch)], archived, modelProviders: [], sourceKinds: SOURCES, cursor, limit: 100 });
       held.push(...page.data.map((thread) => thread.cwd));
       cursor = page.nextCursor ?? null;
     } while (cursor);
   }
   for (const path of paths) {
-    if (!held.some((cwd) => samePath(cwd, path))) await api("/api/scratch/remove", "POST", `&path=${encodeURIComponent(path)}`);
+    if (!held.some((cwd) => samePath(cwd, path) || samePath(cwd, legacyScratch(path)))) await api("/api/scratch/remove", "POST", `&path=${encodeURIComponent(path)}`);
   }
 }
 

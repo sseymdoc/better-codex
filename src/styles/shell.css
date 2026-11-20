@@ -1,6 +1,6 @@
 /* App shell (claude.ai audit W1, W2, W13, W15; Claude Desktop 2.42304.0.0 ion-dist
    shared-styles-Bl9zqrv-.css and the app.asar main window where the audit measured the Chat
-   tab): layout, codex-ui's pieces in the Claude-markup sidebar and frame, boot skeleton and
+   tab): layout, better-codex's pieces in the Claude-markup sidebar and frame, boot skeleton and
    load error, palette with its row card, the shortcuts panel and the find bar. (The image
    preview is D's: Lightbox.tsx, transcript.css.) */
 
@@ -43,11 +43,11 @@
 
 /* ---------------------------------------------------------------------------
    The sidebar, the frame and the start card are Claude's markup with Claude's rules (Sidebar.tsx,
-   Frame.tsx, StartCard.tsx, claude.generated.css). Kept here: what they hold of codex-ui's own
+   Frame.tsx, StartCard.tsx, claude.generated.css). Kept here: what they hold of better-codex's own
    (the wordmark, menus, the drag hint, the avatar) and the page's drag band. */
 
 /* Claude's markup leans on Tailwind's preflight and the CDS root's border colour (c6a992d55
-   @layer base), which codex-ui does not load globally: inside its Claude-markup parts boxes start
+   @layer base), which better-codex does not load globally: inside its Claude-markup parts boxes start
    with no margin, padding or border, lists unmarked. Zero specificity, so every class wins. */
 :where(.dframe-sidebar, .dframe-chrome-bar, [data-testid="epitaxy-start-card"], .start-pop) :where(*, ::before, ::after) {
   margin: 0;
@@ -139,7 +139,7 @@
   font-variation-settings: var(--cds-font-wght-semibold);
 }
 
-/* Claude's menu trigger is the button itself; codex-ui's Popover wraps it, so the wrapper takes
+/* Claude's menu trigger is the button itself; better-codex's Popover wraps it, so the wrapper takes
    the footer's width for the button's w-full (.df-footer-row:has(.df-footer-aux:empty)). */
 .df-footer-row .popover-root {
   display: flex;

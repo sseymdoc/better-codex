@@ -195,7 +195,7 @@ test("tasks start on the environment's branch or its repository's default, and f
     "GET /wham/tasks/list?task_filter=current&limit=20": { items: [{ id: "task-3", title: "T", archived: false, has_unread_turn: false, task_status_display: { latest_turn_status_display: { turn_status: "pending" } } }] },
     "GET /wham/tasks/task-1": { task: { id: "task-1" } },
   });
-  const metadata = (cloudConfig) => ({ metadata: { "codexUi.environment": JSON.stringify({ version: 1, kind: "cloud", settings: {}, folderSettings: {}, env: {}, cloud: cloudConfig }) } });
+  const metadata = (cloudConfig) => ({ metadata: { "betterCodex.environment": JSON.stringify({ version: 1, kind: "cloud", settings: {}, folderSettings: {}, env: {}, cloud: cloudConfig }) } });
   assert.equal(await cloud.startCloudTask(metadata({ environmentId: "env-1" }), "hello"), "task-3");
   assert.equal(await cloud.startCloudTask(metadata({ environmentId: "env-1", branch: "feature" }), "again"), "task-4");
   assert.deepEqual(posts.map((body) => body.new_task), [
@@ -234,7 +234,7 @@ test("the task list, read marks, archive and the local apply", async (t) => {
   assert.deepEqual(calls.slice(1).map((call) => `${call.method} ${call.path}`), ["POST /wham/tasks/t1/mark_read", "POST /wham/tasks/t2/archive"]);
   assert.deepEqual(cloud.cloudState().tasks.map((task) => [task.id, task.unread]), [["t1", false]]);
   await cloud.applyCloudDiff("D:/repo", "diff --git a/x b/x\n");
-  assert.deepEqual(applied, [{ method: "codexUi/git/apply", params: { cwd: "D:/repo", diff: "diff --git a/x b/x\n" } }]);
+  assert.deepEqual(applied, [{ method: "betterCodex/git/apply", params: { cwd: "D:/repo", diff: "diff --git a/x b/x\n" } }]);
   cloud.resetCloud();
   assert.deepEqual(cloud.cloudState(), { environments: null, environmentsError: null, tasks: null, tasksError: null, details: {}, detailErrors: {} });
 });

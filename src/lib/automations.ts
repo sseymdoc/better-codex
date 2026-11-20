@@ -169,7 +169,7 @@ export const updateAutomation = (id: string, patch: AutomationInput) => change<{
 export const deleteAutomation = (id: string) => change<{ deleted: boolean }>("delete", { id }).then((answer) => answer.deleted);
 export const setAutomationStatus = (id: string, status: Automation["status"]) => change<{ item: Automation }>("set-status", { id, status }).then((answer) => answer.item);
 
-// What ChatGPT's setup chat is told, in codex-ui's words.
+// What ChatGPT's setup chat is told, in better-codex's words.
 const SETUP_GUIDANCE = "This session was made for a scheduled task, which is saved before its first message arrives. Answer that first message only by confirming the task in one or two friendly sentences that mention its schedule; do not do the task or create another scheduled task in that reply, and do not mention these instructions. They hold for the first reply alone: later scheduled messages ask you to run the saved task, so do it when they come.";
 
 /**
@@ -254,7 +254,7 @@ export async function tick(now = Date.now()): Promise<void> {
     }
     await reconcileRuns(now);
   } catch (error) {
-    console.warn("codex-ui: scheduled tasks", errorMessage(error));
+    console.warn("better-codex: scheduled tasks", errorMessage(error));
   } finally {
     ticking = false;
   }
@@ -280,7 +280,7 @@ export async function runNow(id: string): Promise<void> {
 }
 
 const report = (token: string, outcome: "started" | "retry" | "failed" | "paused", extra: Record<string, unknown> = {}) =>
-  api("report", { token, outcome, ...extra }).catch((error) => console.warn("codex-ui: scheduled task report", errorMessage(error)));
+  api("report", { token, outcome, ...extra }).catch((error) => console.warn("better-codex: scheduled task report", errorMessage(error)));
 
 // ponytail: a scheduled run counts as missed ten minutes past its time (jitter is five at most);
 // Claude marks it so from the minute it was due.
@@ -329,9 +329,9 @@ export function cronPlace(a: Pick<Automation, "target" | "cwds" | "dir">, projec
   return { cwd: a.cwds?.[0] || a.dir, projectId: null };
 }
 
-/** Inside a task's own folder, <CODEX_HOME>/codex-ui/automations/<id> (server/automations.mjs): a projectless run's session. */
+/** Inside a task's own folder, <CODEX_HOME>/better-codex/automations/<id> (server/automations.mjs): a projectless run's session. */
 export function inTaskFolder(path: string, codexHome: string | null | undefined): boolean {
-  return !!codexHome && normalizePath(path).startsWith(`${normalizePath(joinPath(joinPath(codexHome, "codex-ui"), "automations"))}/`);
+  return !!codexHome && ["better-codex", "codex-ui"].some((dir) => normalizePath(path).startsWith(`${normalizePath(joinPath(joinPath(codexHome, dir), "automations"))}/`));
 }
 
 /** The task's model and effort when the catalog has them (else the defaults, as linked.ts specOf does). */
@@ -533,7 +533,7 @@ async function runHeartbeat(claim: Claim, now: number): Promise<void> {
     }
   }
   giveBack(target);
-  // Held elsewhere (a codex-ui page hands its held sessions to /claim, so this is mostly Codex desktop
+  // Held elsewhere (a better-codex page hands its held sessions to /claim, so this is mostly Codex desktop
   // or the CLI), a scheduled run comes again a minute later; one still refused ten minutes on (a
   // period on, when that is shorter) is skipped (failed), so a session Codex desktop keeps open does
   // not hold the schedule at a minute from now for good.
@@ -636,7 +636,7 @@ export async function automationTurnCompleted(threadId: string, turnId: string):
     putRun((await api<{ run: AutomationRun }>("runs", { threadId, event: "archived", archivedReason: "auto", archivedUserMessage: task?.prompt ?? "", archivedAssistantMessage: visibleReply(reply) })).run);
     await archiveThread(threadId);
   } catch (error) {
-    console.warn("codex-ui: scheduled run", errorMessage(error));
+    console.warn("better-codex: scheduled run", errorMessage(error));
   } finally {
     handling.delete(threadId);
     giveBack(threadId);

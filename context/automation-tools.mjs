@@ -1,4 +1,4 @@
-// codex_ui_desktop's scheduled-task tools: automation_update for the tasks Codex UI runs on this
+// better_codex_desktop's scheduled-task tools: automation_update for the tasks Better Codex runs on this
 // computer (server/automations.mjs; fields as ChatGPT 26.1023's automation_update, S7a), and
 // cloud_task_update for the user's ChatGPT cloud tasks (src/lib/cloud-automations.ts). Schemas,
 // argument and receipt checks, result text. No I/O.
@@ -17,12 +17,12 @@ const CLOUD_FIELDS = ["title", "prompt", "rrule", "fireAt", "timezone"];
 export const LIST_MAX = 200;
 
 const text = (maxLength, description) => ({ type: "string", minLength: 1, maxLength, description });
-// Codex UI's own card is the gate: a destructive or open-world hint would put Codex's MCP approval
+// Better Codex's own card is the gate: a destructive or open-world hint would put Codex's MCP approval
 // in front of every call (codex-rs requires_mcp_tool_approval), or refuse it under approval never.
 const annotations = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false };
 
 export const AUTOMATION_TOOLS = [
-  { name: "automation_update", description: "Create, list, read, change or delete the scheduled tasks Codex UI runs on this computer (its 定时任务 page). Use it when the user wants something done on a schedule or later: a reminder, a recurring check, monitoring, \"look again in an hour\", \"keep an eye on this\". A heartbeat, the usual choice, sends its prompt into a session (this chat unless targetThreadId names another) each time it is due, so the follow-up stays with the work. A cron task starts a fresh session in a folder at each run; use it only when the user wants a new session per run or standalone recurring work on a project. Tasks run while Codex UI is open; a missed run runs once when it next is. Call list first and update a task that exists rather than creating a second one; an update changes only the fields you send. suggested_create and suggested_update show the user the task on a card and save it only if they allow it: use them when the user should confirm the details, and suggested_create for a schedule anchored with DTSTART. In a turn the user did not start (a heartbeat, a scheduled run, an event), any other create or change also waits on that card; a bare pause (status PAUSED and no other field) and deleting never do. The prompt is shown to the user and sent as written at every run: the task itself in plain words, without the schedule, folder or session. Never show RRULE text to the user; say the schedule in words.",
+  { name: "automation_update", description: "Create, list, read, change or delete the scheduled tasks Better Codex runs on this computer (its 定时任务 page). Use it when the user wants something done on a schedule or later: a reminder, a recurring check, monitoring, \"look again in an hour\", \"keep an eye on this\". A heartbeat, the usual choice, sends its prompt into a session (this chat unless targetThreadId names another) each time it is due, so the follow-up stays with the work. A cron task starts a fresh session in a folder at each run; use it only when the user wants a new session per run or standalone recurring work on a project. Tasks run while Better Codex is open; a missed run runs once when it next is. Call list first and update a task that exists rather than creating a second one; an update changes only the fields you send. suggested_create and suggested_update show the user the task on a card and save it only if they allow it: use them when the user should confirm the details, and suggested_create for a schedule anchored with DTSTART. In a turn the user did not start (a heartbeat, a scheduled run, an event), any other create or change also waits on that card; a bare pause (status PAUSED and no other field) and deleting never do. The prompt is shown to the user and sent as written at every run: the task itself in plain words, without the schedule, folder or session. Never show RRULE text to the user; say the schedule in words.",
     inputSchema: { type: "object", additionalProperties: false, required: ["mode"], properties: {
       mode: { type: "string", enum: [...AUTOMATION_MODES], description: "list: every task with its id. view: one task. create, update, delete: save at once (except where the description says a card asks first). suggested_create, suggested_update: the user allows it on a card first. run: start a task now, as its 立即运行 does (a card asks first in a turn the user did not start). runs: a task's latest runs (cron tasks keep them; heartbeats keep none)." },
       id: text(128, "The task's id from list. Required for view, update, delete and suggested_update."),
@@ -40,7 +40,7 @@ export const AUTOMATION_TOOLS = [
       autoArchive: { type: "boolean", description: "Cron: archive a run's session once it completed and nobody carried on in it." },
     } },
     annotations },
-  { name: "cloud_task_update", description: "List, create, change, pause, resume or delete the user's cloud scheduled tasks in ChatGPT, the cloud cards of the 定时任务 page. ChatGPT runs them on its servers, each run a ChatGPT conversation, whether or not this computer is on, and they cannot reach this computer's files. Use it only when the user asks for a cloud or ChatGPT task; for anything else use automation_update. Every change, whoever started the turn, first waits on a card where the user allows or declines it: one change per call, and report what came back. Needs Codex UI signed in with ChatGPT.",
+  { name: "cloud_task_update", description: "List, create, change, pause, resume or delete the user's cloud scheduled tasks in ChatGPT, the cloud cards of the 定时任务 page. ChatGPT runs them on its servers, each run a ChatGPT conversation, whether or not this computer is on, and they cannot reach this computer's files. Use it only when the user asks for a cloud or ChatGPT task; for anything else use automation_update. Every change, whoever started the turn, first waits on a card where the user allows or declines it: one change per call, and report what came back. Needs Better Codex signed in with ChatGPT.",
     inputSchema: { type: "object", additionalProperties: false, required: ["mode"], properties: {
       mode: { type: "string", enum: [...CLOUD_TASK_MODES], description: "list: the tasks with their ids. create, update, pause, resume, delete: each asks the user on a card first." },
       id: text(200, "The task's id from list; required except for list and create."),
@@ -176,7 +176,7 @@ function cloudInput(value) {
   if (value.rrule !== undefined && value.fireAt !== undefined) refuse("Give rrule or fireAt, not both.");
   if (mode === "update" && keys.length <= 2) refuse("update needs at least one field to change.");
   readText(value, args, [["title", 250], ["prompt", 100_000], ["rrule", 2000], ["fireAt", 64], ["timezone", 64]]);
-  // ChatGPT reads more of RRULE than Codex UI runs (UNTIL, say): only text that does not read is refused.
+  // ChatGPT reads more of RRULE than Better Codex runs (UNTIL, say): only text that does not read is refused.
   if (args.rrule !== undefined) checkRrule(args.rrule, true);
   if (args.fireAt !== undefined && (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(args.fireAt) || !Number.isFinite(Date.parse(args.fireAt)))) refuse("fireAt must be an ISO 8601 time with its offset, e.g. 2026-11-02T09:00:00+08:00.");
   if (args.timezone !== undefined) {
@@ -215,7 +215,7 @@ const RUN_KEYS = ["sessionId", "status", "title", "startedAt", "updatedAt", "rea
 
 /**
  * The task a call was about as its transcript row names it, { id?, name } (a cloud task's title as
- * its name), or undefined: what a result's or refusal's _meta.codexUiAutomationTask carries, kept
+ * its name), or undefined: what a result's or refusal's _meta.betterCodexAutomationTask carries, kept
  * out of the model's text, so a name is never read back out of prose or a list's JSON.
  */
 export function automationTask(value) {
@@ -226,14 +226,14 @@ export function automationTask(value) {
 }
 
 /** What a scheduled-task call's result (an MCP tool result, its error included) names: automationTask of its _meta. */
-export const resultTask = (result) => automationTask(result?._meta?.codexUiAutomationTask);
+export const resultTask = (result) => automationTask(result?._meta?.betterCodexAutomationTask);
 
 export function automationResult(name, args, receipt) {
   const cloud = name === "cloud_task_update";
   const what = cloud ? "cloud scheduled task" : "scheduled task";
   const { task } = receipt;
   if (receipt.outcome === "listed") return { content: [{ type: "text", text: JSON.stringify({ tasks: receipt.tasks }) }] };
-  const text = (body, isError = false) => ({ ...(isError && { isError }), content: [{ type: "text", text: body }], _meta: { codexUiAutomationTask: { ...(task.id !== undefined && { id: task.id }), name: cloud ? task.title : task.name } } });
+  const text = (body, isError = false) => ({ ...(isError && { isError }), content: [{ type: "text", text: body }], _meta: { betterCodexAutomationTask: { ...(task.id !== undefined && { id: task.id }), name: cloud ? task.title : task.name } } });
   if (receipt.outcome === "viewed") return text(JSON.stringify({ task }));
   if (receipt.outcome === "runs") return text(JSON.stringify({ task, runs: receipt.runs }));
   if (receipt.outcome === "started") return text(`Started the ${what} “${task.name}” (id ${task.id}); it runs as its 立即运行 does.`);

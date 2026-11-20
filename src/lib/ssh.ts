@@ -1,4 +1,4 @@
-// SSH connections for SSH environments (Claude keeps them in its user settings; codex-ui in this
+// SSH connections for SSH environments (Claude keeps them in its user settings; better-codex in this
 // browser profile). A session in one runs its tools on the host through `codex exec-server` over
 // ssh's stdio, registered with the gated environment/addStdio.
 import { useSyncExternalStore } from "react";
@@ -15,7 +15,7 @@ export interface SshConnection {
   identityFile?: string;
 }
 
-const KEY = "codex-ui:ssh-connections";
+const KEY = "better-codex:ssh-connections";
 const listeners = new Set<() => void>();
 let cache: SshConnection[] | null = null;
 
@@ -75,7 +75,7 @@ export function portError(raw: string): string | undefined {
   if (!Number.isInteger(value) || value < 1 || value > 65535) return "端口必须是 1 到 65535 之间的数字。";
 }
 
-export const sshEnvironmentId = (connection: SshConnection) => `codexui-ssh-${connection.id}`;
+export const sshEnvironmentId = (connection: SshConnection) => `bettercodex-ssh-${connection.id}`;
 
 /**
  * ssh, never asking (the protocol owns its stdin: keys or the agent only), accepting a first-seen

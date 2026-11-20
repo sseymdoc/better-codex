@@ -1028,7 +1028,7 @@ h3 {
    panels layout). Sizes sm 400 / md 520 / lg 720 / xl 880 / 3xl 1152. A dialog
    opened over another blurs it 2px under the scrim colour; its own scrim stays clear.
    ponytail: no fitVisualViewport (CDS re-centres the panel in the visual viewport while a soft
-   keyboard covers 120px or more of it); add it if codex-ui is used on touch devices. */
+   keyboard covers 120px or more of it); add it if better-codex is used on touch devices. */
 
 .dialog-backdrop {
   position: fixed;
@@ -1468,7 +1468,7 @@ select.input {
 
 /* 6px status dot (shared-styles-Bl9zqrv-.css .status-dot): ready / unread accent, awaiting
    (blocked) fill-warning, running text-muted blinking. The package has no idle color; idle here
-   is codex-ui's own (MCP status rows), the sidebar renders no dot for idle rows. Running and
+   is better-codex's own (MCP status rows), the sidebar renders no dot for idle rows. Running and
    clay dots share one phase across the page (StatusDot sets startTime 0). */
 .status-dot {
   display: inline-block;

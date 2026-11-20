@@ -158,9 +158,9 @@ test("environment settings travel in project metadata only when given", async (t
     calls.push({ method, params });
     return { project: { id: "p", name: params.name ?? "环境", roots: [], metadata: params.metadata ?? {} } };
   });
-  await createProject("环境", ["D:/a"], "key", { "codexUi.environment": "{}" });
+  await createProject("环境", ["D:/a"], "key", { "betterCodex.environment": "{}" });
   await createProject("环境", ["D:/a"], "key-2");
-  assert.deepEqual(calls.map(({ params }) => params.metadata), [{ "codexUi.environment": "{}" }, undefined]);
+  assert.deepEqual(calls.map(({ params }) => params.metadata), [{ "betterCodex.environment": "{}" }, undefined]);
   assert.equal("metadata" in calls[1].params, false);
 });
 
@@ -177,12 +177,12 @@ function environmentStart(t, environment, roots, overrides = {}) {
   t.mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
   const before = getState();
   t.after(() => setState(before));
-  const project = { id: "env-project", name: "应用", roots: roots.map((path) => ({ path })), metadata: { "codexUi.environment": JSON.stringify({ version: 1, kind: "local", settings: {}, folderSettings: {}, env: {}, ...environment }) } };
+  const project = { id: "env-project", name: "应用", roots: roots.map((path) => ({ path })), metadata: { "betterCodex.environment": JSON.stringify({ version: 1, kind: "local", settings: {}, folderSettings: {}, env: {}, ...environment }) } };
   const calls = [];
   t.mock.method(Rpc.prototype, "request", async (method, params) => {
     calls.push({ method, params: structuredClone(params) });
     if (overrides[method]) return overrides[method](params);
-    if (method === "codexUi/git/branches") return { root: params.cwd.startsWith("D:\\repo") ? "D:\\repo" : null };
+    if (method === "betterCodex/git/branches") return { root: params.cwd.startsWith("D:\\repo") ? "D:\\repo" : null };
     if (method === "thread/start") return { thread: meta("env-chat") };
     if (method === "config/read") return { config: {} };
     if (method === "permissionProfile/list") return { data: [] };
@@ -200,18 +200,18 @@ function environmentStart(t, environment, roots, overrides = {}) {
 
 test("a chosen environment starts in its worktree, with its extra folders as workspace roots and its variables", async (t) => {
   const { calls, project, start } = environmentStart(t, { settings: { worktree: true, branch: "dev" }, env: { API_URL: "http://localhost" } }, ["D:\\repo\\app", "D:\\repo\\lib", "D:\\other"], {
-    "codexUi/worktree/create": () => ({ cwd: "W:\\a1b2\\repo\\app", worktree: "W:\\a1b2\\repo", repository: "D:\\repo" }),
+    "betterCodex/worktree/create": () => ({ cwd: "W:\\a1b2\\repo\\app", worktree: "W:\\a1b2\\repo", repository: "D:\\repo" }),
   });
   await settle();
   await startThread();
   await settle();
-  assert.deepEqual(calls.find(({ method }) => method === "codexUi/worktree/create").params, { cwd: "D:\\repo\\app", base: "dev", root: "C:\\Users\\me\\.codex\\worktrees" });
-  assert.equal(calls.filter(({ method }) => method === "codexUi/worktree/create").length, 1);
+  assert.deepEqual(calls.find(({ method }) => method === "betterCodex/worktree/create").params, { cwd: "D:\\repo\\app", base: "dev", root: "C:\\Users\\me\\.codex\\worktrees" });
+  assert.equal(calls.filter(({ method }) => method === "betterCodex/worktree/create").length, 1);
   assert.equal(start().cwd, "W:\\a1b2\\repo\\app");
   assert.deepEqual(start().runtimeWorkspaceRoots, ["W:\\a1b2\\repo\\app", "W:\\a1b2\\repo\\lib", "D:\\other"]);
   assert.deepEqual(start().config["shell_environment_policy.set"], { API_URL: "http://localhost" });
   assert.equal(start().projectId, project.id);
-  assert.deepEqual(calls.find(({ method }) => method === "codexUi/worktree/bind").params, { cwd: "W:\\a1b2\\repo", threadId: "env-chat" });
+  assert.deepEqual(calls.find(({ method }) => method === "betterCodex/worktree/bind").params, { cwd: "W:\\a1b2\\repo", threadId: "env-chat" });
 });
 
 test("without a worktree the first folder switches to its branch; a failed checkout starts nothing", async (t) => {
@@ -219,15 +219,15 @@ test("without a worktree the first folder switches to its branch; a failed check
   await settle();
   await startThread();
   const order = calls.map(({ method }) => method);
-  assert.ok(order.indexOf("codexUi/git/switch") < order.indexOf("thread/start"));
-  assert.deepEqual(calls.find(({ method }) => method === "codexUi/git/switch").params, { cwd: "D:\\repo\\app", branch: "feature" });
+  assert.ok(order.indexOf("betterCodex/git/switch") < order.indexOf("thread/start"));
+  assert.deepEqual(calls.find(({ method }) => method === "betterCodex/git/switch").params, { cwd: "D:\\repo\\app", branch: "feature" });
   assert.equal(start().cwd, "D:\\repo\\app");
   assert.equal("runtimeWorkspaceRoots" in start(), false);
   assert.equal("shell_environment_policy.set" in start().config, false);
   calls.length = 0;
   t.mock.method(Rpc.prototype, "request", async (method) => {
     calls.push({ method });
-    if (method === "codexUi/git/switch") throw new Error("无法切换到“feature”：请先提交或暂存本地更改。");
+    if (method === "betterCodex/git/switch") throw new Error("无法切换到“feature”：请先提交或暂存本地更改。");
     return {};
   });
   await assert.rejects(startThread(), /无法切换/);
@@ -241,18 +241,18 @@ test("an SSH environment registers its host once and starts its sessions in the 
   const { calls, start } = environmentStart(t, ssh, [], {
     "environment/status": () => ({ status: calls.some(({ method }) => method === "environment/addStdio") ? "pending" : "unknown" }),
   });
-  setState((s) => ({ server: { ...s.server, info: { ...s.server.info, codexUiStdioEnvironments: true } } }));
+  setState((s) => ({ server: { ...s.server, info: { ...s.server.info, betterCodexStdioEnvironments: true } } }));
   await settle();
   await startThread();
   await startThread();
   const added = calls.filter(({ method }) => method === "environment/addStdio");
   assert.equal(added.length, 1);
   assert.deepEqual(added[0].params, {
-    environmentId: "codexui-ssh-c1",
+    environmentId: "bettercodex-ssh-c1",
     program: "ssh",
     args: ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-p", "2222", "--", "me@box", "sh -lc 'exec codex exec-server --listen stdio'"],
   });
-  assert.deepEqual(start().environments, [{ environmentId: "codexui-ssh-c1", cwd: "/srv/app", runtimeWorkspaceRoots: ["/srv/app", "/srv/lib"] }]);
+  assert.deepEqual(start().environments, [{ environmentId: "bettercodex-ssh-c1", cwd: "/srv/app", runtimeWorkspaceRoots: ["/srv/app", "/srv/lib"] }]);
   assert.deepEqual(start().config["shell_environment_policy.set"], { A: "1" });
   assert.equal("runtimeWorkspaceRoots" in start(), false);
 });
@@ -271,7 +271,7 @@ for (const environment of [
   await settle();
   calls.length = 0;
   assert.equal(await startThread(undefined, { model: "m" }), "env-chat");
-  assert.deepEqual(calls.map(({ method }) => method).filter((method) => /^(codexUi\/(worktree|git)\/|environment\/)/.test(method)), []);
+  assert.deepEqual(calls.map(({ method }) => method).filter((method) => /^(betterCodex\/(worktree|git)\/|environment\/)/.test(method)), []);
   assert.equal(start().cwd, null);
   assert.equal(start().model, "m");
   assert.equal(start().sandbox, "read-only");
@@ -331,12 +331,12 @@ test("an SSH environment without folders starts in the host's own folder; withou
     "environment/status": () => ({ status: "unknown" }),
     "environment/info": () => ({ shell: { name: "bash", path: "/bin/bash" }, cwd: "file:///home/dev%20user" }),
   });
-  setState((s) => ({ server: { ...s.server, info: { ...s.server.info, codexUiStdioEnvironments: true } } }));
+  setState((s) => ({ server: { ...s.server, info: { ...s.server.info, betterCodexStdioEnvironments: true } } }));
   await settle();
   await startThread();
-  assert.deepEqual(start().environments, [{ environmentId: "codexui-ssh-c2", cwd: "/home/dev user", runtimeWorkspaceRoots: ["/home/dev user"] }]);
+  assert.deepEqual(start().environments, [{ environmentId: "bettercodex-ssh-c2", cwd: "/home/dev user", runtimeWorkspaceRoots: ["/home/dev user"] }]);
   calls.length = 0;
-  setState((s) => ({ server: { ...s.server, info: { ...s.server.info, codexUiStdioEnvironments: undefined } } }));
+  setState((s) => ({ server: { ...s.server, info: { ...s.server.info, betterCodexStdioEnvironments: undefined } } }));
   await assert.rejects(startThread(), /实验型后端/);
   assert.equal(calls.some(({ method }) => method === "thread/start" || method === "environment/addStdio"), false);
 });
@@ -352,7 +352,7 @@ test("an environment's variables come back with every cold resume and fork of it
   t.after(() => setState(before));
   const environment = { version: 1, kind: "local", settings: {}, folderSettings: {}, env: { TOKEN: "abc" } };
   setState((s) => ({
-    projects: [{ id: "env-project", name: "应用", roots: [{ path: "D:/app" }], metadata: { "codexUi.environment": JSON.stringify(environment) } }],
+    projects: [{ id: "env-project", name: "应用", roots: [{ path: "D:/app" }], metadata: { "betterCodex.environment": JSON.stringify(environment) } }],
     threads: { ...s.threads, cold: emptyThreadState({ ...meta("cold"), status: { type: "notLoaded" }, projectId: "env-project" }) },
   }));
   await openThread("cold", true);
@@ -514,10 +514,10 @@ test("turn and steer context refresh Git without changing roles or user input", 
   const started = requests.find((r) => r.method === "turn/start").params;
   assert.deepEqual(started.input, input);
   const context = started.additionalContext;
-  assert.deepEqual(Object.keys(context), ["codex-ui.git", "codex-ui.git-guidance"]);
-  assert.equal(context["codex-ui.git"].kind, "untrusted");
-  assert.equal(JSON.parse(context["codex-ui.git"].value).state, "not-repository");
-  assert.deepEqual(context["codex-ui.git-guidance"], { kind: "application", value: legacyContext.gitGuidance });
+  assert.deepEqual(Object.keys(context), ["better-codex.git", "better-codex.git-guidance"]);
+  assert.equal(context["better-codex.git"].kind, "untrusted");
+  assert.equal(JSON.parse(context["better-codex.git"].value).state, "not-repository");
+  assert.deepEqual(context["better-codex.git-guidance"], { kind: "application", value: legacyContext.gitGuidance });
   const pending = getState().pendingMessages.chat.item;
   notify("item/completed", { threadId: "chat", turnId: "context-turn", completedAtMs: 1, item: { ...pending, id: "server-echo", clientId: pending.id } });
   const previousProbes = probes;
@@ -527,8 +527,8 @@ test("turn and steer context refresh Git without changing roles or user input", 
   assert.deepEqual(steered.input, input);
   assert.equal(steered.expectedTurnId, "context-turn");
   assert.ok(probes > previousProbes);
-  assert.equal(steered.additionalContext["codex-ui.git"].kind, "untrusted");
-  assert.deepEqual(steered.additionalContext["codex-ui.git-guidance"], context["codex-ui.git-guidance"]);
+  assert.equal(steered.additionalContext["better-codex.git"].kind, "untrusted");
+  assert.deepEqual(steered.additionalContext["better-codex.git-guidance"], context["better-codex.git-guidance"]);
 });
 
 test("Git snapshots and metadata stay separate for local, SSH and unknown environments at the same path", async t => {
@@ -560,14 +560,14 @@ test("Git snapshots and metadata stay separate for local, SSH and unknown enviro
 test("a session's environment kind: the id an SSH session started with, a project's for one without", (t) => {
   const before = getState();
   t.after(() => setState(before));
-  const project = (id, kind) => ({ id, name: id, roots: [], metadata: { "codexUi.environment": JSON.stringify({ version: 1, kind, settings: {}, folderSettings: {}, env: {}, ssh: { connectionId: "c1", folders: [] } }) } });
+  const project = (id, kind) => ({ id, name: id, roots: [], metadata: { "betterCodex.environment": JSON.stringify({ version: 1, kind, settings: {}, folderSettings: {}, env: {}, ssh: { connectionId: "c1", folders: [] } }) } });
   const thread = (id, extra) => emptyThreadState({ ...meta(id), ...extra });
   setState((s) => ({
     projects: [project("p-ssh", "ssh")],
     prefs: { ...s.prefs, projectId: "p-ssh" },
     threads: {
       local: thread("local", { environments: [{ environmentId: "local" }] }),
-      ssh: thread("ssh", { environments: [{ environmentId: "codexui-ssh-c1" }] }),
+      ssh: thread("ssh", { environments: [{ environmentId: "bettercodex-ssh-c1" }] }),
       legacy: thread("legacy", { projectId: "p-ssh" }),
       other: thread("other", { environments: [{ environmentId: "elsewhere" }] }),
     },
@@ -579,7 +579,7 @@ test("a session's environment kind: the id an SSH session started with, a projec
 test("a list's environments: null (an unloaded thread) keeps the selection its resume reported; an empty list replaces it", async (t) => {
   const before = getState();
   t.after(() => setState(before));
-  setState({ threads: { local: emptyThreadState({ ...meta("local"), environments: [{ environmentId: "local" }] }), ssh: emptyThreadState({ ...meta("ssh"), environments: [{ environmentId: "codexui-ssh-c1" }] }), fresh: emptyThreadState({ ...meta("fresh"), environments: [] }) } });
+  setState({ threads: { local: emptyThreadState({ ...meta("local"), environments: [{ environmentId: "local" }] }), ssh: emptyThreadState({ ...meta("ssh"), environments: [{ environmentId: "bettercodex-ssh-c1" }] }), fresh: emptyThreadState({ ...meta("fresh"), environments: [] }) } });
   const listed = (environments) => ["local", "ssh", "fresh"].map((id) => ({ ...meta(id), environments }));
   const mock = t.mock.method(Rpc.prototype, "request", async () => ({ data: listed(null), nextCursor: null }));
   await refreshThreads();
@@ -608,7 +608,7 @@ test("older backends cannot use local Git for a remote project or one whose conf
   sendingFixture(t, async () => ({}), () => assert.fail("local Git requested for remote project"));
   t.after(() => setState(before));
   for (const kind of ["ssh", "cloud", "missing"]) {
-    setState(s => ({ projects: kind === "missing" ? [] : [{ id: "remote-project", metadata: { "codexUi.environment": JSON.stringify({ kind }) } }],
+    setState(s => ({ projects: kind === "missing" ? [] : [{ id: "remote-project", metadata: { "betterCodex.environment": JSON.stringify({ kind }) } }],
       threads: { chat: { ...s.threads.chat, meta: { ...meta("chat"), cwd: `D:/legacy-${kind}`, projectId: "remote-project", gitInfo: null } } } }));
     assert.equal((await refreshThreadGit("chat", true)).state, "unavailable");
   }
@@ -625,21 +625,21 @@ for (const desktop of [false, true]) test(`managed lifecycle sync preserves user
     return { data: [], nextCursor: null };
   });
   t.after(() => setState(before));
-  setState({ server: { ...before.server, info: { ...before.server.info, codexUiHostContext: true, codexUiDesktopContext: desktop } },
+  setState({ server: { ...before.server, info: { ...before.server.info, betterCodexHostContext: true, betterCodexDesktopContext: desktop } },
     config: { developer_instructions: "  User rules\r\n  " }, planCard: true });
   const id = await startThread();
   assert.equal(requests.find((r) => r.method === "thread/start").params.config.developer_instructions, "  User rules\r\n  ");
-  assert.equal(requests.findLast((r) => r.method === "thread/settings/update").params.codexUiContext.planning.enabled, true);
+  assert.equal(requests.findLast((r) => r.method === "thread/settings/update").params.betterCodexContext.planning.enabled, true);
   setState({ planCard: false });
   await openThread(id, true);
   assert.equal(requests.findLast((r) => r.method === "thread/resume").params.config, null);
-  assert.equal(requests.findLast((r) => r.method === "thread/settings/update").params.codexUiContext.planning.enabled, false);
+  assert.equal(requests.findLast((r) => r.method === "thread/settings/update").params.betterCodexContext.planning.enabled, false);
   await forkThread(id);
   assert.equal(requests.findLast((r) => r.method === "thread/settings/update").params.threadId, "managed-fork");
   await sendMessage("managed-fork", input);
   const turnIndex = requests.findIndex((r) => r.method === "turn/start");
   assert.equal(requests[turnIndex - 1].method, "thread/settings/update");
-  const contexts = requests.filter((r) => r.method === "thread/settings/update").map((r) => r.params.codexUiContext);
+  const contexts = requests.filter((r) => r.method === "thread/settings/update").map((r) => r.params.betterCodexContext);
   assert.ok(contexts.length >= 4);
   for (const context of contexts) assert.equal(Object.hasOwn(context, "desktop"), desktop);
   if (desktop) assert.equal(contexts.find((context) => !context.planning.enabled).desktop.enabled, true);
@@ -649,7 +649,7 @@ test("desktop capability alone cannot enable host-context sync", async (t) => {
   const before = getState(), requests = [];
   sendingFixture(t, async (method) => { requests.push(method); return {}; });
   t.after(() => setState(before));
-  setState({ server: { ...before.server, info: { ...before.server.info, codexUiHostContext: false, codexUiDesktopContext: true } } });
+  setState({ server: { ...before.server, info: { ...before.server.info, betterCodexHostContext: false, betterCodexDesktopContext: true } } });
   await syncHostContext("chat");
   assert.deepEqual(requests, []);
 });
@@ -661,13 +661,13 @@ test("display guidance requires the native capability, the experimental backend 
   t.after(() => { if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow; });
   sendingFixture(t, async (method, params) => { if (method === "thread/settings/update") requests.push(params); return {}; });
   t.after(() => setState(before));
-  // A backend that reports the capability without Codex UI starting it experimental (a CODEX_BIN that
+  // A backend that reports the capability without Better Codex starting it experimental (a CODEX_BIN that
   // sets the mark itself) gets no bridge tools, so no guidance either.
   for (const v2 of [false, true]) for (const capability of [false, true]) for (const electron of [false, true]) for (const experimental of [false, true]) {
     window.codexDesktop = electron ? {} : undefined;
-    setState({ server: { ...before.server, experimental, info: { ...before.server.info, codexUiHostContext: true, codexUiDesktopContext: true, codexUiDesktopTools: capability, codexUiHostContextV2: v2 } } });
+    setState({ server: { ...before.server, experimental, info: { ...before.server.info, betterCodexHostContext: true, betterCodexDesktopContext: true, betterCodexDesktopTools: capability, betterCodexHostContextV2: v2 } } });
     await syncHostContext("chat");
-    const desktop = requests.at(-1).codexUiContext.desktop;
+    const desktop = requests.at(-1).betterCodexContext.desktop;
     assert.equal(desktop.text.includes("get_ui_state"), false);
     assert.equal(!!desktop.toolsText?.includes("get_ui_state"), v2 && capability && electron && experimental);
     assert.equal(Object.hasOwn(desktop, "toolsDisabledText"), v2);
@@ -735,7 +735,7 @@ test("managed subagents remain readable and keep their spawning snapshot", async
     return { data: [], nextCursor: null };
   });
   t.after(() => setState(before));
-  setState((s) => ({ server: { ...s.server, info: { ...s.server.info, codexUiHostContext: true } },
+  setState((s) => ({ server: { ...s.server, info: { ...s.server.info, betterCodexHostContext: true } },
     threads: { ...s.threads, chat: { ...s.threads.chat, turns: [turn("parent-turn")] }, child: emptyThreadState(child) } }));
   // Claude opens a subagent as a read-only record in its session's 后台任务 pane, never as a session.
   await openThread("child");
@@ -759,7 +759,7 @@ test("queued host sync cannot cross a disconnected connection", async (t) => {
     return {};
   });
   t.after(() => setState(before));
-  setState({ server: { ...before.server, info: { ...before.server.info, codexUiHostContext: true } } });
+  setState({ server: { ...before.server, info: { ...before.server.info, betterCodexHostContext: true } } });
   const first = syncHostContext("chat");
   await new Promise((resolve) => setImmediate(resolve));
   const queued = syncHostContext("chat");
@@ -787,8 +787,8 @@ test("new sessions discover Git without thread metadata and send a separate untr
   await sendMessage(null, input);
   assert.equal(getState().threads["git-new"].meta.gitInfo.branch, "feature");
   assert.deepEqual(submitted.input, input);
-  assert.equal(submitted.additionalContext["codex-ui.git"].kind, "untrusted");
-  assert.equal(JSON.parse(submitted.additionalContext["codex-ui.git"].value).files, 1);
+  assert.equal(submitted.additionalContext["better-codex.git"].kind, "untrusted");
+  assert.equal(JSON.parse(submitted.additionalContext["better-codex.git"].value).files, 1);
   assert.equal(probes, 3, "start and send share the same folder query");
   notify("thread/started", { thread: { ...meta("git-new"), cwd, gitInfo: null } });
   assert.equal(getState().threads["git-new"].meta.gitInfo.branch, "feature", "late metadata cannot clear live Git");
@@ -1899,14 +1899,14 @@ test("a usage window past its reset is re-read with no turn running, at most onc
 });
 
 test("removed PRs are kept for the 200 sessions that removed one last", async (t) => {
-  const saved = new Map([["codex-ui:pr-dismissed", JSON.stringify(Object.fromEntries(Array.from({ length: 200 }, (_, n) => [`t${n}`, [`pr${n}`]])))]]);
+  const saved = new Map([["better-codex:pr-dismissed", JSON.stringify(Object.fromEntries(Array.from({ length: 200 }, (_, n) => [`t${n}`, [`pr${n}`]])))]]);
   const before = globalThis.localStorage;
   globalThis.localStorage = { getItem: (key) => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, String(value)) };
   t.after(() => { globalThis.localStorage = before; });
   t.mock.method(Rpc.prototype, "request", async () => ({}));
   await removePullRequest("t0", "pr-x");
   await removePullRequest("new", "pr-y");
-  const kept = JSON.parse(saved.get("codex-ui:pr-dismissed"));
+  const kept = JSON.parse(saved.get("better-codex:pr-dismissed"));
   assert.equal(Object.keys(kept).length, 200);
   assert.equal("t1" in kept, false, "the oldest goes");
   assert.deepEqual(kept.t0, ["pr0", "pr-x"]);

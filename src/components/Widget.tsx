@@ -80,7 +80,7 @@ export function Widget({ widget, threadId }: { widget: WidgetArgs; threadId: str
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       const data = frame.current && event.source === frame.current.contentWindow ? (event.data as Record<string, unknown> | null) : null;
-      if (!data || typeof data !== "object" || data.codexUiWidget !== true) return;
+      if (!data || typeof data !== "object" || data.betterCodexWidget !== true) return;
       if (data.type === "size" && typeof data.height === "number" && Number.isFinite(data.height)) setHeight(Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.ceil(data.height))));
       // A prompt or a link only from the user's own click in this frame (its activation reaches this
       // page; the frame's own `active` is the widget's word), one of either at most once a second.

@@ -103,15 +103,15 @@ export interface LibraryChip {
 }
 
 /** Where a draft's ready chips are kept across reloads; the composer wipes them with its drafts on an install. */
-export const DRAFT_FILES = "codex-ui:draft-files:";
+export const DRAFT_FILES = "better-codex:draft-files:";
 
 const keptFiles = new Map<string, readonly LibraryChip[]>();
 const fileListeners = new Set<() => void>();
 
 /**
  * A draft's ready chips as stored. ponytail: the bridge knows the folders it made only while it
- * runs, so once codex-ui restarts, dropping a stored chip it owned asks a DELETE that is refused
- * (404) and the copy stays under attachments; a registry of codex-ui's own folders kept on disk
+ * runs, so once better-codex restarts, dropping a stored chip it owned asks a DELETE that is refused
+ * (404) and the copy stays under attachments; a registry of better-codex's own folders kept on disk
  * (as Codex keeps pasted-text-attachments.json) would let it go.
  */
 function storedFiles(draftId: string): LibraryChip[] {
@@ -331,7 +331,7 @@ function savedAttachment(path: string): boolean {
 
 /**
  * What a draft's ready chips make of `body` (the words after any slash command ran): the file block
- * ahead of them, and each image once more as a localImage. That is codex-ui's own: the desktop app
+ * ahead of them, and each image once more as a localImage. That is better-codex's own: the desktop app
  * writes the Image attachment line and the localImage (rin / mD) for its pasted pictures, not for
  * the picker's library files (local-file-selection b), whose model would have to open them itself.
  * `images` false (a model without image input): neither. Only a copy the draft saved, or one under

@@ -51,7 +51,7 @@ export function readStateConflict(error: unknown): ThreadReadState | null {
   return data?.reason === "readStateConflict" && data.readState ? data.readState : null;
 }
 
-/** "codex_ui/0.163.0-alpha.10.2 (Windows …)" -> "0.163.0-alpha.10.2". */
+/** "better_codex/0.163.0-alpha.10.2 (Windows …)" -> "0.163.0-alpha.10.2". */
 export function parseVersion(userAgent: string | null | undefined): string | null {
   const version = userAgent?.split(" ")[0]?.split("/")[1];
   return version || null;

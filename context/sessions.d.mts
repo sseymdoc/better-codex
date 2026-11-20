@@ -12,7 +12,7 @@ export function isBrief(text: string): boolean;
 export function sessionName(name: string | undefined, title: string, taken?: (name: string) => boolean): string;
 export const START_OUTCOMES: readonly DesktopStarted["outcome"][];
 export const DISMISS_OUTCOMES: readonly DesktopDismissed["outcome"][];
-export function sessionResult(name: string, receipt: DesktopStarted | DesktopDismissed | DesktopSent | DesktopHandedOff | DesktopTargets): { content: { type: "text"; text: string }[]; _meta: { codexUiSession: Record<string, unknown> } };
+export function sessionResult(name: string, receipt: DesktopStarted | DesktopDismissed | DesktopSent | DesktopHandedOff | DesktopTargets): { content: { type: "text"; text: string }[]; _meta: { betterCodexSession: Record<string, unknown> } };
 export type ClaimOutcome = "already_started" | "already_dismissed" | "expired" | "spawn_in_flight" | "not_found";
 export function claimRefusal(outcome: ClaimOutcome, taskId: string): string;
 export const START_REFUSED: string;

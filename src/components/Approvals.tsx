@@ -1676,7 +1676,7 @@ export function Approvals({ threadId, cwd }: { threadId: string | null; cwd: str
       <TextRow label="说明" text="Codex 想进入计划模式，以探索代码库并设计实施方案。在您批准计划之前，不会进行任何代码更改。" />
     </ToolCard>;
   } else if (terminalConsent) {
-    // run_in_terminal (codex_ui_desktop): the user's own shell, outside the sandbox.
+    // run_in_terminal (better_codex_desktop): the user's own shell, outside the sandbox.
     card = <ToolCard key={terminalConsent.id} action="在终端中运行" title={TERMINAL_CONSENT_TITLE}
       onResolve={(allow) => answerConsent(terminalConsent.id, allow === true)}
       slots={{ deny: { label: "拒绝", result: false }, once: { label: "允许一次", result: true } }}>
@@ -1685,7 +1685,7 @@ export function Approvals({ threadId, cwd }: { threadId: string | null; cwd: str
       <FootLine icon="CommandLinePrompt">{terminalConsent.tab ?? `新终端 · ${location(terminalConsent.folder, cwd)}`}</FootLine>
     </ToolCard>;
   } else if (settingConsent) {
-    // set_setting (codex_ui_desktop): every change asks, whatever the permission mode. A scheduled
+    // set_setting (better_codex_desktop): every change asks, whatever the permission mode. A scheduled
     // task's card (automation_update, cloud_task_update) names the task in its rows.
     card = <ToolCard key={settingConsent.id} action={settingConsent.action ?? "更改设置"} title={settingConsentTitle(settingConsent)}
       onResolve={(allow) => answerConsent(settingConsent.id, allow === true)}

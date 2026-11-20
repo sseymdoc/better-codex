@@ -1,4 +1,4 @@
-// Claude 4.29 side sessions (ccd_session start_session / dismiss_task) in codex-ui: the proposal
+// Claude 4.29 side sessions (ccd_session start_session / dismiss_task) in better-codex: the proposal
 // queue, the card states and the rules that need no app state. Codex keeps none of this, so the
 // app keeps it on this machine (store.ts proposals / proposalOutcomes / links, linked.ts).
 
@@ -165,7 +165,7 @@ export function turnOrigin(items: readonly ThreadItem[], appTexts: readonly stri
   return appTexts.includes(text) ? "app" : "person";
 }
 
-/** What the result of a codex_ui_desktop session call names (sessions.mjs sessionResult _meta). */
+/** What the result of a better_codex_desktop session call names (sessions.mjs sessionResult _meta). */
 export interface SessionMeta {
   outcome: string;
   taskId?: string;
@@ -176,7 +176,7 @@ export interface SessionMeta {
 
 export function sessionMeta(item: Extract<ThreadItem, { type: "mcpToolCall" }>): SessionMeta | undefined {
   const meta = item.result?._meta;
-  const session = meta && typeof meta === "object" && !Array.isArray(meta) ? meta.codexUiSession : undefined;
+  const session = meta && typeof meta === "object" && !Array.isArray(meta) ? meta.betterCodexSession : undefined;
   if (!session || typeof session !== "object" || Array.isArray(session) || typeof session.outcome !== "string") return undefined;
   const text = (key: string) => (typeof session[key] === "string" ? (session[key] as string) : undefined);
   return { outcome: session.outcome, taskId: text("taskId"), sessionId: text("sessionId"), title: text("title"), ...(session.cloud === true && { cloud: true }) };
@@ -184,9 +184,9 @@ export function sessionMeta(item: Extract<ThreadItem, { type: "mcpToolCall" }>):
 
 export type SessionCallKind = "propose" | "offer" | "brief" | "claim" | "start" | "dismiss" | "send" | "handoff" | "targets";
 
-/** A codex_ui_desktop start_session call by what it does (Claude cb27dab29 K / Ye). */
+/** A better_codex_desktop start_session call by what it does (Claude cb27dab29 K / Ye). */
 export function sessionCall(item: ThreadItem): SessionCallKind | null {
-  if (item.type !== "mcpToolCall" || item.server !== "codex_ui_desktop") return null;
+  if (item.type !== "mcpToolCall" || item.server !== "better_codex_desktop") return null;
   if (item.tool === "dismiss_task") return "dismiss";
   if (item.tool === "send_message") return "send";
   if (item.tool === "hand_off_to_session") return "handoff";
@@ -231,9 +231,9 @@ export function doHereText(proposal: Pick<Proposal, "title" | "prompt">): string
 // ---------------------------------------------------------------------------
 // Kept on this machine: Codex stores no proposals or links, so a restart reads them back here.
 
-const PROPOSALS_KEY = "codex-ui:session-proposals";
-const LINKS_KEY = "codex-ui:linked-sessions";
-const MUTED_KEY = "codex-ui:offers-muted";
+const PROPOSALS_KEY = "better-codex:session-proposals";
+const LINKS_KEY = "better-codex:linked-sessions";
+const MUTED_KEY = "better-codex:offers-muted";
 
 export function readJson(key: string): unknown {
   try {

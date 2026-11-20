@@ -535,7 +535,7 @@ export interface AppState {
   autoArchiveDays: number;
   /** Settings → 功能 → 合并模型与努力程度 (on by default): one model pill whose menu holds the effort slider; off, two buttons. */
   mergedModelPicker: boolean;
-  /** Settings → 功能 → 计划卡 (on by default): sessions codex-ui starts get Codex's update_plan tool. */
+  /** Settings → 功能 → 计划卡 (on by default): sessions better-codex starts get Codex's update_plan tool. */
   planCard: boolean;
   /** Settings → 功能 → 离开后的回顾 (Claude Code's awaySummaryEnabled, on by default). */
   awayRecap: boolean;
@@ -549,7 +549,7 @@ export interface AppState {
   diffComments: Record<string, readonly DiffComment[]>;
   /** 标记为已完成: session → the stamp it was marked at (session.ts ackStamp); the mark holds while the stamp does. */
   completedAcks: Record<string, string>;
-  /** Settings → 通用 → 外观: the Claude flags codex-ui draws both ways (CLAUDE_FLAGS). */
+  /** Settings → 通用 → 外观: the Claude flags better-codex draws both ways (CLAUDE_FLAGS). */
   claudeFlags: Record<ClaudeFlag, boolean>;
   dialog: DialogState;
   /** Per thread: the latest rewind's divider. */
@@ -565,7 +565,7 @@ export interface AppState {
 export type NewTaskPrompt = "ask" | "here" | "new_session";
 
 /** A saved choice from localStorage, if it is one of `allowed`. */
-const VIEWS_KEY = "codex-ui:session-views";
+const VIEWS_KEY = "better-codex:session-views";
 
 /** Per-session transcript views (c03935b01 transcriptModeBySession); only picks off the default are kept. */
 export function sessionViews(): Record<string, TranscriptView> {
@@ -610,7 +610,7 @@ export function writePref(key: string, value: string): void {
 }
 
 /**
- * Claude Desktop GrowthBook flags whose both sides codex-ui draws, switchable in 设置 → 通用 → 外观.
+ * Claude Desktop GrowthBook flags whose both sides better-codex draws, switchable in 设置 → 通用 → 外观.
  * Each default is the user's Claude (its persisted bootstrap, read 2026-10-25).
  */
 export const CLAUDE_FLAGS = {
@@ -620,7 +620,7 @@ export const CLAUDE_FLAGS = {
   interfaceFontInGeneral: { id: "__gb__1197194941", on: true },
   /** shared-8 S_: the collapsed sidebar edge's proximity hint and magnet peek. */
   sidebarEdgePeek: { id: "__gb__741807810", on: false },
-  /** c26fb8b6b chat chrome; for codex-ui (its other pieces already on), c19e90103 Mx's phrase fade. */
+  /** c26fb8b6b chat chrome; for better-codex (its other pieces already on), c19e90103 Mx's phrase fade. */
   phraseFade: { id: "__gb__2846116625", on: false },
   /** c19e90103 fy: a Markdown file previews as the reading page, not pane prose. */
   documentPage: { id: "__gb__1590565993", on: true },
@@ -631,7 +631,7 @@ export const CLAUDE_FLAGS = {
 } as const;
 export type ClaudeFlag = keyof typeof CLAUDE_FLAGS;
 
-const flagKey = (name: ClaudeFlag) => `codex-ui:${CLAUDE_FLAGS[name].id}`;
+const flagKey = (name: ClaudeFlag) => `better-codex:${CLAUDE_FLAGS[name].id}`;
 
 function readFlags(): Record<ClaudeFlag, boolean> {
   const names = Object.keys(CLAUDE_FLAGS) as ClaudeFlag[];
@@ -644,7 +644,7 @@ export function setClaudeFlag(name: ClaudeFlag, on: boolean): void {
 }
 
 /** The model and effort last picked on the new-session page (codex.ts setOverride), kept across restarts. */
-export const NEW_SESSION_PICKS = { model: "codex-ui:new-session-model", effort: "codex-ui:new-session-effort" } as const;
+export const NEW_SESSION_PICKS = { model: "better-codex:new-session-model", effort: "better-codex:new-session-effort" } as const;
 
 function savedPick(key: keyof typeof NEW_SESSION_PICKS): string | null {
   try {
@@ -666,10 +666,10 @@ export function offeredPicks(prefs: NewChatPrefs, models: Model[]): NewChatPrefs
   return !prefs.effort || model.supportedReasoningEfforts.some((o) => o.reasoningEffort === prefs.effort) ? prefs : { ...prefs, effort: null };
 }
 
-const initialStatus = readPref<StatusFilter>("codex-ui:status-filter", ["active", "archived", "all"], "active");
+const initialStatus = readPref<StatusFilter>("better-codex:status-filter", ["active", "archived", "all"], "active");
 
 /** Kept, so a closed question card stays closed after a restart. */
-const SETTLED_KEY = "codex-ui:settled-questions";
+const SETTLED_KEY = "better-codex:settled-questions";
 
 /** A kept list of ids ([] when missing or unreadable). */
 function readIds(key: string): string[] {
@@ -693,7 +693,7 @@ export function settleQuestions(ids: string[], settled: boolean): void {
  * set_session_title (tool). Codex keeps no such field, so it is kept here until the session is deleted.
  */
 export type TitleSource = "auto" | "user" | "tool";
-const TITLE_SOURCES_KEY = "codex-ui:title-sources";
+const TITLE_SOURCES_KEY = "better-codex:title-sources";
 
 function readTitleSources(): Record<string, TitleSource> {
   return Object.fromEntries(Object.entries(record(readJson(TITLE_SOURCES_KEY))).filter((entry): entry is [string, TitleSource] => ["auto", "user", "tool"].includes(entry[1] as string)));
@@ -750,7 +750,7 @@ export function askTitleConsent(threadId: string, consent: TitleConsent, signal:
   return askConsent("titleConsents", threadId, consent.id, consent, signal);
 }
 
-/** Claude Code's EnterPlanMode permission (Enter plan mode?), for codex_ui_desktop enter_plan_mode. */
+/** Claude Code's EnterPlanMode permission (Enter plan mode?), for better_codex_desktop enter_plan_mode. */
 export function askPlanConsent(threadId: string, id: string, signal: AbortSignal): Promise<boolean> {
   return askConsent("planConsents", threadId, id, id, signal);
 }
@@ -836,7 +836,7 @@ export interface Asked {
   at: number;
 }
 
-const ASKED_KEY = "codex-ui:asked-questions";
+const ASKED_KEY = "better-codex:asked-questions";
 // ponytail: kept on this machine only, newest 200; a backend item would carry them everywhere.
 const ASKED_LIMIT = 200;
 
@@ -885,7 +885,7 @@ export interface TodoUpdate {
   at: number;
 }
 
-const TODO_KEY = "codex-ui:todo-updates";
+const TODO_KEY = "better-codex:todo-updates";
 // ponytail: kept on this machine only, newest 1000; a backend item would carry them everywhere.
 const TODO_LIMIT = 1000;
 
@@ -915,8 +915,8 @@ export function forgetTodos(threadId: string): void {
 }
 
 /** Kept, so 保持计算机唤醒 stays on for a session across restarts until it is archived or deleted. */
-const KEEP_AWAKE_KEY = "codex-ui:keep-awake";
-const COMPLETED_ACKS = "codex-ui:completed-acks";
+const KEEP_AWAKE_KEY = "better-codex:keep-awake";
+const COMPLETED_ACKS = "better-codex:completed-acks";
 
 /**
  * 标记为已完成 (Claude 4.4212 ce4f4374c J2D0+ihfKQ, shared-20 onAckAwaiting): the session's error or
@@ -968,7 +968,7 @@ const initialState: AppState = {
     loading: false,
     archived: initialStatus === "archived",
     status: initialStatus,
-    sort: readPref("codex-ui:sort", ["recency", "alpha", "created"], "recency"),
+    sort: readPref("better-codex:sort", ["recency", "alpha", "created"], "recency"),
   },
   landing: null,
   activeId: null,
@@ -992,7 +992,7 @@ const initialState: AppState = {
   ...loadSideSessions(),
   spawning: new Set(),
   offers: {},
-  newTaskPrompt: readPref<NewTaskPrompt>("codex-ui:new-task-prompt", ["ask", "here", "new_session"], "ask"),
+  newTaskPrompt: readPref<NewTaskPrompt>("better-codex:new-task-prompt", ["ask", "here", "new_session"], "ask"),
   planComments: {},
   unsentFeedback: {},
   askedQuestions: readAsked(),
@@ -1009,15 +1009,15 @@ const initialState: AppState = {
   voice: { status: "idle" },
   imports: null,
   panes: {},
-  defaultView: readPref("codex-ui:view", ["normal", "thinking", "verbose"], "normal"),
+  defaultView: readPref("better-codex:view", ["normal", "thinking", "verbose"], "normal"),
   settings: null,
-  allowFullAccess: readPref("codex-ui:allow-full-access", ["true", "false"], "false") === "true",
-  autoArchiveDays: Number(readPref("codex-ui:auto-archive-days", ["0", "1", "2", "7", "14", "30"], "0")),
-  mergedModelPicker: readPref("codex-ui:merged-model-picker", ["true", "false"], "true") === "true",
-  planCard: readPref("codex-ui:plan-card", ["true", "false"], "true") === "true",
-  awayRecap: readPref("codex-ui:away-recap", ["true", "false"], "true") === "true",
-  inlineVisuals: readPref("codex-ui:inline-visuals", ["true", "false"], "true") === "true",
-  recaps: record(readJson("codex-ui:recaps")) as Record<string, Recap>,
+  allowFullAccess: readPref("better-codex:allow-full-access", ["true", "false"], "false") === "true",
+  autoArchiveDays: Number(readPref("better-codex:auto-archive-days", ["0", "1", "2", "7", "14", "30"], "0")),
+  mergedModelPicker: readPref("better-codex:merged-model-picker", ["true", "false"], "true") === "true",
+  planCard: readPref("better-codex:plan-card", ["true", "false"], "true") === "true",
+  awayRecap: readPref("better-codex:away-recap", ["true", "false"], "true") === "true",
+  inlineVisuals: readPref("better-codex:inline-visuals", ["true", "false"], "true") === "true",
+  recaps: record(readJson("better-codex:recaps")) as Record<string, Recap>,
   completedAcks: record(readJson(COMPLETED_ACKS)) as Record<string, string>,
   sideChats: {},
   diffComments: {},
@@ -1026,8 +1026,8 @@ const initialState: AppState = {
   rewindMarks: {},
   palette: false,
   lightbox: null,
-  sidebarOpen: readPref("codex-ui:sidebar", ["open", "collapsed"], "open") === "open",
-  railShown: readPref("codex-ui:rail", ["shown", "hidden"], "shown") === "shown",
+  sidebarOpen: readPref("better-codex:sidebar", ["open", "collapsed"], "open") === "open",
+  railShown: readPref("better-codex:rail", ["shown", "hidden"], "shown") === "shown",
 };
 
 let state = initialState;
@@ -1157,7 +1157,7 @@ export function refuseStreamed(turn: TurnState, started: string, timing: ThreadS
 // toast (same kind, title and detail) counts up " (×n)" and restarts its timer, though not past
 // 30s after it first showed. A repeated warning that the user closes, or that hit that 30s cap,
 // keeps its copies away for 30s (ew KC). One with an action (as Claude's sidebar undo, c39a247c4
-// ot, which codex-ui leaves off as its flag is) has 6s and never merges. Hovering or focusing the
+// ot, which better-codex leaves off as its flag is) has 6s and never merges. Hovering or focusing the
 // stack, or the window losing focus, holds every timer (c39a247c4 hold, as Base UI's viewport
 // pauses); the release resumes what each had left.
 // ponytail: an action toast pushed behind another keeps counting (c39a247c4 vt holds it).

@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { changesOf, draftOf, folderChoices, inputOf, intervalOf, modeOf, placeFor, problemOf, promptProblem, sessionChoices, withDay, withDestination, withInterval, withMode, withModel, withMonthDay, withTime, zoneChoices, zoneClock } from "./scheduled-form.ts";
 
 const project = { id: "p1", name: "Repo", roots: [{ path: "D:\\repo" }], metadata: {} };
-const ssh = { id: "p2", name: "Host", roots: [{ path: "/srv/app" }], metadata: { "codexUi.environment": JSON.stringify({ version: 1, kind: "ssh", ssh: { connectionId: "c1", folders: ["/srv/app"] } }) } };
+const ssh = { id: "p2", name: "Host", roots: [{ path: "/srv/app" }], metadata: { "betterCodex.environment": JSON.stringify({ version: 1, kind: "ssh", ssh: { connectionId: "c1", folders: ["/srv/app"] } }) } };
 const task = (over = {}) => ({
   id: "nightly", kind: "cron", name: "Nightly", prompt: "Check the build", status: "ACTIVE", rrule: "RRULE:FREQ=WEEKLY;BYHOUR=9;BYMINUTE=0;BYDAY=SU,MO,TU,WE,TH,FR,SA",
   model: null, reasoningEffort: null, notificationPolicy: null, createdAt: 1, updatedAt: 1, cwds: ["D:\\repo"], target: null, executionEnvironment: "local", autoArchive: false,

@@ -675,7 +675,7 @@ export function PluginsTab({ generation, onChanged }: { generation: number; onCh
 // Skills and extra skill roots (U29: skills/extraRoots/set is runtime-only, so the list is kept
 // in this browser and handed over again on every connect, see SettingsDialog).
 
-const SKILL_ROOTS_KEY = "codex-ui:skill-roots";
+const SKILL_ROOTS_KEY = "better-codex:skill-roots";
 
 export function savedSkillRoots(): string[] {
   const list = readJson(SKILL_ROOTS_KEY);

@@ -1,4 +1,4 @@
-// The renderer's side of codex_ui_desktop's host and folder tools (context/host-tools.mjs), after
+// The renderer's side of better_codex_desktop's host and folder tools (context/host-tools.mjs), after
 // Claude 4.4212's ccd_host and ccd_directory. Opening, revealing, keeping awake and folders ask
 // first except in full access; removing worktrees asks in every mode. Paths arrive resolved and
 // checked by server/desktop-tools.mjs (a kept worktree's by server/storage.mjs).

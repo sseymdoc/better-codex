@@ -1,8 +1,8 @@
-// Claude Desktop's own type, read from the Claude Desktop installed on this computer. codex-ui
+// Claude Desktop's own type, read from the Claude Desktop installed on this computer. better-codex
 // ships none of it: the Anthropic faces are Anthropic's. /claude-fonts.css is every @font-face
 // rule of Claude's main window (the stylesheets ion-dist/index.html links) with its files moved
 // under /claude-fonts/, and /third-party-notices.txt the font licence text Settings shows.
-// Without Claude Desktop the stylesheet is STAND_INS instead and the notices are codex-ui's own
+// Without Claude Desktop the stylesheet is STAND_INS instead and the notices are better-codex's own
 // (public/third-party-notices.txt). ion-dist is a folder in the Windows package and an asar
 // archive in macOS's Claude.app (ionFiles reads either).
 
@@ -18,7 +18,7 @@ const MAC_APPS = ["/Applications", path.join(homedir(), "Applications")];
 const rawFs = process.versions.electron ? createRequire(import.meta.url)("original-fs") : fs;
 const TYPES = { ".woff2": "font/woff2", ".woff": "font/woff", ".ttf": "font/ttf", ".otf": "font/otf" };
 
-/** codex-ui's open-licensed faces (public/fonts) under the families Claude's rules define, for a
+/** better-codex's open-licensed faces (public/fonts) under the families Claude's rules define, for a
  *  computer without Claude Desktop: Phosphor Icons at the Anthropicons codepoints
  *  (src/fonts/build-icons.py), Geist and Geist Mono for Anthropic Sans and Mono on Anthropic's
  *  line metrics, and OpenDyslexic. Anthropic Serif has no stand-in: Claude's own metric-matched
@@ -186,7 +186,7 @@ export function serveClaudeFonts(req, res) {
   const name = pathname.startsWith("/claude-fonts/") ? pathname.slice("/claude-fonts/".length) : null;
   if (name === null && pathname !== "/claude-fonts.css" && pathname !== "/third-party-notices.txt") return false;
   const fonts = claudeFonts();
-  if (!fonts && pathname === "/third-party-notices.txt") return false; // codex-ui's own, for the stand-ins
+  if (!fonts && pathname === "/third-party-notices.txt") return false; // better-codex's own, for the stand-ins
   if (req.method !== "GET" && req.method !== "HEAD") res.writeHead(405).end();
   else if (pathname === "/claude-fonts.css") reply(req, res, "text/css; charset=utf-8", "no-cache", claudeFontCss());
   else if (!fonts || (name !== null && !fonts.files.has(name))) res.writeHead(404).end();

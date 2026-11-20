@@ -44,7 +44,7 @@ function page(t, { rpc = () => undefined, bridge = () => ({}), open = false } = 
     requests.push({ method, params: structuredClone(params) });
     if (method === "initialize") return Promise.resolve({ userAgent: "codex/0.163.0" });
     if (method === "command/exec") return Promise.resolve({ exitCode: 128, stdout: "", stderr: "not a git repository" });
-    if (method === "codexUi/git/branches") return Promise.resolve({ root: null });
+    if (method === "betterCodex/git/branches") return Promise.resolve({ root: null });
     return rpc(method, params) ?? Promise.resolve({ data: [], nextCursor: null });
   });
   if (open) {
@@ -59,7 +59,7 @@ const claims = (posts) => posts.filter((p) => p.url.startsWith("/api/automations
 test("a cron run works in its project, its folder or (projectless) the task's own folder", () => {
   const projects = [
     { id: "p1", roots: [{ path: "D:/repo" }, { path: "D:/other" }], metadata: {} },
-    { id: "p2", roots: [{ path: "/srv" }], metadata: { "codexUi.environment": JSON.stringify({ version: 1, kind: "ssh", ssh: { connectionId: "c", folders: [] } }) } },
+    { id: "p2", roots: [{ path: "/srv" }], metadata: { "betterCodex.environment": JSON.stringify({ version: 1, kind: "ssh", ssh: { connectionId: "c", folders: [] } }) } },
   ];
   assert.deepEqual(cronPlace({ target: { type: "project", projectId: "p1" }, cwds: [], dir: "C:/t" }, projects), { cwd: "D:/repo", projectId: "p1" });
   assert.throws(() => cronPlace({ target: { type: "project", projectId: "gone" }, cwds: [], dir: "C:/t" }, projects), /找不到此定时任务的项目/);
@@ -68,10 +68,10 @@ test("a cron run works in its project, its folder or (projectless) the task's ow
   assert.throws(() => cronPlace({ target: { type: "project", projectId: "p2" }, cwds: [], dir: "C:/t" }, projects), /此环境不支持定时任务/);
   // The task's own folder is no folder of the user's (the sidebar's 不在项目中工作 group, not a recent folder).
   const home = String.raw`C:\Users\me\.codex`;
-  assert.equal(inTaskFolder("c:/users/me/.codex/codex-ui/automations/automation-2", home), true);
-  assert.equal(inTaskFolder(String.raw`C:\Users\me\.codex\codex-ui\automations\daily\out`, home), true);
-  for (const path of [String.raw`C:\Users\me\.codex\codex-ui\automations`, String.raw`C:\Users\me\.codex\worktrees\da2f\work`, "D:/work"]) assert.equal(inTaskFolder(path, home), false, path);
-  assert.equal(inTaskFolder("/home/me/.codex/codex-ui/automations/a", null), false);
+  assert.equal(inTaskFolder("c:/users/me/.codex/better-codex/automations/automation-2", home), true);
+  assert.equal(inTaskFolder(String.raw`C:\Users\me\.codex\better-codex\automations\daily\out`, home), true);
+  for (const path of [String.raw`C:\Users\me\.codex\better-codex\automations`, String.raw`C:\Users\me\.codex\worktrees\da2f\work`, "D:/work"]) assert.equal(inTaskFolder(path, home), false, path);
+  assert.equal(inTaskFolder("/home/me/.codex/better-codex/automations/a", null), false);
 });
 
 test("a cron run keeps the catalog's model and an effort that model offers, else the defaults", () => {
@@ -172,12 +172,12 @@ test("a run's session starts with no parent, the user's instructions kept; its t
   t.mock.method(Rpc.prototype, "request", function (method, params) {
     requests.push({ method, params: structuredClone(params) });
     if (method === "command/exec") return Promise.resolve({ exitCode: 128, stdout: "", stderr: "not a git repository" });
-    if (method === "codexUi/git/branches") return Promise.resolve({ root: null });
+    if (method === "betterCodex/git/branches") return Promise.resolve({ root: null });
     if (method === "thread/start") return Promise.resolve({ thread: meta("run"), model: "m", reasoningEffort: null, approvalPolicy: "never", sandbox: { type: "workspaceWrite" }, cwd: "D:/repo" });
     if (method === "turn/start") return Promise.resolve({ turn: { id: "t1", items: [], status: "inProgress", error: null } });
     return Promise.resolve({});
   });
-  setState({ threads: {}, pendingMessages: {}, projects: [], planCard: false, modes: [], conn: { status: "ready" }, config: { developer_instructions: "Be terse." }, server: { ...before.server, info: { codexUiHostContext: true } } });
+  setState({ threads: {}, pendingMessages: {}, projects: [], planCard: false, modes: [], conn: { status: "ready" }, config: { developer_instructions: "Be terse." }, server: { ...before.server, info: { betterCodexHostContext: true } } });
   const { id } = await startSideThread(null, { context: "fresh", cwd: "D:/repo", useWorktree: true, permission: "auto", approvalPolicy: "never", threadSource: "automation", instructions: CRON_GUIDANCE, roots: ["C:/home/nightly"], unloadAtOnce: true });
   const start = requests.find((r) => r.method === "thread/start").params;
   assert.equal(id, "run");
@@ -207,7 +207,7 @@ test("a session with a parent starts as before: no source, workspace roots or in
   t.after(() => setState(before));
   const { requests } = page(t, { rpc: (method) => (method === "thread/start" ? Promise.resolve(started("child")) : undefined) });
   const parent = { ...emptyThreadState({ ...meta("parent"), cwd: "D:/repo" }), subscribed: true, loaded: true };
-  setState({ threads: { parent }, pendingMessages: {}, projects: [], planCard: false, modes: [], conn: { status: "ready" }, config: { developer_instructions: "Be terse." }, server: { ...before.server, info: { codexUiHostContext: true } } });
+  setState({ threads: { parent }, pendingMessages: {}, projects: [], planCard: false, modes: [], conn: { status: "ready" }, config: { developer_instructions: "Be terse." }, server: { ...before.server, info: { betterCodexHostContext: true } } });
   await startSideThread("parent", { context: "fresh", permission: "auto" });
   const start = requests.find((r) => r.method === "thread/start").params;
   assert.equal("threadSource" in start, false);
@@ -557,7 +557,7 @@ test("a heartbeat's guidance names automation_update only while the desktop tool
 
   // A backend that offers the desktop tools, but not started as the experimental backend: still none.
   globalThis.window = { codexDesktop: {} };
-  setState({ server: { ...getState().server, experimental: false, info: { ...getState().server.info, codexUiDesktopTools: true } } });
+  setState({ server: { ...getState().server, experimental: false, info: { ...getState().server.info, betterCodexDesktopTools: true } } });
   queue = [claim(1500)];
   await tick(Date.now() + 60_000);
   await settle(() => turns().length === 2);

@@ -155,7 +155,7 @@ declare global {
 // Reduced motion (07 §7.4)
 
 /** Settings → 外观 → 动效: "system" follows the OS, "reduce" always reduces. */
-export const MOTION_KEY = "codex-ui:motion";
+export const MOTION_KEY = "better-codex:motion";
 
 /** Writes <html data-reduce-motion="true"> from the setting and the OS (theme-init.js does the first paint). */
 export function applyMotion() {
@@ -1602,7 +1602,7 @@ type RingProps = {
   /** A usage window (e.g. `${limitId}:${resetsAt}`), for the motion's draw-once and beat ledger. */
   motionKey?: string;
   streaming?: boolean;
-  /** codex-ui's own settings cards: centred over the ring. */
+  /** better-codex's own settings cards: centred over the ring. */
   children?: ReactNode;
 };
 
@@ -1645,7 +1645,7 @@ function PlainRing({ value, size = 12, stroke = 2, children }: RingProps) {
 type Beat = 1 | 2 | 3;
 type RingMotion = { entrance: "draw" | "quiet" | null; beat: Beat | null; queued: Beat | null; shimmer: number | null };
 
-const RING_LEDGER = "codex-ui:usageRingMotion";
+const RING_LEDGER = "better-codex:usageRingMotion";
 /** Beat lengths (cb979c293): warning, critical, limit. */
 const BEAT_MS: Record<Beat, number> = { 1: 2300, 2: 1450, 3: 2450 };
 

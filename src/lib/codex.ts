@@ -327,7 +327,7 @@ export function callExperimental<R>(method: string, params: unknown): Promise<R>
 
 /** The repository `cwd` is in, null outside one, undefined when it could not be asked. */
 export const gitRoot = (cwd: string): Promise<string | null | undefined> =>
-  callExperimental<{ root: string | null }>("codexUi/git/branches", { cwd }).then((info) => info.root, () => undefined);
+  callExperimental<{ root: string | null }>("betterCodex/git/branches", { cwd }).then((info) => info.root, () => undefined);
 
 /** Methods this server rejected as unknown, gated or unimplemented; cleared on every connect. */
 const missing = new Set<string>();
@@ -595,7 +595,7 @@ async function onOpen(hello: Hello): Promise<void> {
   const stalled = setTimeout(() => rpc.disconnect(), INIT_TIMEOUT_MS);
   try {
     const info = await call("initialize", {
-      clientInfo: { name: "codex_ui", title: "Codex UI", version: VERSION },
+      clientInfo: { name: "better_codex", title: "Better Codex", version: VERSION },
       // openai/form: MCP servers may send form elicitations (Approvals.tsx renders the form); the
       // legacy flag stays for servers older than `extensions`.
       capabilities: {
@@ -755,7 +755,7 @@ export async function refreshRateLimits(): Promise<void> {
   }
 }
 
-const BALANCE_TRACKS = "codex-ui:balance-tracks";
+const BALANCE_TRACKS = "better-codex:balance-tracks";
 
 /** Where each balance bar counts spending from, kept across restarts (meterBalances). */
 function balanceTracks(): BalanceTracks {
@@ -1163,7 +1163,7 @@ export async function refreshThreads(more = false): Promise<void> {
 /** The sidebar's Filter ▸ Status and Sort by; the palette's archive switch speaks in `archived`. */
 export function setListFilter(filter: Partial<{ archived: boolean; status: StatusFilter; sort: SessionSort }>): void {
   const status = filter.status ?? (filter.archived === undefined ? undefined : filter.archived ? "archived" : "active");
-  if (status) writePref("codex-ui:status-filter", status);
+  if (status) writePref("better-codex:status-filter", status);
   setState((s) => {
     const next = status ?? s.list.status;
     return { list: { ...s.list, ...(filter.sort ? { sort: filter.sort } : {}), status: next, archived: next === "archived", cursor: null } };
@@ -1214,7 +1214,7 @@ export function environmentKind(threadId: string | null): EnvironmentKind | null
   const id = gitEnvironment(meta);
   // An SSH session's environments echo the id it started with (sshEnvironmentId); "ssh:" is the
   // project's fallback when a thread carries none.
-  return id === "local" ? "local" : id.startsWith("codexui-ssh-") || id.startsWith("ssh:") ? "ssh" : id.startsWith("cloud:") ? "cloud" : null;
+  return id === "local" ? "local" : id.startsWith("bettercodex-ssh-") || id.startsWith("ssh:") ? "ssh" : id.startsWith("cloud:") ? "cloud" : null;
 }
 
 const gitSnapshotKey = (cwd: string, environmentId: string) => JSON.stringify([environmentId, cwd]);
@@ -1816,7 +1816,7 @@ async function prepareCheckouts(project: Project): Promise<Checkouts> {
   const settingsOf = (index: number) => (index === 0 ? environment.settings : environment.folderSettings[folders[index]] ?? {});
   const anyWorktree = folders.some((_, index) => settingsOf(index).worktree);
   const repositories = anyWorktree
-    ? await Promise.all(folders.map((cwd) => callExperimental<{ root: string | null }>("codexUi/git/branches", { cwd }).then((info) => info.root, () => null)))
+    ? await Promise.all(folders.map((cwd) => callExperimental<{ root: string | null }>("betterCodex/git/branches", { cwd }).then((info) => info.root, () => null)))
     : folders.map(() => null);
   const made = new Map<string, string>();
   const checkouts: Checkouts = { cwd: folders[0], roots: [], worktrees: [] };
@@ -1838,12 +1838,12 @@ async function prepareCheckouts(project: Project): Promise<Checkouts> {
       continue;
     }
     if (worktree) {
-      const created = await callExperimental<{ cwd: string; worktree: string; repository: string }>("codexUi/worktree/create", { cwd: folder, base: branch ?? null, root: worktreeRoot() });
+      const created = await callExperimental<{ cwd: string; worktree: string; repository: string }>("betterCodex/worktree/create", { cwd: folder, base: branch ?? null, root: worktreeRoot() });
       made.set(repository ?? created.repository, created.worktree);
       checkouts.worktrees.push(created.worktree);
       checkouts.roots.push(created.cwd);
     } else {
-      if (index === 0 && branch) await callExperimental("codexUi/git/switch", { cwd: folder, branch });
+      if (index === 0 && branch) await callExperimental("betterCodex/git/switch", { cwd: folder, branch });
       checkouts.roots.push(folder);
     }
   }
@@ -1852,7 +1852,7 @@ async function prepareCheckouts(project: Project): Promise<Checkouts> {
 }
 
 /** The backend accepts SSH environments (environment/addStdio) only with the experimental backend on. */
-export const sshSupported = () => getState().server.info?.codexUiStdioEnvironments === true;
+export const sshSupported = () => getState().server.info?.betterCodexStdioEnvironments === true;
 
 /** A folder in Codex's worktree root: a session's own checkout, not a folder to keep as an environment. */
 export function inWorktreeRoot(path: string): boolean {
@@ -1907,7 +1907,7 @@ async function ensureThreadEnvironment(projectId: string | null | undefined): Pr
 }
 
 export function hostContextSupported(): boolean {
-  return getState().server.info?.codexUiHostContext === true;
+  return getState().server.info?.betterCodexHostContext === true;
 }
 let hostContextGeneration = 0;
 const hostContextPending = new Map<string, Promise<void>>();
@@ -1919,12 +1919,12 @@ export function syncHostContext(id: string): Promise<void> {
     if (generation !== hostContextGeneration) throw new Error("连接已更换，宿主上下文未同步。");
     const thread = getState().threads[id];
     if (!thread?.subscribed || thread.meta.parentThreadId || spawnOf(thread.meta)) return;
-    await callExperimental("thread/settings/update", { threadId: id, codexUiContext: hostContext(thread.settings?.cwd ?? thread.meta.cwd, getState().planCard, {
-      desktopContext: getState().server.info?.codexUiDesktopContext === true,
+    await callExperimental("thread/settings/update", { threadId: id, betterCodexContext: hostContext(thread.settings?.cwd ?? thread.meta.cwd, getState().planCard, {
+      desktopContext: getState().server.info?.betterCodexDesktopContext === true,
       desktopTools: desktopToolsReady(getState()),
-      hostContextV2: getState().server.info?.codexUiHostContextV2 === true,
+      hostContextV2: getState().server.info?.betterCodexHostContextV2 === true,
       hostContextMaxBytes: hostTextBudget(),
-      workflows: getState().server.info?.codexUiWorkflows === true ? { enabled: workflowsEnabled(), ultracode: ultracodeOn(id) } : undefined,
+      workflows: getState().server.info?.betterCodexWorkflows === true ? { enabled: workflowsEnabled(), ultracode: ultracodeOn(id) } : undefined,
     }) });
   });
   hostContextPending.set(id, next);
@@ -1932,9 +1932,9 @@ export function syncHostContext(id: string): Promise<void> {
   return next;
 }
 
-/** The host text the backend holds (initialize codexUiHostContextMaxBytes); 8 KiB before it said. */
+/** The host text the backend holds (initialize betterCodexHostContextMaxBytes); 8 KiB before it said. */
 function hostTextBudget(): number | undefined {
-  const max = (getState().server.info as { codexUiHostContextMaxBytes?: unknown } | null)?.codexUiHostContextMaxBytes;
+  const max = (getState().server.info as { betterCodexHostContextMaxBytes?: unknown } | null)?.betterCodexHostContextMaxBytes;
   return typeof max === "number" && Number.isSafeInteger(max) && max > 0 ? max : undefined;
 }
 
@@ -1984,7 +1984,7 @@ export async function startThread(pendingMessageId?: string, plain?: { model: st
   const response = await call("thread/start", params as never);
   const id = response.thread.id;
   // Ownership as Codex's desktop app records it, so its worktree cleanup knows the session.
-  for (const worktree of checkouts?.worktrees ?? []) void callExperimental("codexUi/worktree/bind", { cwd: worktree, threadId: id }).catch(() => {});
+  for (const worktree of checkouts?.worktrees ?? []) void callExperimental("betterCodex/worktree/bind", { cwd: worktree, threadId: id }).catch(() => {});
   if (checkouts?.lazy) setLazy(id, {});
   setState((s) => ({
     ...(pendingMessageId && s.pendingMessages[""]?.item.id === pendingMessageId
@@ -2110,7 +2110,7 @@ export function resumeInPlanMode(threadId: string, turnId: string): void {
 // the model is about to change files (enter_worktree). Codex fixes a turn's folder and sandbox when
 // it starts, so the session moves once the call has its answer and goes on in the next turn.
 
-const LAZY_KEY = "codex-ui:lazy-worktrees";
+const LAZY_KEY = "better-codex:lazy-worktrees";
 type LazyWorktree = { moveTo?: string };
 const lazyWorktrees = () => (readJson(LAZY_KEY) ?? {}) as Record<string, LazyWorktree>;
 
@@ -2129,10 +2129,10 @@ export const movingToWorktree = (threadId: string): boolean => !!lazyWorktrees()
 
 /**
  * The desktop tools, enter_worktree among them, reach this window's sessions: the backend offers them
- * and Codex UI started it as the experimental backend (hello; a CODEX_BIN that sets the mark itself
+ * and Better Codex started it as the experimental backend (hello; a CODEX_BIN that sets the mark itself
  * gets no bridge MCP), in the desktop app.
  */
-export const desktopToolsReady = (s: AppState): boolean => s.server.info?.codexUiDesktopTools === true && s.server.experimental && typeof window !== "undefined" && !!window.codexDesktop;
+export const desktopToolsReady = (s: AppState): boolean => s.server.info?.betterCodexDesktopTools === true && s.server.experimental && typeof window !== "undefined" && !!window.codexDesktop;
 const desktopToolsAvailable = () => desktopToolsReady(getState());
 
 /** What runs once a desktop call's receipt reached the bridge (rpc.ts delivered), by request id. */
@@ -2145,8 +2145,8 @@ const afterReceipt = new Map<string, () => void>();
 export async function enterWorktree(threadId: string, requestId: string): Promise<{ worktree: string; base: string | null }> {
   const thread = getState().threads[threadId];
   if (!thread) throw new Error("This session is not loaded.");
-  const created = await callExperimental<{ cwd: string; worktree: string; base?: string | null }>("codexUi/worktree/create", { cwd: threadCwd(thread), base: null, root: worktreeRoot() });
-  await callExperimental("codexUi/worktree/bind", { cwd: created.worktree, threadId }).catch(() => {});
+  const created = await callExperimental<{ cwd: string; worktree: string; base?: string | null }>("betterCodex/worktree/create", { cwd: threadCwd(thread), base: null, root: worktreeRoot() });
+  await callExperimental("betterCodex/worktree/bind", { cwd: created.worktree, threadId }).catch(() => {});
   setLazy(threadId, { moveTo: created.cwd });
   const turn = activeTurn(getState().threads[threadId]);
   if (turn) resumes.set(threadId, { turnId: turn.id, text: WORKTREE_RESUME });
@@ -2176,8 +2176,8 @@ async function settleLazyWorktree(threadId: string): Promise<void> {
   if (!lazy.moveTo && desktopToolsAvailable()) return;
   if (!lazy.moveTo) {
     const thread = getState().threads[threadId];
-    const created = await callExperimental<{ cwd: string; worktree: string }>("codexUi/worktree/create", { cwd: threadCwd(thread), base: null, root: worktreeRoot() });
-    await callExperimental("codexUi/worktree/bind", { cwd: created.worktree, threadId }).catch(() => {});
+    const created = await callExperimental<{ cwd: string; worktree: string }>("betterCodex/worktree/create", { cwd: threadCwd(thread), base: null, root: worktreeRoot() });
+    await callExperimental("betterCodex/worktree/bind", { cwd: created.worktree, threadId }).catch(() => {});
     setLazy(threadId, { moveTo: created.cwd });
   }
   await moveLazy(threadId);
@@ -2199,7 +2199,7 @@ export interface SyncResult {
 export async function syncThreadWithBase(threadId: string, base?: string): Promise<SyncResult> {
   const thread = getState().threads[threadId];
   if (!thread) throw new Error("This session is not loaded.");
-  const result = await callExperimental<SyncResult>("codexUi/worktree/sync", { cwd: threadCwd(thread), base: base ?? null });
+  const result = await callExperimental<SyncResult>("betterCodex/worktree/sync", { cwd: threadCwd(thread), base: base ?? null });
   void refreshThreadGit(threadId, true);
   return result;
 }
@@ -2426,13 +2426,13 @@ export async function sendAutomationTurn(threadId: string, text: string, opts: {
 function turnContext(snapshot: GitSnapshot | null, side: ReturnType<typeof sideContext>, input: UserInput[] = [], threadId?: string, extra?: ContextEntries): { additionalContext?: ContextEntries } {
   // claude.exe workflow_keyword_request: "ultracode" in a typed message opts that turn into a
   // workflow (in its words: not an attached file's name).
-  const keyword = getState().server.info?.codexUiWorkflows === true && workflowsEnabled()
+  const keyword = getState().server.info?.betterCodexWorkflows === true && workflowsEnabled()
     && input.some((part) => part.type === "text" && hasUltracodeKeyword(splitRequest(part.text).request));
   const context = {
     ...(snapshot ? gitContext(snapshot) : {}), ...side?.entries,
-    ...(keyword ? { "codex-ui.workflow-keyword": { kind: "application" as const, value: WORKFLOW_KEYWORD } } : {}),
+    ...(keyword ? { "better-codex.workflow-keyword": { kind: "application" as const, value: WORKFLOW_KEYWORD } } : {}),
     // 改代码前再建工作树: the turn knows it is in the user's checkout until enter_worktree.
-    ...(threadId && defersWorktree(threadId) ? { "codex-ui.worktree": { kind: "application" as const, value: LAZY_WORKTREE } } : {}),
+    ...(threadId && defersWorktree(threadId) ? { "better-codex.worktree": { kind: "application" as const, value: LAZY_WORKTREE } } : {}),
     ...extra,
   };
   return Object.keys(context).length ? { additionalContext: context } : {};
@@ -2840,7 +2840,7 @@ async function generateThreadTitle(id: string, description: string): Promise<voi
   updateThread(id, (t) => named(t, placeholder));
   try {
     const title = (await requestTitle(description, effectiveSettings(thread).model, job.signal).catch((error) => {
-      if (!job.signal.aborted) console.warn("codex-ui: title generation failed", errorMessage(error));
+      if (!job.signal.aborted) console.warn("better-codex: title generation failed", errorMessage(error));
       return null;
     })) ?? placeholder;
     const current = getState().threads[id]?.meta.name?.trim();
@@ -2850,7 +2850,7 @@ async function generateThreadTitle(id: string, description: string): Promise<voi
     updateThread(id, (t) => named(t, title));
     if (!getState().titleSources[id]) setTitleSource(id, "auto");
   } catch (error) {
-    if (!job.signal.aborted) console.warn("codex-ui: title generation failed", errorMessage(error));
+    if (!job.signal.aborted) console.warn("better-codex: title generation failed", errorMessage(error));
   } finally {
     if (namingJobs.get(id) === job) namingJobs.delete(id);
     // A stand-in that never reached Codex goes with the job.
@@ -2960,7 +2960,7 @@ export async function maybeRecap(threadId: string | null): Promise<void> {
   if (state.recaps[threadId]?.turnId === last.id || state.pendingMessages[threadId]) return;
   if ((state.rateLimits?.rateLimits?.primary?.usedPercent ?? 0) >= 90) return;
   try {
-    if (localStorage.getItem(`codex-ui:draft:${threadId}`)?.trim()) return;
+    if (localStorage.getItem(`better-codex:draft:${threadId}`)?.trim()) return;
   } catch {
     // No storage: no draft to keep the recap away from.
   }
@@ -2970,9 +2970,9 @@ export async function maybeRecap(threadId: string | null): Promise<void> {
     if (!text || getState().threads[threadId]?.turns.at(-1)?.id !== last.id) return;
     const recap = { text: text.length > RECAP_MAX ? `${text.slice(0, RECAP_MAX)}…` : text, at: Date.now(), turnId: last.id };
     setState((s) => ({ recaps: { ...s.recaps, [threadId]: recap } }));
-    writeJson("codex-ui:recaps", getState().recaps);
+    writeJson("better-codex:recaps", getState().recaps);
   } catch (error) {
-    console.warn("codex-ui: away recap failed", errorMessage(error));
+    console.warn("better-codex: away recap failed", errorMessage(error));
   } finally {
     recapping.delete(threadId);
   }
@@ -2990,10 +2990,10 @@ if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", () => (document.hidden ? away() : back()));
 }
 
-const FORK_POINTS = "codex-ui:fork-points";
+const FORK_POINTS = "better-codex:fork-points";
 
 /**
- * Where each fork codex-ui made left its parent (c4de0b325 forkMarker): fork id → the last turn it
+ * Where each fork better-codex made left its parent (c4de0b325 forkMarker): fork id → the last turn it
  * kept. Codex records no fork point, so forks made elsewhere have none and draw no marker.
  */
 export function forkPoints(): Record<string, string> {
@@ -3036,7 +3036,7 @@ export async function forkThread(id: string, lastTurnId?: string): Promise<strin
     await call("thread/name/set", { threadId: forkId, name });
     updateThread(forkId, (t) => ({ ...t, meta: { ...t.meta, name } }));
   } catch (error) {
-    console.warn("codex-ui: naming the fork failed", errorMessage(error));
+    console.warn("better-codex: naming the fork failed", errorMessage(error));
   }
   // The fork opens with no success toast (caec4a2d4 Wn).
   await openThread(forkId, true);
@@ -3086,9 +3086,9 @@ export async function startSideThread(parentId: string | null, spec: SideThreadS
   let worktree: string | null = null;
   let checkout: SideCheckout = spec.context === "fork" ? "fork" : "shared";
   if (parent ? !spec.cwd && (spec.context === "fresh" ? (spec.useWorktree ?? inWorktreeRoot(cwd)) : inWorktreeRoot(cwd)) : spec.useWorktree) {
-    const repository = await callExperimental<{ root: string | null }>("codexUi/git/branches", { cwd }).then((info) => info.root, () => null);
+    const repository = await callExperimental<{ root: string | null }>("betterCodex/git/branches", { cwd }).then((info) => info.root, () => null);
     if (repository) {
-      const created = await callExperimental<{ cwd: string; worktree: string }>("codexUi/worktree/create", { cwd, base: null, root: worktreeRoot() });
+      const created = await callExperimental<{ cwd: string; worktree: string }>("betterCodex/worktree/create", { cwd, base: null, root: worktreeRoot() });
       cwd = created.cwd;
       worktree = created.worktree;
       checkout = "own";
@@ -3120,7 +3120,7 @@ export async function startSideThread(parentId: string | null, spec: SideThreadS
       ...(spec.roots?.length ? { runtimeWorkspaceRoots: [...new Set([cwd, ...spec.roots])] } : {}),
     } as never);
   const id = response.thread.id;
-  if (worktree) void callExperimental("codexUi/worktree/bind", { cwd: worktree, threadId: id }).catch(() => {});
+  if (worktree) void callExperimental("betterCodex/worktree/bind", { cwd: worktree, threadId: id }).catch(() => {});
   const effort = spec.effort ?? (spec.context === "fresh" ? settings.effort : null);
   setState((s) => ({
     threads: {
@@ -3244,7 +3244,7 @@ async function attachCreatedPrs(threadId: string, text: string): Promise<void> {
   }
 }
 
-const DISMISSED_KEY = "codex-ui:pr-dismissed";
+const DISMISSED_KEY = "better-codex:pr-dismissed";
 
 /** The PRs the user removed, by thread (Claude keeps a dismissed binding), which the branch lookup leaves out. */
 function dismissedPrs(): Record<string, string[]> {
@@ -4289,7 +4289,7 @@ function onServerRequest(request: ServerRequest): void {
         return;
       }
       // Dynamic tools, external auth refresh, attestation and v1 approvals are never opted into.
-      rpc.respondError(request.id, `Codex UI does not handle ${request.method}`);
+      rpc.respondError(request.id, `Better Codex does not handle ${request.method}`);
   }
 }
 
@@ -4922,7 +4922,7 @@ function onNotification(notification: ServerNotification): void {
     default:
       if (notification.method.startsWith("thread/realtime/")) onRealtimeNotification(notification);
       // The bridge's own: a scheduled task changed (server/bridge.mjs).
-      else if ((notification.method as string) === "codexUi/automations/changed") void refreshAutomations();
+      else if ((notification.method as string) === "betterCodex/automations/changed") void refreshAutomations();
       return;
   }
 }

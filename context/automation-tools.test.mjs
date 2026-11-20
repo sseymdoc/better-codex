@@ -140,7 +140,7 @@ test("a result names its task in _meta, never from its text: a list none, a quot
   for (const [mode, outcome] of [["view", "viewed"], ["update", "updated"], ["delete", "deleted"], ["update", "declined"]]) {
     const result = automationResult("automation_update", { mode, id: "a" }, { outcome, task: quoted });
     assert.deepEqual(resultTask(result), quoted, outcome);
-    assert.ok(!/codexUi/.test(result.content[0].text), outcome);
+    assert.ok(!/betterCodex/.test(result.content[0].text), outcome);
   }
   assert.deepEqual(resultTask(automationResult("automation_update", heartbeat, { outcome: "declined", task: { name: "Watch CI" } })), { name: "Watch CI" });
   assert.deepEqual(resultTask(automationResult("cloud_task_update", { mode: "pause", id: "c" }, { outcome: "paused", task: { id: "c", title: "“早”简报" } })), { id: "c", name: "“早”简报" });
@@ -148,6 +148,6 @@ test("a result names its task in _meta, never from its text: a list none, a quot
   // A refusal's task (server/desktop-tools.mjs) is checked the same way: nothing else rides along.
   assert.deepEqual(automationTask({ id: "a", name: "N" }), { id: "a", name: "N" });
   for (const bad of [null, "N", { name: "" }, { name: 1 }, { id: "a\nb", name: "N" }, { name: "N", prompt: "p" }, { name: "x".repeat(2001) }]) assert.equal(automationTask(bad), undefined, JSON.stringify(bad));
-  assert.equal(resultTask({ content: [{ type: "text", text: "Codex UI could not save the scheduled task “N”: disk full" }] }), undefined);
+  assert.equal(resultTask({ content: [{ type: "text", text: "Better Codex could not save the scheduled task “N”: disk full" }] }), undefined);
   assert.equal(resultTask(null), undefined);
 });

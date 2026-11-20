@@ -1,4 +1,4 @@
-# Codex UI
+# Better Codex
 
 A browser and desktop frontend for the Codex CLI. It talks to `codex app-server` (JSON-RPC v2) and
 replicates the **Code tab of Claude Desktop 2.42304.0.0**, read from the package's shipped
@@ -8,7 +8,7 @@ the bundle wins.
 
 - **One variant, the flag-off one.** The bundle's GrowthBook reader returns *off* for a flag the
   server did not send, and one flag (`claudeai_cc_epitaxy_session_presets_main`) switches a whole
-  set of screens. codex-ui is that flag-off Code tab throughout: the greeting home page, the
+  set of screens. better-codex is that flag-off Code tab throughout: the greeting home page, the
   classic session list, the docked question card, the original command palette. The one
   exception is the flag-on "Session details" rail (会话栏), carried over on its own. Other flags
   with an unknown default are treated the same way; "kill switch" flags (`!flag`) therefore stay on.
@@ -98,7 +98,7 @@ the bundle wins.
   side chat (`/btw`, `Ctrl+;`), answered in an ephemeral read-only fork that never joins the
   session; 标记为已完成, 打开方式 and 移到顶层 in the session menu, `Ctrl`+digit hints; 代码字号,
   the worktree location and 这台电脑 › 存储 (removing inactive sessions' worktrees). With the
-  experimental backend, `codex_ui_desktop` also carries Claude's session, sidebar, view and window,
+  experimental backend, `better_codex_desktop` also carries Claude's session, sidebar, view and window,
   connector, host and folder and scheduled-task tools, and inline visuals (`show_widget` /
   `read_me`, Settings → 能力 → 内联可视化) drawn in the sandboxed `/widget-frame`.
 - **Sign-in**: in the desktop app a splash, then ChatGPT in the browser, a device code or an API
@@ -193,7 +193,7 @@ From the repository root (the package is part of the pnpm workspace):
 
 ```sh
 pnpm install
-cd codex-ui
+cd better-codex
 pnpm build && pnpm start      # serves dist/ on http://127.0.0.1:7477
 pnpm dev                      # Vite dev server with the same bridge on :5173
 ```
@@ -208,7 +208,7 @@ cookie (the token stays valid for the life of the process). `pnpm start -- --hel
 | `-c key=value` | config override forwarded to codex (repeatable). |
 | `--port N` | listen port (default 7477, next free port if taken). |
 | `--no-open` | do not open a browser. |
-| `CODEX_UI_TOKEN` | use a fixed token instead of a random one. |
+| `BETTER_CODEX_TOKEN` | use a fixed token instead of a random one. |
 
 `CODEX_HOME` and other environment variables are passed through to app-server unchanged.
 
@@ -218,13 +218,13 @@ cookie (the token stays valid for the life of the process). `pnpm start -- --hel
 
 ```sh
 pnpm desktop                  # build dist/ and open the window
-pnpm package:desktop          # out/Codex UI-<platform>-<arch>/, e.g. "Codex UI.exe" on Windows
-pnpm installer:desktop        # Windows: out/installer/Codex-UI-Setup-<version>.exe (NSIS)
-pnpm installer:mac            # macOS (Apple Silicon): out/installer/Codex-UI-<version>-arm64.dmg
+pnpm package:desktop          # out/Better Codex-<platform>-<arch>/, e.g. "Better Codex.exe" on Windows
+pnpm installer:desktop        # Windows: out/installer/Better-Codex-Setup-<version>.exe (NSIS)
+pnpm installer:mac            # macOS (Apple Silicon): out/installer/Better-Codex-<version>-arm64.dmg
 ```
 
 The Mac app is ad-hoc signed, not notarized: the first time it is opened, macOS refuses it once;
-then 系统设置 → 隐私与安全性 → 仍要打开 lets it run (or `xattr -dr com.apple.quarantine "/Applications/Codex UI.app"`).
+then 系统设置 → 隐私与安全性 → 仍要打开 lets it run (or `xattr -dr com.apple.quarantine "/Applications/Better Codex.app"`).
 
 It listens on 7478 so its settings (stored per origin) stay apart from the browser version's. As
 in Claude Desktop 2.42304.0.0:
@@ -263,11 +263,19 @@ in Claude Desktop 2.42304.0.0:
   `node` and `cargo` resolve as in Terminal. No Dock menu for the jump list, and a login launch
   shows the window.
 
-codex-ui's own choices, not Claude Desktop's: zoom, theme and the desktop settings are kept in
+better-codex's own choices, not Claude Desktop's: zoom, theme and the desktop settings are kept in
 `window-state.json`; the tray icon is the app icon's `</>` drawn in code (Claude ships its own
 icons); Quick Entry does not hand focus back to the app that had it (that needs a native module).
-The desktop app reads `CODEX_BIN` and `CODEX_UI_TOKEN` from the environment; under Electron, npm's
+The desktop app reads `CODEX_BIN` and `BETTER_CODEX_TOKEN` from the environment; under Electron, npm's
 `codex.js` launcher runs with the `node` on `PATH`.
+
+Better Codex was called Codex UI. On its first start the old profile (the `codex-ui` folder beside the
+`better-codex` user-data folder) and `<CODEX_HOME>/codex-ui` move to their new names, each leaving a
+junction behind so paths that sessions and tasks recorded still resolve; the page's `codex-ui:` settings
+move to `better-codex:`. Older history reads as the new names (`codex_ui_*` MCP servers, `codexUi*`
+result `_meta`, `codex_ui_*` thread settings). Unsent draft images and MCP tool approvals saved under the
+old server names do not carry over, and the installer's new appId installs beside Codex UI rather than
+over it.
 
 **Settings → 实验性功能 → 实验型后端** uses the shared segmented control: 禁用 / Release /
 Preview / 自定义. `backendChannel` in `window-state.json` defaults to `disabled`; the old boolean switch
@@ -295,10 +303,10 @@ reusing its existing installed files and source cache.
 “检查更新” (Release / Preview) runs one visible check: Release asks GitHub for the latest package,
 Preview fetches the default branch into its source checkout and rebuilds only a new commit; either
 says when it is already up to date, and a newer backend waits for 重启应用.
-**实验型后端版本不匹配**: an experimental backend built for this UI reports every `codexUi*` field of
+**实验型后端版本不匹配**: an experimental backend built for this UI reports every `betterCodex*` field of
 `initialize` (`src/lib/backend-version.ts` lists them, typed so `tsc` fails when the protocol gains
 one). When the bridge started the gated backend (`experimentalBackend` in its hello) and a field is
-missing, the backend is older than the UI; an unknown `codexUi*` field means it is newer. The
+missing, the backend is older than the UI; an unknown `betterCodex*` field means it is newer. The
 sidebar's banner slot then shows a notice card with the fix for the channel (检查更新, 选择后端包, or
 重启应用 once another backend waits; ✕ hides it until the next start), and the settings row names
 the missing features. The disabled (native) backend is never a mismatch.
@@ -310,19 +318,19 @@ launches use `CODEX_BIN`, `PATH` and installed copies, skipping automatic reposi
 `CODEX_EXPERIMENTAL_BIN` is no longer used by the desktop app. A repository without a published
 complete package reports that prerequisite instead of substituting an unrelated upstream release.
 Non-native backend capabilities use a shared launch gate. The desktop passes its effective
-startup selection to the bridge, which explicitly sets `CODEX_UI_EXPERIMENTAL_BACKEND=1` for
+startup selection to the bridge, which explicitly sets `BETTER_CODEX_EXPERIMENTAL_BACKEND=1` for
 Release/Preview/Custom or `0` when disabled, overriding inherited environment values. The patched
 backend reads this into `Config.experimental_backend`; a custom `CODEX_BIN` alone does not
 enable extensions. Background-completion wakes and waiting guidance require this gate.
 The browser bridge leaves it off. Changes take effect together with the backend after restart.
-The manual `Codex UI backend release` workflow builds and verifies the Windows x64 and macOS arm64
+The manual `Better Codex backend release` workflow builds and verifies the Windows x64 and macOS arm64
 packages from one commit, then publishes both under one `backend-v…` tag once both succeed. It is
 never triggered by an ordinary push.
 
-The local workspace version tracks the upstream source baseline with a `+codex-ui` build suffix.
+The local workspace version tracks the upstream source baseline with a `+better-codex` build suffix.
 Keep it when rebuilding the experimental backend: both Remote enrollment and the initialization
 handshake use this version. An unversioned `0.0.0` build connects to the relay but mobile Remote
-rejects it as outdated. Restart Codex UI after rebuilding to load the new backend.
+rejects it as outdated. Restart Better Codex after rebuilding to load the new backend.
 
 ## How it works
 
@@ -412,7 +420,7 @@ Protocol types come straight from `codex-rs/app-server-protocol/schema/typescrip
 
 Command rows use the model-provided `description` as their title, with the existing command
 summary as a fallback for older servers and history. Only the experimental backend
-(`CODEX_UI_EXPERIMENTAL_BACKEND=1`: Release or Preview in the desktop experimental-backend control)
+(`BETTER_CODEX_EXPERIMENTAL_BACKEND=1`: Release or Preview in the desktop experimental-backend control)
 advertises `description` as required, including nested calls inside `exec`; otherwise the command
 tool keeps its native declaration and a description the model sends anyway is dropped. Runtime
 parsing still accepts older calls. A patched `CODEX_BIN` alone does not turn it on, and rebuilding
@@ -424,7 +432,7 @@ the archive and binding against that manifest. It never disables the V8 sandbox 
 
 包含此改动的自编译后端在桌面“实验型后端”选择 Release / Preview 并重启后，
 会通过现有本地日志记录 `codex_core::turn_preparation`。入口只检查
-`Config.experimental_backend`（由启动标记 `CODEX_UI_EXPERIMENTAL_BACKEND=1` 派生）；
+`Config.experimental_backend`（由启动标记 `BETTER_CODEX_EXPERIMENTAL_BACKEND=1` 派生）；
 关闭时不取时、不记录，普通配置、模型参数和 `CODEX_BIN` 不会启用测量。
 无需增加模型工具、协议参数或外部监控服务。
 

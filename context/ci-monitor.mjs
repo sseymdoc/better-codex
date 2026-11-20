@@ -1,4 +1,4 @@
-// 自动修复: the message Codex UI wakes a session with when a pull request it watches needs work,
+// 自动修复: the message Better Codex wakes a session with when a pull request it watches needs work,
 // and its parse for the transcript's row. What GitHub and gh report goes in quoted, as data.
 import { excerpt } from "./sessions.mjs";
 

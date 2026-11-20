@@ -74,7 +74,7 @@ async function run() {
         const siteCall = requestSite && !emittedSiteCall;
         if (siteCall) emittedSiteCall = true;
         const output = siteCall
-          ? { type: "function_call", call_id: "site-call", namespace: "mcp__codex_ui_browser", name: "preview_start", arguments: JSON.stringify({ url: siteUrl }) }
+          ? { type: "function_call", call_id: "site-call", namespace: "mcp__better_codex_browser", name: "preview_start", arguments: JSON.stringify({ url: siteUrl }) }
           : { type: "message", role: "assistant", content: [{ type: "output_text", text: "验收会话已就绪" }] };
         for (const event of [
           { type: "response.created", response: { id: "ui-response" } },
@@ -90,7 +90,7 @@ async function run() {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
       res.end(
-        '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>浏览器验收页面</title><style>body{font:16px system-ui;padding:32px;color:#252525}button{padding:8px 20px}</style><h1>同一个真实浏览器页面</h1><p>这个页面由 Codex UI 的原生浏览器显示。</p><label>姓名 <input id="name"></label><button onclick="document.querySelector(\"#result\").textContent=\"提交成功\"">提交</button><p id="result">等待提交</p>',
+        '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>浏览器验收页面</title><style>body{font:16px system-ui;padding:32px;color:#252525}button{padding:8px 20px}</style><h1>同一个真实浏览器页面</h1><p>这个页面由 Better Codex 的原生浏览器显示。</p><label>姓名 <input id="name"></label><button onclick="document.querySelector(\"#result\").textContent=\"提交成功\"">提交</button><p id="result">等待提交</p>',
       );
     });
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -98,7 +98,7 @@ async function run() {
     siteUrl = url.replace("127.0.0.1", "external.browser.test");
     writeFileSync(
       path.join(codexHome, "config.toml"),
-      `model="gpt-5.1"\nmodel_provider="ui_fixture"\n[model_providers.ui_fixture]\nname="UI fixture"\nbase_url="${url}/v1"\nwire_api="responses"\nrequires_openai_auth=false\n[mcp_servers.codex_ui_browser.tools.preview_start]\napproval_mode="approve"\n`,
+      `model="gpt-5.1"\nmodel_provider="ui_fixture"\n[model_providers.ui_fixture]\nname="UI fixture"\nbase_url="${url}/v1"\nwire_api="responses"\nrequires_openai_auth=false\n[mcp_servers.better_codex_browser.tools.preview_start]\napproval_mode="approve"\n`,
     );
     await import("./main.mjs");
     await until(() => win && !win.isDestroyed() && !win.webContents.isLoading(), "main window load");

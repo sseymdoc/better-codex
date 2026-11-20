@@ -84,7 +84,7 @@ export function createBackendManager({ root, channel = "disabled", env = process
     renameSync(`${file}.tmp`, file);
   };
   const response = async (url, signal) => {
-    const result = await fetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(600000)]), headers: { "User-Agent": "codex-ui", Accept: "application/vnd.github+json" } });
+    const result = await fetch(url, { signal: AbortSignal.any([signal, AbortSignal.timeout(600000)]), headers: { "User-Agent": "better-codex", Accept: "application/vnd.github+json" } });
     if (!result.ok) throw new Error(result.status === 404 && url === RELEASE_API
       ? "sseymdoc/codex 尚未发布 Release 后端安装包。"
       : `下载失败（HTTP ${result.status}）。`);

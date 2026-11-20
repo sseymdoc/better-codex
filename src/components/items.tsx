@@ -1017,7 +1017,7 @@ function RunningFooter({ startedAt, copy, background }: { startedAt?: number; co
  */
 function BackgroundKey({ item }: { item: ItemOf<"commandExecution"> }) {
   const session = use(KeptIn);
-  const supported = useStore((s) => s.server.info?.codexUiBackgroundTerminals === true);
+  const supported = useStore((s) => s.server.info?.betterCodexBackgroundTerminals === true);
   const only = useStore((s) => !!session && backgroundable(activeTurn(s.threads[session])?.items ?? []).length === 1);
   if (!supported || !session || !backgroundable([item]).length) return null;
   return (
@@ -1290,7 +1290,7 @@ function contentImages(content: unknown[]): string[] {
   });
 }
 
-/** codex_ui_desktop's terminal, pull request and worktree tools as rows: running and done. */
+/** better_codex_desktop's terminal, pull request and worktree tools as rows: running and done. */
 const DESKTOP_VERBS: Partial<Record<string, [string, string]>> = {
   list_terminal_tabs: ["正在列出终端标签页", "已列出终端标签页"],
   open_terminal_tab: ["正在打开终端", "已打开终端"],
@@ -1374,15 +1374,15 @@ const AUTOMATION_VERBS: Partial<Record<string, [string, string, string]>> = {
  */
 export function McpRow({ item, progress, extra }: { item: ItemOf<"mcpToolCall">; progress?: string; extra?: RowExtra }) {
   // callTaskName reads the task lists: a scheduled-task row draws again once they load (a cold page's cloud list).
-  const taskCall = item.server === "codex_ui_desktop" && (item.tool === "automation_update" || item.tool === "cloud_task_update");
+  const taskCall = item.server === "better_codex_desktop" && (item.tool === "automation_update" || item.tool === "cloud_task_update");
   useAutomations((s) => (taskCall ? s.items : null));
   useCloudAutomations((s) => (taskCall ? s.items : null));
   const session = use(KeptIn);
   const visuals = useStore((s) => s.inlineVisuals);
   // Claude 4.4212 visualize: read_me is setup the user never sees (claude.ai/hidden_in_chat);
   // show_widget is the widget itself, or a line saying it could not be drawn (no code dump).
-  if (item.server === "codex_ui_desktop" && item.tool === "read_me" && !item.error && item.status !== "failed") return null;
-  if (item.server === "codex_ui_desktop" && item.tool === "show_widget") {
+  if (item.server === "better_codex_desktop" && item.tool === "read_me" && !item.error && item.status !== "failed") return null;
+  if (item.server === "better_codex_desktop" && item.tool === "show_widget") {
     const widget = widgetArgs(item.arguments);
     const state = rowState(item.status);
     if (widget && visuals && state.status === "running") return <WidgetLoading lines={widget.loading} />;
@@ -1399,11 +1399,11 @@ export function McpRow({ item, progress, extra }: { item: ItemOf<"mcpToolCall">;
       </ToolRow>
     );
   }
-  if (item.server === "codex_ui_desktop" && item.tool === "set_session_title") return <SessionRenameRow item={item} extra={extra} />;
-  if (item.server === "codex_ui_desktop" && item.tool === "enter_plan_mode") return <EnterPlanRow item={item} extra={extra} />;
+  if (item.server === "better_codex_desktop" && item.tool === "set_session_title") return <SessionRenameRow item={item} extra={extra} />;
+  if (item.server === "better_codex_desktop" && item.tool === "enter_plan_mode") return <EnterPlanRow item={item} extra={extra} />;
   // c4de0b325 Cj mark_chapter "lifted-out": the chapter's heading where the model marked it (its
   // row in the chapters list: transcript.ts agentChapters).
-  if (item.server === "codex_ui_desktop" && item.tool === "mark_chapter") {
+  if (item.server === "better_codex_desktop" && item.tool === "mark_chapter") {
     const title = (item.arguments as { title?: unknown } | null)?.title;
     return item.status === "completed" && !item.error && typeof title === "string" && title.trim() ? (
       <h2 id={`epitaxy-ch-${item.id}`} className="chapter-heading">
@@ -1411,15 +1411,15 @@ export function McpRow({ item, progress, extra }: { item: ItemOf<"mcpToolCall">;
       </h2>
     ) : null;
   }
-  if (item.server === "codex_ui_desktop" && ["start_session", "dismiss_task", "send_message", "hand_off_to_session", "list_start_targets"].includes(item.tool)) return <SessionCallRow item={item} extra={extra} />;
+  if (item.server === "better_codex_desktop" && ["start_session", "dismiss_task", "send_message", "hand_off_to_session", "list_start_targets"].includes(item.tool)) return <SessionCallRow item={item} extra={extra} />;
   // wrap_up fills the next-step box (TurnBox), not a row.
-  if (item.server === "codex_ui_desktop" && item.tool === "wrap_up") return null;
+  if (item.server === "better_codex_desktop" && item.tool === "wrap_up") return null;
   const state = rowState(item.status);
   const label = mcpLabel(item.server, item.tool);
   // The terminal, PR, worktree and scheduled-task tools name what they did; run_in_terminal shows its
   // command, a scheduled-task call its task's name (a failed one says so in its verb, as EnterPlanRow).
   const args = item.arguments as { command?: unknown; mode?: unknown; id?: unknown; name?: unknown; title?: unknown } | null;
-  const desktop = item.server === "codex_ui_desktop";
+  const desktop = item.server === "better_codex_desktop";
   const text = item.result ? contentText(item.result.content) : "";
   const automation = desktop ? AUTOMATION_VERBS[`${item.tool}:${String(args?.mode)}`] : undefined;
   const failed = !!automation && state.status === "failed";
@@ -1475,7 +1475,7 @@ function EnterPlanRow({ item, extra }: { item: ItemOf<"mcpToolCall">; extra?: Ro
 /** c52b02f3f Mt: a completed call whose result names the very title it was given. */
 function renamedOf(item: ItemOf<"mcpToolCall">, title: string): { threadId: string; title: string; previousTitle?: string } | undefined {
   const meta = item.result?._meta;
-  const rename = meta && typeof meta === "object" && !Array.isArray(meta) ? meta.codexUiSessionRenamed : undefined;
+  const rename = meta && typeof meta === "object" && !Array.isArray(meta) ? meta.betterCodexSessionRenamed : undefined;
   if (item.status !== "completed" || !rename || typeof rename !== "object" || Array.isArray(rename)) return undefined;
   const { threadId, title: renamed, previousTitle } = rename;
   if (typeof threadId !== "string" || !threadId || typeof renamed !== "string" || !renamed || renamed.trim() !== title) return undefined;

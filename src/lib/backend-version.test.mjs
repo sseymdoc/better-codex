@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CAPABILITIES, backendMismatch, mismatchText } from "./backend-version.ts";
 
-const base = { userAgent: "codex_ui/0.164.0", codexHome: "C:/home/.codex", platformFamily: "windows", platformOs: "windows" };
-const current = { ...base, ...Object.fromEntries(Object.keys(CAPABILITIES).map((key) => [key, key === "codexUiHostContextMaxBytes" ? 524288 : true])) };
+const base = { userAgent: "better_codex/0.164.0", codexHome: "C:/home/.codex", platformFamily: "windows", platformOs: "windows" };
+const current = { ...base, ...Object.fromEntries(Object.keys(CAPABILITIES).map((key) => [key, key === "betterCodexHostContextMaxBytes" ? 524288 : true])) };
 
 test("a matching experimental backend, or none, is no mismatch", () => {
   assert.equal(backendMismatch(true, current), null);
@@ -14,7 +14,7 @@ test("a matching experimental backend, or none, is no mismatch", () => {
 });
 
 test("an older backend names what it lacks; a native binary run as experimental lacks everything", () => {
-  const { codexUiBackgroundTerminals, codexUiStdioEnvironments, ...older } = current;
+  const { betterCodexBackgroundTerminals, betterCodexStdioEnvironments, ...older } = current;
   const mismatch = backendMismatch(true, older);
   assert.deepEqual(mismatch, { missing: ["SSH 环境", "在后台运行命令"], newer: false });
   assert.equal(mismatchText(mismatch), "实验型后端版本不匹配，部分功能不可用。");
@@ -23,7 +23,7 @@ test("an older backend names what it lacks; a native binary run as experimental 
 });
 
 test("fields this UI does not know mean a newer backend", () => {
-  const mismatch = backendMismatch(true, { ...current, codexUiFutureThing: true });
+  const mismatch = backendMismatch(true, { ...current, betterCodexFutureThing: true });
   assert.deepEqual(mismatch, { missing: [], newer: true });
-  assert.match(mismatchText(mismatch, true), /请更新 Codex UI/);
+  assert.match(mismatchText(mismatch, true), /请更新 Better Codex/);
 });

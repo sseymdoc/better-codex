@@ -341,7 +341,7 @@ function CloudFields({ task, seed, onClose }: { task: CloudAutomation | null; se
       if (live.current) (task ? onClose() : patchScheduled({ task: { id: saved.id, source: "cloud" }, dialog: null }));
     } catch (error) {
       // Cloudflare's page (a browser-mode page) is HTML: say what it means instead.
-      toast("warning", task ? "无法更新定时任务。您可以重试。" : "创建定时任务失败。您可以重试。", accessOf(error) === "blocked" ? "云端定时任务需要在 Codex UI 桌面版中使用。" : errorMessage(error));
+      toast("warning", task ? "无法更新定时任务。您可以重试。" : "创建定时任务失败。您可以重试。", accessOf(error) === "blocked" ? "云端定时任务需要在 Better Codex 桌面版中使用。" : errorMessage(error));
       setBusy(false);
     }
   };
@@ -762,7 +762,7 @@ function ScheduleEditor<T extends Schedulable>({ draft, heartbeat = false, cloud
         </div>
       )}
       {draft.mode === "custom" && <CustomSchedule draft={draft} cloud={!!cloud} onChange={onChange} />}
-      {/* Wt's v.jitterHint, where codex-ui's own scheduler jitters a run (jitterSpan: not a one-time,
+      {/* Wt's v.jitterHint, where better-codex's own scheduler jitters a run (jitterSpan: not a one-time,
           monthly or yearly rule, nor minutes under an hour); ChatGPT times a cloud task itself. */}
       {!cloud && rule && jitterSpan(rule) > 0 && <p className="scheduled-form-hint">为保证服务器性能，定时任务会使用数分钟的随机延迟。</p>}
     </div>

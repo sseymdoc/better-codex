@@ -28,7 +28,7 @@ test("remote credentials and query strings never reach the UI or model context",
   assert.equal(snapshot.info.originUrl, "https://github.com/a/b.git");
   assert.equal(snapshot.base, "main");
   const context = gitContext(snapshot);
-  assert.equal(context["codex-ui.git"].kind, "untrusted");
+  assert.equal(context["better-codex.git"].kind, "untrusted");
   assert.doesNotMatch(JSON.stringify(context), /secret/);
   const ssh = await readGitSnapshot("D:/repo", exec(result(status()), "git@github.com:a/b.git"));
   assert.equal(ssh.info.originUrl, "ssh://github.com/a/b.git");

@@ -13,7 +13,7 @@ export interface BackgroundView {
   agents: string[];
 }
 const EMPTY: BackgroundView = { open: [], finished: false, dismissed: [], focus: null, agents: [] };
-const KEY = "codex-ui:background-views";
+const KEY = "better-codex:background-views";
 const strings = (value: unknown): string[] => Array.isArray(value) ? value.filter((key): key is string => typeof key === "string").slice(-1000) : [];
 
 function readViews(): Record<string, BackgroundView> {

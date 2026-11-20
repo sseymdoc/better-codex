@@ -3,7 +3,7 @@
 // box's fields, what the call answers the model, and what the box may draw. Pure; the host and the
 // renderer share it.
 
-/** Every app action Claude knows (vn); Codex UI can offer commit, create_pr and archive. */
+/** Every app action Claude knows (vn); Better Codex can offer commit, create_pr and archive. */
 export const APP_ACTIONS = Object.freeze(["commit", "create_pr", "merge", "fix_ci", "address_comments", "resolve_conflicts", "verify", "archive"]);
 export const OFFERED_ACTIONS = Object.freeze(["commit", "create_pr", "archive"]);
 export const RECAP_MAX = 300;
@@ -143,5 +143,5 @@ const dropped = (value) => {
 /** g0: a reply the box may draw (a label, nothing that runs a command or hides what it sends). */
 export const drawableReply = (entry) => !!entry.label && !!displayText(entry.label) && !dropped(entry.label) && !dropped(entry.message);
 
-/** What a reply button sends: its message, else its label (Claude's renderer sends the label alone; Codex UI keeps the model's word). */
+/** What a reply button sends: its message, else its label (Claude's renderer sends the label alone; Better Codex keeps the model's word). */
 export const replyText = (entry) => entry.message ?? entry.label;

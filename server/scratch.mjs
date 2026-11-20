@@ -1,19 +1,19 @@
 // Scratch workspaces, as Claude Desktop makes them (index.chunk-Uk7wsaDw.js): a session started on
-// 本电脑 with no folder works in a fresh <CODEX_HOME>/codex-ui/scratch-workspaces/scratch-<date>-<hex>.
+// 本电脑 with no folder works in a fresh <CODEX_HOME>/better-codex/scratch-workspaces/scratch-<date>-<hex>.
 // A sweep removes the ones no session works in any more: an empty one an hour after it was made, any
 // other once nothing in it changed for a week. Which ones a session holds only the page can ask Codex
 // (thread/list), so it takes `stale()`, leaves out those, and has `remove()` drop the rest.
 import { randomBytes } from "node:crypto";
 import { lstat, mkdir, readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { codexHome } from "./automations.mjs";
+import { appHome, codexHome } from "./automations.mjs";
 
 const NAME = /^scratch-\d{4}-\d{2}-\d{2}-[0-9a-f]{6}$/;
 const EMPTY_AGE = 3_600_000;
 const IDLE_AGE = 7 * 86_400_000;
 
 export function createScratch({ home = codexHome(), now = Date.now } = {}) {
-  const root = path.join(home, "codex-ui", "scratch-workspaces");
+  const root = path.join(appHome(home), "scratch-workspaces");
 
   /** The newest change in a folder's tree, links not followed; stops early once one is after `after`. */
   async function newest(dir, after) {

@@ -1,5 +1,5 @@
-// read_me's guidance for show_widget (context/visualize-tools.mjs): what Codex UI's widget frame
-// (server/widget-frame.mjs) provides and how to draw for it. codex-ui's own text, after the shape
+// read_me's guidance for show_widget (context/visualize-tools.mjs): what Better Codex's widget frame
+// (server/widget-frame.mjs) provides and how to draw for it. better-codex's own text, after the shape
 // of Claude 4.4212's (index.chunk-BBu5cdqa y(): a preamble, then each module's sections once, in
 // order); Claude's guide stays Claude's. Each answer stays well under Codex's tool-output cut
 // (10,000 tokens for the current models): the largest, every module at once, is checked in a test.
@@ -9,7 +9,7 @@ export const VISUAL_PLATFORMS = Object.freeze(["mobile", "desktop", "unknown"]);
 
 const width = (platform) => (platform === "mobile" ? 380 : 680);
 
-const preamble = (w) => `# Inline visuals in Codex UI
+const preamble = (w) => `# Inline visuals in Better Codex
 
 show_widget draws an SVG or an HTML fragment inline in the conversation, in a sandboxed frame about ${w}px wide whose height follows its content. Load more guidance with read_me's modules:
 - \`diagram\`: flowcharts, structures, explanatory diagrams (SVG)

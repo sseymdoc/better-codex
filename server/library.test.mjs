@@ -109,14 +109,14 @@ test("available: judged in the desktop app's order, any failure unavailable with
   assert.deepEqual(closed.result, { available: false, favorites: false, storageBanner: false, notes: false, reason: "settings_unavailable" });
 });
 
-test("the bootstrap request is codex-ui's own, its stable id kept in the data folder", () => {
+test("the bootstrap request is better-codex's own, its stable id kept in the data folder", () => {
   const body = statsigBody({ stableId: "s-1", sessionId: "p-1", electron: false, locale: "zh-CN", platform: "win32" });
   assert.equal(body.app_version, JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version);
   assert.equal(body.app_version, APP_VERSION);
   assert.deepEqual([body.stable_id, body.app_session_id, body.locale, body.system_name], ["s-1", "p-1", "zh-CN", "Windows"]);
   for (const key of ["brand_name", "build_flavor", "window_type", "desktop_app_beta_enabled"]) assert.ok(!(key in body), key);
   assert.equal(statsigBody({ stableId: "s", sessionId: "p", electron: true }).window_type, "electron");
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-statsig-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-statsig-"));
   const first = stableId(dir);
   assert.match(first, /^[0-9a-f-]{36}$/);
   assert.equal(stableId(dir), first);
@@ -274,7 +274,7 @@ function uploadFakes({ files = () => ({ status: 200, body: { file_id: "file_up",
 }
 
 test("an upload: spooled to a temporary file, named, PUT without the login, processed, the file gone after", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-spool-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-spool-"));
   const fakes = uploadFakes();
   const result = await upload({ body: Readable.from([Buffer.from("hel"), Buffer.from("lo")]), name: "笔记.md", type: "text/markdown", directoryId: "libdir_1", dir, ...fakes });
   assert.deepEqual(result, { done: true, libraryFileId: "libfile_up" });
@@ -300,7 +300,7 @@ test("an upload: spooled to a temporary file, named, PUT without the login, proc
 });
 
 test("an upload is tried as ke tries it, and a failure once processing began is uncertain", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-spool-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-spool-"));
   const body = () => Readable.from([Buffer.from("x")]);
   // A 503 and a blob store hiccup are tried again after 250 ms, then 500 ms.
   let fakes = uploadFakes({ files: (count) => (count === 1 ? { status: 503, body: {} }
@@ -359,7 +359,7 @@ test("an upload is tried as ke tries it, and a failure once processing began is 
 });
 
 test("two PUTs at a time, whichever upload they are for", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-spool-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-spool-"));
   let running = 0, most = 0;
   const release = [];
   const put = async () => {
@@ -378,7 +378,7 @@ test("two PUTs at a time, whichever upload they are for", async () => {
 });
 
 test("a cancelled upload leaves the PUT queue and its backoff at once, its spool gone, and the queue goes on", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-spool-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-spool-"));
   const release = [];
   const put = async () => { await new Promise((resolve) => release.push(resolve)); return new Response(null, { status: 201 }); };
   const start = (signal, fakes = uploadFakes({ put })) => upload({ body: Readable.from([Buffer.from("x")]), name: "a.txt", dir, signal, ...fakes });
@@ -434,7 +434,7 @@ test("attachment names a Windows tool can open: K8t, no control characters, devi
 });
 
 test("an attachment: a known size within 45 MiB, counted as it comes, its folder gone on any failure", async () => {
-  const home = mkdtempSync(path.join(tmpdir(), "codex-ui-home-"));
+  const home = mkdtempSync(path.join(tmpdir(), "better-codex-home-"));
   const folders = () => (existsSync(path.join(home, "attachments")) ? readdirSync(path.join(home, "attachments")) : []);
   const saved = await attach({ name: "CON.txt", size: 5, home, open: async () => new Response("hello", { headers: { "content-length": "5" } }) });
   assert.match(path.relative(home, saved.path), /^attachments[\\/][0-9a-f-]{36}[\\/]_CON\.txt$/);

@@ -322,7 +322,7 @@ test("availability, preferences and storage are the account's own", async (t) =>
 
   assert.deepEqual(library.libraryPrefs(), { viewMode: "grid", lastTab: "suggested" });
   library.setLibraryPrefs({ viewMode: "list", lastTab: "images" });
-  assert.deepEqual(JSON.parse(saved.get("codex-ui:library:prefs@example.com")), { viewMode: "list", lastTab: "images" });
+  assert.deepEqual(JSON.parse(saved.get("better-codex:library:prefs@example.com")), { viewMode: "list", lastTab: "images" });
   library.resetLibrary("other@example.com");
   assert.deepEqual(library.libraryPrefs(), { viewMode: "grid", lastTab: "suggested" });
   library.resetLibrary("prefs@example.com");

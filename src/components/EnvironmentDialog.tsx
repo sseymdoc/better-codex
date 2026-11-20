@@ -29,7 +29,7 @@ interface GitInfo {
   branches: string[];
 }
 
-/** Each folder's repository (the bridge's codexUi/git/branches), undefined until read. */
+/** Each folder's repository (the bridge's betterCodex/git/branches), undefined until read. */
 function useGit(paths: string[]): Record<string, GitInfo | undefined> {
   const [known, setKnown] = useState<Record<string, GitInfo>>({});
   const key = paths.join("\n");
@@ -37,7 +37,7 @@ function useGit(paths: string[]): Record<string, GitInfo | undefined> {
     let live = true;
     for (const path of key ? key.split("\n") : []) {
       if (known[path]) continue;
-      callExperimental<GitInfo>("codexUi/git/branches", { cwd: path })
+      callExperimental<GitInfo>("betterCodex/git/branches", { cwd: path })
         .catch((): GitInfo => ({ inRepo: false, root: null, head: null, defaultBranch: null, branches: [] }))
         .then((info) => live && setKnown((map) => ({ ...map, [path]: info })));
     }

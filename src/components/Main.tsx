@@ -29,7 +29,7 @@ export { VIEW_LABELS } from "./Sidebar";
 // Lifted titlebar (shared-16 ss -> shared-20 Wm / Gm): under the Windows / Linux chrome bar
 // ([data-wco]) the titlebar moves into the bar's title slot (App.tsx ChromeBar; shared-22 LN
 // dframe-chrome-title-slot). Claude drops it back above the transcript only in split view, with
-// other sessions side by side (shared-16 Uo: extraPanesByMode), and so does codex-ui's split view
+// other sessions side by side (shared-16 Uo: extraPanesByMode), and so does better-codex's split view
 // (App.tsx SessionColumn); the panes beside the chat (终端, 更改, 文件, 浏览器) leave it lifted, so its controls stay put. Not a
 // flag. It keeps the Code view's compact density, as a portal keeps Claude's density context.
 

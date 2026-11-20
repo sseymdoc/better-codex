@@ -264,10 +264,10 @@ async function worktreeRequest(request: DesktopRequest, args: DesktopArgs): Prom
         forgetLazyWorktree(threadId);
         throw desktopError("NOT_REPOSITORY", "This folder is not in a Git repository, so there is no worktree to make; work here.");
       }
-      throw desktopError("WORKTREE_FAILED", `Codex UI could not create the worktree (${message}); nothing moved. Tell the user before you change files in their checkout.`);
+      throw desktopError("WORKTREE_FAILED", `Better Codex could not create the worktree (${message}); nothing moved. Tell the user before you change files in their checkout.`);
     }
   }
-  if (!inWorktreeRoot(cwd)) throw desktopError("NOT_WORKTREE", "This session works in the user's own checkout, not in a worktree Codex UI made, so sync_with_base_branch doesn't apply. Merge with git yourself only if the user asks.");
+  if (!inWorktreeRoot(cwd)) throw desktopError("NOT_WORKTREE", "This session works in the user's own checkout, not in a worktree Better Codex made, so sync_with_base_branch doesn't apply. Merge with git yourself only if the user asks.");
   try {
     return { threadId, cwd, ...(await syncThreadWithBase(threadId, args.base)) };
   } catch (error) {

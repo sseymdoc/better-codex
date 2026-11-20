@@ -42,7 +42,7 @@ test("exec-server dials ChatGPT's registry, or a loopback one only", () => {
 });
 
 test("the local computer: off until turned on, registered, restarted after a crash, reported once up, stopped when off", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-executor-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-executor-"));
   // Stands in for `codex exec-server`: the first run dies at once, the next reaches rendezvous
   // and stays until its stdin closes; each run leaves its arguments behind.
   const stub = path.join(dir, "exec-server.mjs");
@@ -95,7 +95,7 @@ process.stdin.on("end", () => process.exit(0));
     assert.deepEqual(executor.state(), { available: true, enabled: false, environmentId: null, ready: false, error: null });
     await until(() => { try { process.kill(runs[1].pid, 0); return false; } catch { return true; } });
 
-    // The choice and the installation id outlive codex-ui.
+    // The choice and the installation id outlive better-codex.
     const again = createExecutor(options);
     assert.equal(again.state().enabled, false);
     again.close();
@@ -107,7 +107,7 @@ process.stdin.on("end", () => process.exit(0));
 });
 
 test("turned off and on again while registering, it still starts", async () => {
-  const dir = mkdtempSync(path.join(tmpdir(), "codex-ui-executor-"));
+  const dir = mkdtempSync(path.join(tmpdir(), "better-codex-executor-"));
   const stub = path.join(dir, "exec-server.mjs");
   writeFileSync(stub, `process.stdin.resume();\nprocess.stdin.on("end", () => process.exit(0));\n`);
   let release;

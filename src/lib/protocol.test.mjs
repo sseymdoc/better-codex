@@ -48,7 +48,7 @@ test("readStateConflict returns the server's current receipt", () => {
 });
 
 test("parseVersion reads the codex version from initialize's userAgent", () => {
-  assert.equal(parseVersion("codex_ui/0.163.0-alpha.10.2 (Windows 10.0.26300; x86_64) xterm-256color (codex_ui; 0.1.0)"), "0.163.0-alpha.10.2");
+  assert.equal(parseVersion("better_codex/0.163.0-alpha.10.2 (Windows 10.0.26300; x86_64) xterm-256color (better_codex; 0.1.0)"), "0.163.0-alpha.10.2");
   assert.equal(parseVersion("codex_app_server/0.140.0 (mock)"), "0.140.0");
   assert.equal(parseVersion(""), null);
   assert.equal(parseVersion(null), null);

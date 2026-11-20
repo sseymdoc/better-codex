@@ -1,6 +1,6 @@
 // Claude Desktop's working mark, the clay sprite of its status line and jump-to-latest key
 // (ion-dist cc39db724), read from the Claude Desktop installed on this computer like its fonts
-// (claude-fonts.mjs): codex-ui ships none of it. /claude-marks.json lists every sheet of the
+// (claude-fonts.mjs): better-codex ships none of it. /claude-marks.json lists every sheet of the
 // chunk the mark imports (frames, ms per frame, loop seams, rest frame, and the webp: a data:
 // URL, or /claude-marks/<file> for the ones ion-dist keeps beside the chunk). Without Claude
 // Desktop it is {} and the mark stays a static clay dot (src/components/WorkingMark.tsx).

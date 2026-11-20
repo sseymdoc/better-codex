@@ -5,7 +5,7 @@
 - **工具访问模式**：默认按需加载，复用原生 `tool_search`。全部加载将允许直接公开的 MCP 工具定义提供给模型；保留工具禁用、权限、声明大小限制和严格 Code Mode 的原生约束。不支持工具搜索的模型沿用直接加载。
 - **连接器搜索**：默认开启。模型可调用 `search_connectors`，按名称、描述和分类检索当前 ChatGPT 账号的连接器目录，最多返回 8 项及连接链接。目录仅在工具调用时读取，复用原生分页、缓存和隐藏条目过滤。过滤已连接、禁用和不再推荐的连接器；连接及授权由用户打开链接完成。
 
-两项偏好保存在桌面端 `window-state.json`。桥接进程覆盖继承的 `CODEX_UI_TOOL_ACCESS_MODE` 和 `CODEX_UI_CONNECTOR_SEARCH`，由本次启动的桌面偏好决定值。后端仅在 `CODEX_UI_EXPERIMENTAL_BACKEND=1` 生成的 `Config.experimental_backend` 下应用扩展行为。禁用实验型后端时保持原生按需加载和原生显式安装推荐行为，目录搜索工具不会声明，直接调用也会被拒绝。
+两项偏好保存在桌面端 `window-state.json`。桥接进程覆盖继承的 `BETTER_CODEX_TOOL_ACCESS_MODE` 和 `BETTER_CODEX_CONNECTOR_SEARCH`，由本次启动的桌面偏好决定值。后端仅在 `BETTER_CODEX_EXPERIMENTAL_BACKEND=1` 生成的 `Config.experimental_backend` 下应用扩展行为。禁用实验型后端时保持原生按需加载和原生显式安装推荐行为，目录搜索工具不会声明，直接调用也会被拒绝。
 
 切换加载模式不会从已有会话历史中清除之前加载的工具定义；新会话能完整采用新的加载方式。
 

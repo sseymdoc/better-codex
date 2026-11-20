@@ -1,7 +1,7 @@
-THIRD-PARTY NOTICES — typefaces codex-ui ships
+THIRD-PARTY NOTICES — typefaces better-codex ships
 
-codex-ui sets its interface in the typefaces of the Claude Desktop installed on the
-same computer; none of those files are part of codex-ui. Without Claude Desktop it uses
+better-codex sets its interface in the typefaces of the Claude Desktop installed on the
+same computer; none of those files are part of better-codex. Without Claude Desktop it uses
 the open-licensed typefaces below instead, from public/fonts, and Settings → 字体许可
 shows this file. Their copyright notices and license terms follow.
 

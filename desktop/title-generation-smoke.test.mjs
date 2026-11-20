@@ -87,7 +87,7 @@ async function run() {
         const naming = JSON.stringify(body).includes("succinct title for a coding session");
         const title = JSON.stringify(body).includes("字体") ? "字体设置" : "通知样式";
         const payload = JSON.stringify(body);
-        requests.push({ naming, browserInstructions: payload.includes("For web changes in this project"), projectInstructions: payload.includes("TITLE_PROJECT_INSTRUCTION_SHOULD_NOT_APPEAR"), browserTools: JSON.stringify(body.tools ?? []).includes("codex_ui_browser"), ...(naming ? { title } : {}) });
+        requests.push({ naming, browserInstructions: payload.includes("For web changes in this project"), projectInstructions: payload.includes("TITLE_PROJECT_INSTRUCTION_SHOULD_NOT_APPEAR"), browserTools: JSON.stringify(body.tools ?? []).includes("better_codex_browser"), ...(naming ? { title } : {}) });
         res.writeHead(200, { "Content-Type": "text/event-stream" });
         const id = `title-fixture-${requests.length}`;
         for (const event of [
@@ -114,7 +114,7 @@ async function run() {
     assert.equal(requests.filter((request) => request.naming).length, 0);
     await js("document.querySelector('[data-row-nav]').click()");
     await until(() => js("!!document.querySelector('.draft-title') && !!document.querySelector('textarea')"), "new session composer ready");
-    await js(`(()=>{const el=document.querySelector('textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'修改 Codex UI 通知样式，让优先级展示更紧凑');el.dispatchEvent(new Event('input',{bubbles:true}));el.focus()})()`);
+    await js(`(()=>{const el=document.querySelector('textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,'修改 Better Codex 通知样式，让优先级展示更紧凑');el.dispatchEvent(new Event('input',{bubbles:true}));el.focus()})()`);
     await sleep(80);
     win.webContents.sendInputEvent({ type: "keyDown", keyCode: "Return" });
     win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Return" });

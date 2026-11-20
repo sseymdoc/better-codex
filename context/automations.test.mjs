@@ -48,7 +48,7 @@ test("a heartbeat message reads back loosely, CRLF and a missing id included", (
 });
 
 test("the cron header round-trips, names kept on one line", () => {
-  const message = { name: "Nightly\nbuild", id: "nightly-build", memory: "C:\\Users\\me\\.codex\\codex-ui\\automations\\nightly-build\\memory.md", lastRunAt: 1761726600000, prompt: "Build it.\n\nThen report." };
+  const message = { name: "Nightly\nbuild", id: "nightly-build", memory: "C:\\Users\\me\\.codex\\better-codex\\automations\\nightly-build\\memory.md", lastRunAt: 1761726600000, prompt: "Build it.\n\nThen report." };
   const text = cronMessage(message);
   assert.equal(text.split("\n\n")[0], `Automation: Nightly build\nAutomation ID: nightly-build\nAutomation memory: ${message.memory}\nLast run: 2025-10-29T08:30:00.000Z (1761726600000)`);
   assert.deepEqual(parseCronMessage(text), { ...message, name: "Nightly build" });

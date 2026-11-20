@@ -28,7 +28,7 @@ function codexBridge() {
       server.middlewares.use((req, res, next) => serveClaudeFonts(req, res) || serveClaudeMarks(req, res) || next());
       server.httpServer?.once("listening", () => {
         const { port } = server.httpServer.address();
-        console.log(`\n  Codex UI: http://127.0.0.1:${port}/?token=${bridge.token}\n`);
+        console.log(`\n  Better Codex: http://127.0.0.1:${port}/?token=${bridge.token}\n`);
       });
       server.httpServer?.once("close", orchestrator.close);
     },

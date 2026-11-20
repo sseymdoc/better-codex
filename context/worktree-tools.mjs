@@ -1,4 +1,4 @@
-// codex_ui_desktop's worktree tools: bringing a worktree session up to date with the branch it was
+// better_codex_desktop's worktree tools: bringing a worktree session up to date with the branch it was
 // cut from, and the worktree a session that defers it makes before its first change. Schemas,
 // argument and receipt checks, result text. No I/O.
 
@@ -7,10 +7,10 @@ export const WORKTREE_TOOL_NAMES = Object.freeze(["sync_with_base_branch", "ente
 export const WORKTREE_WAIT_MS = 300_000;
 
 export const WORKTREE_TOOLS = [
-  { name: "sync_with_base_branch", description: "Bring this session's git worktree up to date with the branch it was cut from: fetch that branch (when it has a remote) and merge it into HEAD. base names another branch to merge, such as the pull request's base. Refused while there are uncommitted changes (commit first; never discard the user's work to sync). On conflicts the merge stays under way and the conflicted files are listed: resolve them, git add and git commit, or git merge --abort. Only for sessions in a worktree Codex UI made.",
+  { name: "sync_with_base_branch", description: "Bring this session's git worktree up to date with the branch it was cut from: fetch that branch (when it has a remote) and merge it into HEAD. base names another branch to merge, such as the pull request's base. Refused while there are uncommitted changes (commit first; never discard the user's work to sync). On conflicts the merge stays under way and the conflicted files are listed: resolve them, git add and git commit, or git merge --abort. Only for sessions in a worktree Better Codex made.",
     inputSchema: { type: "object", additionalProperties: false, properties: { base: { type: "string", maxLength: 250, description: "Optional branch to merge instead of the recorded base branch." } } },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } },
-  { name: "enter_worktree", description: "For a session that defers its worktree (this turn's context says so): create the session's git worktree from the current checkout's HEAD before your first change to any file. Codex UI moves the session there once the call returns, and the move takes effect from the next turn, so end this turn right after it with one short sentence and no further tool calls; the app then continues the task in the worktree. Uncommitted changes in the user's checkout do not come along.",
+  { name: "enter_worktree", description: "For a session that defers its worktree (this turn's context says so): create the session's git worktree from the current checkout's HEAD before your first change to any file. Better Codex moves the session there once the call returns, and the move takes effect from the next turn, so end this turn right after it with one short sentence and no further tool calls; the app then continues the task in the worktree. Uncommitted changes in the user's checkout do not come along.",
     inputSchema: { type: "object", additionalProperties: false, properties: {} },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
 ];
@@ -54,7 +54,7 @@ export function worktreeResult(name, args, receipt) {
   if (name === "enter_worktree") {
     if (receipt.outcome === "already") return text("This session already works in its own worktree (or is moving there); carry on.");
     if (receipt.outcome === "not_deferred") return text("This session does not defer its worktree; work where you are.");
-    return text(`Created a git worktree at ${receipt.worktree} from the checkout's HEAD${receipt.base ? ` (base branch ${receipt.base})` : ""}. Codex UI moves this session there once this turn ends: end this turn now with one short sentence and no further tool calls, and change nothing in this turn. Uncommitted changes in the user's checkout are not in the worktree.`, { codexUiWorktree: "entered" });
+    return text(`Created a git worktree at ${receipt.worktree} from the checkout's HEAD${receipt.base ? ` (base branch ${receipt.base})` : ""}. Better Codex moves this session there once this turn ends: end this turn now with one short sentence and no further tool calls, and change nothing in this turn. Uncommitted changes in the user's checkout are not in the worktree.`, { betterCodexWorktree: "entered" });
   }
   const fetchNote = receipt.fetched === false ? " (fetching it failed, so the local copy was used)" : "";
   switch (receipt.outcome) {

@@ -45,9 +45,9 @@ createInterface({ input: process.stdin }).on("line", (request) => {
     for (let i = 0; i < 65; i++) output.write(chunk);
     return;
   }
-  let result = { pid: process.pid, params, enabled: process.env.CODEX_UI_EXPERIMENTAL_BACKEND, token: process.env.CODEX_UI_BROWSER_TOKEN };
+  let result = { pid: process.pid, params, enabled: process.env.BETTER_CODEX_EXPERIMENTAL_BACKEND, token: process.env.BETTER_CODEX_BROWSER_TOKEN };
   if (method === "getAuthStatus") result = { authMethod: "apiKey", authToken: "private-test-credential" };
-  if (method === "initialize" && ${hostContextCapability}) result = { codexUiHostContext: true };
+  if (method === "initialize" && ${hostContextCapability}) result = { betterCodexHostContext: true };
   if (method === "config/read") result = { config: {} };
   if (method === "model/list") result = { data: [{ model: "test-model", id: "test-model", supportedReasoningEfforts: [{ reasoningEffort: "low" }] }] };
   if (method === "experimentalFeature/list") result = { data: [] };
@@ -91,7 +91,7 @@ test("direct connections isolate RPC ids and credentials, and disconnect only th
   assert.equal(two.params.value, "two");
   assert.equal(f.service.backend, null);
   assert.deepEqual(await f.service.accountProfile(a.id), { profile: null });
-  assert.ok(a.lines.every((line) => !line.includes("private-test-credential") && !line.includes("codex-ui-bridge:")));
+  assert.ok(a.lines.every((line) => !line.includes("private-test-credential") && !line.includes("better-codex-bridge:")));
   f.service.disconnect(a.id);
   assert.equal(f.service.hasConnection(a.id), false);
   assert.throws(() => f.service.send(a.id, []), { code: "CONNECTION_CLOSED" });
@@ -180,7 +180,7 @@ for (const prewarm of [false, true]) test(`browser context preserves RPC envelop
     ["thread/resume", { threadId, config: null }],
     ["thread/resume", { threadId }],
     ["thread/fork", { threadId, config: { ...config } }],
-    ["turn/start", { threadId, input: [], additionalContext: { "codex-ui.git": { kind: "untrusted", value: "{}" } } }],
+    ["turn/start", { threadId, input: [], additionalContext: { "better-codex.git": { kind: "untrusted", value: "{}" } } }],
     ["turn/steer", { threadId, input: [], expectedTurnId: "turn-1" }],
   ];
   for (const [method, params] of unchanged) {
@@ -328,28 +328,28 @@ for (const prewarm of [false, true]) test(`managed context updates use the ownin
   const roots = [path.join(f.work, "a"), path.join(f.work, "b")];
   const [ta, tb] = await Promise.all([a.call("thread/start", { cwd: roots[0] }), b.call("thread/start", { cwd: roots[1] })]);
   await Promise.all([
-    a.call("thread/settings/update", { threadId: ta.thread.id, codexUiContext: hostContext(roots[0], true, { desktopContext: true }) }),
-    b.call("thread/settings/update", { threadId: tb.thread.id, codexUiContext: hostContext(roots[1], false) }),
+    a.call("thread/settings/update", { threadId: ta.thread.id, betterCodexContext: hostContext(roots[0], true, { desktopContext: true }) }),
+    b.call("thread/settings/update", { threadId: tb.thread.id, betterCodexContext: hostContext(roots[1], false) }),
   ]);
   let updates = f.records().filter((r) => r.event === "thread/settings/update");
   assert.equal(updates.length, 2);
-  assert.equal(updates.find((r) => r.params.threadId === ta.thread.id).params.codexUiContext.planning.enabled, true);
-  assert.equal(updates.find((r) => r.params.threadId === tb.thread.id).params.codexUiContext.planning.enabled, false);
+  assert.equal(updates.find((r) => r.params.threadId === ta.thread.id).params.betterCodexContext.planning.enabled, true);
+  assert.equal(updates.find((r) => r.params.threadId === tb.thread.id).params.betterCodexContext.planning.enabled, false);
   prefs.set(roots[0], { toolsEnabled: false, autoVerify: false });
   watchers.get(roots[0])();
   await until(() => f.records().filter((r) => r.event === "thread/settings/update").length === 3);
   updates = f.records().filter((r) => r.event === "thread/settings/update");
   assert.equal(updates.length, 3);
-  assert.equal(updates[2].params.codexUiContext.cwd, roots[0]);
-  assert.equal(updates[2].params.codexUiContext.browserVerification.toolsEnabled, false);
-  assert.deepEqual(updates[2].params.codexUiContext.desktop, hostContext(roots[0], true, { desktopContext: true }).desktop);
-  assert.equal(Object.hasOwn(updates.find((r) => r.params.threadId === tb.thread.id).params.codexUiContext, "desktop"), false);
+  assert.equal(updates[2].params.betterCodexContext.cwd, roots[0]);
+  assert.equal(updates[2].params.betterCodexContext.browserVerification.toolsEnabled, false);
+  assert.deepEqual(updates[2].params.betterCodexContext.desktop, hostContext(roots[0], true, { desktopContext: true }).desktop);
+  assert.equal(Object.hasOwn(updates.find((r) => r.params.threadId === tb.thread.id).params.betterCodexContext, "desktop"), false);
   const moved = path.join(f.work, "moved");
-  await a.call("thread/settings/update", { threadId: ta.thread.id, cwd: moved, codexUiContext: hostContext(moved, false, { desktopContext: true }) });
+  await a.call("thread/settings/update", { threadId: ta.thread.id, cwd: moved, betterCodexContext: hostContext(moved, false, { desktopContext: true }) });
   updates = f.records().filter((r) => r.event === "thread/settings/update");
-  assert.equal(updates.at(-1).params.codexUiContext.cwd, moved);
-  assert.equal(updates.at(-1).params.codexUiContext.browserVerification.toolsEnabled, true);
-  assert.deepEqual(updates.at(-1).params.codexUiContext.desktop, hostContext(moved, false, { desktopContext: true }).desktop);
+  assert.equal(updates.at(-1).params.betterCodexContext.cwd, moved);
+  assert.equal(updates.at(-1).params.betterCodexContext.browserVerification.toolsEnabled, true);
+  assert.deepEqual(updates.at(-1).params.betterCodexContext.desktop, hostContext(moved, false, { desktopContext: true }).desktop);
   assert.equal(updates.filter((r) => r.params.threadId === tb.thread.id).length, 1);
   assert.equal(watchers.has(roots[0]), false);
   const stale = watchers.get(moved);

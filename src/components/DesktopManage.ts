@@ -1,6 +1,6 @@
-// The renderer's side of codex_ui_desktop's management tools (context/manage-tools.mjs), after
+// The renderer's side of better_codex_desktop's management tools (context/manage-tools.mjs), after
 // Claude 4.4212's ccd_session_mgmt, ccd_sidebar, ccd_view and ccd_connectors: what each does with
-// Codex UI's own actions, and when it asks the user first (a card like set_setting's).
+// Better Codex's own actions, and when it asks the user first (a card like set_setting's).
 // Asking: reading never asks; changing another session asks unless this one runs in full access,
 // except stopping, restoring or detaching one this session started; deleting and raising a
 // permission mode always ask.

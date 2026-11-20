@@ -23,7 +23,7 @@ import { appendDeveloperInstructions, hostContext } from "../context/index.mjs";
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const LOOPBACK_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(?::(\d+))?$/i;
 /** Private app-server request ids; keep their wire prefix and replies away from the page. */
-const OWN_ID = "codex-ui-bridge:";
+const OWN_ID = "better-codex-bridge:";
 const CHATGPT_AUTH = new Set(["chatgpt", "chatgptAuthTokens"]);
 /**
  * Codex sends a patch as the model writes it (item/fileChange/patchUpdated) only with this
@@ -36,16 +36,16 @@ const UNSTABLE = "Under-development features enabled: ";
 /** Git work the bridge answers itself (the app-server has no RPC for it), by JSON-RPC method. */
 const LOCAL_GIT = {
   gitDiffToRemote: (cwd, _params, signal) => gitDiffToRemote(cwd, signal),
-  "codexUi/git/branches": (cwd, _params, signal) => gitBranches(cwd, signal),
-  "codexUi/git/diff": (cwd, params, signal) => gitDiffAgainst(cwd, params, signal),
-  "codexUi/git/log": (cwd, params, signal) => gitLog(cwd, params, signal),
-  "codexUi/git/show": (cwd, params, signal) => gitShow(cwd, params, signal),
-  "codexUi/files/write": (cwd, params) => writeSessionFile(cwd, params),
-  "codexUi/git/switch": (cwd, { branch }, signal) => switchBranch(cwd, branch, signal).then(() => ({})),
-  "codexUi/worktree/create": (cwd, { base, root }, signal) => createWorktree(cwd, base, root, signal),
-  "codexUi/worktree/bind": (cwd, { threadId }, signal) => bindWorktree(cwd, threadId, signal).then(() => ({})),
-  "codexUi/worktree/sync": (cwd, { base }, signal) => syncWithBase(cwd, base, signal),
-  "codexUi/git/apply": (cwd, { diff }, signal) => applyPatch(cwd, diff, signal).then(() => ({})),
+  "betterCodex/git/branches": (cwd, _params, signal) => gitBranches(cwd, signal),
+  "betterCodex/git/diff": (cwd, params, signal) => gitDiffAgainst(cwd, params, signal),
+  "betterCodex/git/log": (cwd, params, signal) => gitLog(cwd, params, signal),
+  "betterCodex/git/show": (cwd, params, signal) => gitShow(cwd, params, signal),
+  "betterCodex/files/write": (cwd, params) => writeSessionFile(cwd, params),
+  "betterCodex/git/switch": (cwd, { branch }, signal) => switchBranch(cwd, branch, signal).then(() => ({})),
+  "betterCodex/worktree/create": (cwd, { base, root }, signal) => createWorktree(cwd, base, root, signal),
+  "betterCodex/worktree/bind": (cwd, { threadId }, signal) => bindWorktree(cwd, threadId, signal).then(() => ({})),
+  "betterCodex/worktree/sync": (cwd, { base }, signal) => syncWithBase(cwd, base, signal),
+  "betterCodex/git/apply": (cwd, { diff }, signal) => applyPatch(cwd, diff, signal).then(() => ({})),
 };
 
 /**
@@ -164,7 +164,7 @@ function isFile(file) {
 
 /**
  * A backend package keeps its command-line tools (rg) in codex-path beside bin. Official packages
- * name it in codex-package.json and Codex prepends it itself; codex-ui's packages have no such file
+ * name it in codex-package.json and Codex prepends it itself; better-codex's packages have no such file
  * (it would also change how Codex identifies the build), so put it first on PATH here.
  */
 export function withPackageTools(command, env = process.env) {
@@ -207,9 +207,9 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
       args: [...command.args, "app-server", "-c", `features.${STREAM_PATCHES}=true`, ...codexArgs],
       env: {
         ...withPackageTools(command),
-        CODEX_UI_EXPERIMENTAL_BACKEND: experimentalBackend === true ? "1" : "0",
-        CODEX_UI_TOOL_ACCESS_MODE: experimentalBackend === true && toolAccessMode === "all" ? "all" : "on-demand",
-        CODEX_UI_CONNECTOR_SEARCH: experimentalBackend === true && connectorSearch !== false ? "1" : "0",
+        BETTER_CODEX_EXPERIMENTAL_BACKEND: experimentalBackend === true ? "1" : "0",
+        BETTER_CODEX_TOOL_ACCESS_MODE: experimentalBackend === true && toolAccessMode === "all" ? "all" : "on-demand",
+        BETTER_CODEX_CONNECTOR_SEARCH: experimentalBackend === true && connectorSearch !== false ? "1" : "0",
         ...(experimentalBackend === true ? { PONYTAIL_MAP: "0" } : {}),
       },
     };
@@ -235,28 +235,28 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
     const id = randomUUID();
     const binding = { token: randomBytes(24).toString("hex"), desktopToken: randomBytes(24).toString("hex"), primary: new Set(), threads: new Map(), pending: new Map(), hostContexts: new Map(), managed: false, displayCapable: false };
     const browserArgs = browser ? [
-      "-c", `mcp_servers.codex_ui_browser.url=${JSON.stringify(`http://${host}/api/browser-mcp?c=${id}`)}`,
-      "-c", 'mcp_servers.codex_ui_browser.bearer_token_env_var="CODEX_UI_BROWSER_TOKEN"',
-      "-c", "mcp_servers.codex_ui_browser.tool_timeout_sec=90",
+      "-c", `mcp_servers.better_codex_browser.url=${JSON.stringify(`http://${host}/api/browser-mcp?c=${id}`)}`,
+      "-c", 'mcp_servers.better_codex_browser.bearer_token_env_var="BETTER_CODEX_BROWSER_TOKEN"',
+      "-c", "mcp_servers.better_codex_browser.tool_timeout_sec=90",
     ] : [];
     const desktopArgs = desktopEnabled ? [
-      "-c", `mcp_servers.codex_ui_desktop.url=${JSON.stringify(`http://${host}/api/desktop-mcp?c=${id}`)}`,
-      "-c", 'mcp_servers.codex_ui_desktop.bearer_token_env_var="CODEX_UI_DESKTOP_TOKEN"',
+      "-c", `mcp_servers.better_codex_desktop.url=${JSON.stringify(`http://${host}/api/desktop-mcp?c=${id}`)}`,
+      "-c", 'mcp_servers.better_codex_desktop.bearer_token_env_var="BETTER_CODEX_DESKTOP_TOKEN"',
       // Display calls time out after 5 s in desktop-tools.mjs; set_session_title and enter_plan_mode may
       // wait 10 min on consent, a start_session offer a day on its card (Claude's waits with no limit).
-      "-c", "mcp_servers.codex_ui_desktop.tool_timeout_sec=86400",
+      "-c", "mcp_servers.better_codex_desktop.tool_timeout_sec=86400",
       // Those waits block the turn, as in Claude, only as top-level calls: nested in a code-mode exec
       // the cell yields after 30 s and the turn can end with the offer card unanswerable.
       // ponytail: replaces a direct_only_tool_namespaces list of config.toml's (codex keeps a features.code_mode boolean,
       // merge.rs is_structured_feature_path); merge the lists if one turns up.
-      "-c", 'features.code_mode.direct_only_tool_namespaces=["mcp__codex_ui_desktop"]',
+      "-c", 'features.code_mode.direct_only_tool_namespaces=["mcp__better_codex_desktop"]',
     ] : [];
     const env = { ...plan.env };
     // A process launched from another chat must never inherit that chat's host credentials.
-    delete env.CODEX_UI_BROWSER_TOKEN;
-    delete env.CODEX_UI_DESKTOP_TOKEN;
-    if (browser) env.CODEX_UI_BROWSER_TOKEN = binding.token;
-    if (desktopEnabled) env.CODEX_UI_DESKTOP_TOKEN = binding.desktopToken;
+    delete env.BETTER_CODEX_BROWSER_TOKEN;
+    delete env.BETTER_CODEX_DESKTOP_TOKEN;
+    if (browser) env.BETTER_CODEX_BROWSER_TOKEN = binding.token;
+    if (desktopEnabled) env.BETTER_CODEX_DESKTOP_TOKEN = binding.desktopToken;
     const child = spawn(plan.command.command, spawnArgs(plan.command, [...plan.args, ...browserArgs, ...desktopArgs]), {
       cwd,
       env,
@@ -264,7 +264,7 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
     });
-    // EPIPE after an unexpected exit must not crash codex-ui; the exit handler does the cleanup.
+    // EPIPE after an unexpected exit must not crash better-codex; the exit handler does the cleanup.
     child.stdin.on("error", () => {});
     const record = { id, binding, child, command: plan.command, stderr: [], failed: false };
     record.outputError = (stream) => (error) => {
@@ -326,8 +326,8 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
 
   /** Callbacks receive existing event payloads and raw JSON-RPC lines, never SSE frames. */
   function connect(host, { event: emit, message: write, end: finish }) {
-    if (closed) throw failure("CLOSED", "Codex UI is closing.");
-    if (!LOOPBACK_HOST.test(host)) throw new Error("Codex UI only answers on loopback hosts.");
+    if (closed) throw failure("CLOSED", "Better Codex is closing.");
+    if (!LOOPBACK_HOST.test(host)) throw new Error("Better Codex only answers on loopback hosts.");
     let record, prewarmed = false;
     try {
       const plan = launchPlan();
@@ -377,8 +377,8 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
         if (browser || desktopEnabled) {
           try {
             const message = JSON.parse(line);
-            if (message.result?.codexUiHostContext === true) binding.managed = true;
-            if (message.result?.codexUiDesktopTools === true) binding.displayCapable = true;
+            if (message.result?.betterCodexHostContext === true) binding.managed = true;
+            if (message.result?.betterCodexDesktopTools === true) binding.displayCapable = true;
             const thread = message.result?.thread ?? message.params?.thread;
             const threadId = thread?.id ?? message.params?.threadId;
             const threadCwd = thread?.cwd ?? message.params?.threadSettings?.cwd;
@@ -459,11 +459,11 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
     const child = connection(id);
     for (const message of messages) {
       const binding = browserConnections.get(id);
-      if ((browser || desktopEnabled) && binding?.managed && message?.method === "thread/settings/update" && message.params?.codexUiContext) {
-        const { threadId, codexUiContext } = message.params;
+      if ((browser || desktopEnabled) && binding?.managed && message?.method === "thread/settings/update" && message.params?.betterCodexContext) {
+        const { threadId, betterCodexContext } = message.params;
         let state = binding.hostContexts.get(threadId);
         if (!state) {
-          const threadCwd = binding.threads.get(threadId) ?? codexUiContext.cwd;
+          const threadCwd = binding.threads.get(threadId) ?? betterCodexContext.cwd;
           state = { cwd: threadCwd, latest: null, accepted: null, tail: Promise.resolve() };
           state.stop = browser?.watchVerification?.(threadCwd, () => refreshHostContext(id, threadId));
           binding.hostContexts.set(threadId, state);
@@ -517,14 +517,14 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
     if (!state || !child) return Promise.reject(new Error("Connection closed."));
     const next = state.tail.catch(() => {}).then(async () => {
       if (connections.get(id) !== child || binding.hostContexts.get(threadId) !== state) throw new Error("Connection closed.");
-      const requested = params?.codexUiContext ?? state.latest;
+      const requested = params?.betterCodexContext ?? state.latest;
       if (!requested) return {};
       const targetCwd = typeof params?.cwd === "string" ? path.resolve(state.cwd, params.cwd) : state.cwd;
       const snapshot = { ...requested, cwd: targetCwd,
         browserVerification: hostContext(targetCwd, requested.planning.enabled, browser?.verificationState?.(targetCwd)).browserVerification };
       const same = JSON.stringify(snapshot) === JSON.stringify(state.accepted);
       if (same && (!params || Object.keys(params).length === 2)) return {};
-      const result = await askAppServer(child, "thread/settings/update", { ...params, threadId, codexUiContext: snapshot });
+      const result = await askAppServer(child, "thread/settings/update", { ...params, threadId, betterCodexContext: snapshot });
       if (connections.get(id) !== child || binding.hostContexts.get(threadId) !== state) throw new Error("Connection closed.");
       state.latest = requested;
       binding.threads.set(threadId, targetCwd);
@@ -701,9 +701,9 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
   const contentUrls = new Map();
   const attachments = new Set();
   const codexHome = () => path.resolve(process.env.CODEX_HOME || path.join(homedir(), ".codex"));
-  // The desktop shell keeps its stable id in its data folder; the CLI and Vite in CODEX_HOME/codex-ui.
+  // The desktop shell keeps its stable id in its data folder; the CLI and Vite in CODEX_HOME/better-codex.
   const statsig = { stableId: null, sessionId: randomUUID() };
-  const statsigId = () => (statsig.stableId ??= stableId(dataDir ?? path.join(codexHome(), "codex-ui")));
+  const statsigId = () => (statsig.stableId ??= stableId(dataDir ?? path.join(codexHome(), "better-codex")));
 
   /** The bridge's own calls for the library, on its internal routes or the page's (`{status, body}`). */
   const libraryCall = (id, signal) => (method, path, body) =>
@@ -941,7 +941,7 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
     });
     try {
       await open;
-      await call("initialize", { clientInfo: { name: "codex_ui", title: "Codex UI", version: "0.0.0" }, capabilities: { experimentalApi: true } });
+      await call("initialize", { clientInfo: { name: "better_codex", title: "Better Codex", version: "0.0.0" }, capabilities: { experimentalApi: true } });
       sendDurable(id, [{ method: "initialized" }]);
       const selectedCapabilityRoots = roots.map(({ id: root, path: rootPath }) => ({ id: root, location: { type: "environment", environmentId, path: rootPath } }));
       let cursor = null;
@@ -1116,7 +1116,7 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
   }
 
   async function title(description, model, signal) {
-    if (closed) throw failure("CLOSED", "Codex UI is closing.");
+    if (closed) throw failure("CLOSED", "Better Codex is closing.");
     const command = resolveCodexCommand(codex, { env: process.env, home: homedir(), localBuilds });
     if (!command) throw failure("UNAVAILABLE", "Codex is unavailable.");
     const abort = new AbortController();
@@ -1160,7 +1160,7 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
 }
 
 // The backend the Codex desktop app talks to (CODEX_API_BASE_URL overrides it, as there), with
-// its headers; the originator is codex-ui's own, as app-server reports it (clientInfo.name).
+// its headers; the originator is better-codex's own, as app-server reports it (clientInfo.name).
 const chatgptBase = () => (process.env.CODEX_API_BASE_URL?.trim() || "https://chatgpt.com/backend-api").replace(/\/+$/, "");
 
 /** The Codex cloud backend over https: the durable host's origin, as the desktop app derives it (AO); none for a refused override. */
@@ -1193,7 +1193,7 @@ function chatgptHeaders(token) {
   const claims = tokenClaims(token);
   return {
     Authorization: `Bearer ${token}`,
-    originator: "codex_ui",
+    originator: "better_codex",
     "OAI-Product-Sku": "CODEX",
     ...(claims?.chatgpt_account_id ? { "ChatGPT-Account-Id": claims.chatgpt_account_id } : {}),
     ...(claims?.chatgpt_account_is_fedramp === true ? { "X-OpenAI-Fedramp": "true" } : {}),

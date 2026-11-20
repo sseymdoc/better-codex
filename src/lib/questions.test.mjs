@@ -113,11 +113,11 @@ test("the plan card's 接受 and the plan-mode resume carry on a turn with no pr
   assert.equal(continuesTurn([proposed, withImage], 1), false);
   assert.equal(continuesTurn([proposed, turn("t2", "Implement the plan, but skip step 2.")], 1), false);
   // The resume follows only enter_plan_mode that switched the session.
-  const call = (meta, status = "completed") => ({ type: "mcpToolCall", id: "m1", server: "codex_ui_desktop", tool: "enter_plan_mode", status, arguments: {}, result: { content: [], structuredContent: null, _meta: meta }, error: null });
+  const call = (meta, status = "completed") => ({ type: "mcpToolCall", id: "m1", server: "better_codex_desktop", tool: "enter_plan_mode", status, arguments: {}, result: { content: [], structuredContent: null, _meta: meta }, error: null });
   const entering = (item) => ({ id: "t1", status: "completed", items: [said("u1", "add auth"), item] });
-  assert.equal(enteredPlanMode(call({ codexUiPlanMode: "entered" })), true);
-  for (const item of [call(null), call({ codexUiPlanMode: "entered" }, "failed"), { ...call({ codexUiPlanMode: "entered" }), server: "other" }]) assert.equal(enteredPlanMode(item), false);
-  assert.equal(continuesTurn([entering(call({ codexUiPlanMode: "entered" })), turn("t2", PLAN_RESUME)], 1), true);
+  assert.equal(enteredPlanMode(call({ betterCodexPlanMode: "entered" })), true);
+  for (const item of [call(null), call({ betterCodexPlanMode: "entered" }, "failed"), { ...call({ betterCodexPlanMode: "entered" }), server: "other" }]) assert.equal(enteredPlanMode(item), false);
+  assert.equal(continuesTurn([entering(call({ betterCodexPlanMode: "entered" })), turn("t2", PLAN_RESUME)], 1), true);
   assert.equal(continuesTurn([entering(call(null)), turn("t2", PLAN_RESUME)], 1), false);
   assert.equal(continuesTurn([proposed, turn("t2", PLAN_RESUME)], 1), false);
   // Their local echo stays out too; anything else is a message of yours.
@@ -125,11 +125,11 @@ test("the plan card's 接受 and the plan-mode resume carry on a turn with no pr
   assert.equal(continuesText("Implement the plan"), false);
   // enter_worktree moves the session; its next turn opens with the resume, which no one typed.
   const worktree = (meta) => ({ ...call(meta), tool: "enter_worktree" });
-  assert.equal(enteredWorktree(worktree({ codexUiWorktree: "entered" })), true);
-  assert.equal(enteredWorktree(worktree({ codexUiPlanMode: "entered" })), false);
-  assert.equal(continuesTurn([entering(worktree({ codexUiWorktree: "entered" })), turn("t2", WORKTREE_RESUME)], 1), true);
+  assert.equal(enteredWorktree(worktree({ betterCodexWorktree: "entered" })), true);
+  assert.equal(enteredWorktree(worktree({ betterCodexPlanMode: "entered" })), false);
+  assert.equal(continuesTurn([entering(worktree({ betterCodexWorktree: "entered" })), turn("t2", WORKTREE_RESUME)], 1), true);
   assert.equal(continuesTurn([entering(worktree(null)), turn("t2", WORKTREE_RESUME)], 1), false);
-  assert.equal(continuesTurn([entering(call({ codexUiPlanMode: "entered" })), turn("t2", WORKTREE_RESUME)], 1), false);
+  assert.equal(continuesTurn([entering(call({ betterCodexPlanMode: "entered" })), turn("t2", WORKTREE_RESUME)], 1), false);
   assert.equal(continuesText(WORKTREE_RESUME), true);
 });
 
@@ -184,7 +184,7 @@ test("a mention's line range stays after its path, and the request's summary fal
   assert.equal(requestSummary("只是文字"), "只是文字");
 });
 
-test("splitRequest reads codex-ui's and the desktop app's file blocks back, and leaves other messages be", () => {
+test("splitRequest reads better-codex's and the desktop app's file blocks back, and leaves other messages be", () => {
   const body = "## 不是文件\n先看第 2 节\n## My request for Codex:\n这行也是正文";
   assert.deepEqual(splitRequest(requestText([PDF, PNG], body)), { files: [PDF, PNG], request: body });
   assert.deepEqual(splitRequest(requestText([PDF], "")), { files: [PDF], request: "" });

@@ -320,8 +320,8 @@ export function useLibraryEntry(): LibraryAvailability | null {
   return account !== null && available?.available ? available : null;
 }
 
-// The desktop app keeps these per account and user (library-display-preferences); codex-ui per login.
-const prefsKey = (account: string | null | undefined) => `codex-ui:library:${account ?? ""}`;
+// The desktop app keeps these per account and user (library-display-preferences); better-codex per login.
+const prefsKey = (account: string | null | undefined) => `better-codex:library:${account ?? ""}`;
 
 function readPrefs(account: string | null | undefined): LibraryPrefs {
   const saved = obj(readJson(prefsKey(account)));
@@ -368,7 +368,7 @@ export const sortable = (q: Pick<LibraryQuery, "tab" | "directoryId" | "deleted"
 /** The search lanes the library page asks for (dJi). */
 const LANES = ["image", "document", "folder"];
 // ponytail: native files only, the desktop app's library_providers / providers with no cloud drive
-// shown. Connected drives (Google Drive, OneDrive…) are left out of codex-ui altogether.
+// shown. Connected drives (Google Drive, OneDrive…) are left out of better-codex altogether.
 const NATIVE = ["native", "native_shared"];
 
 const defined = (body: Record<string, unknown>) => Object.fromEntries(Object.entries(body).filter((entry) => entry[1] !== undefined));
@@ -421,7 +421,7 @@ export function libraryRequest(q: LibraryQuery, cursor: string | null): { method
 
 /**
  * A library item as the page draws it, either shape. ponytail: cloud drives' items (access_kind
- * mounted, and any `external-…:…` / `library:…` id) are dropped: codex-ui has no drives or
+ * mounted, and any `external-…:…` / `library:…` id) are dropped: better-codex has no drives or
  * sharing, and the bridge refuses ids with a colon anyway.
  */
 export function parseNode(raw: unknown): LibraryNode | null {
@@ -452,7 +452,7 @@ export function parseNode(raw: unknown): LibraryNode | null {
     thumbnail: kind === "file" && (!!str(node.thumbnail_url) || !!str(node.thumbnail_preview_url) || node.library_file_category === "image"),
     width: num(node.width),
     height: num(node.height),
-    // N5 without the favorites it lets through (codex-ui has no saved-entities route): j5.
+    // N5 without the favorites it lets through (better-codex has no saved-entities route): j5.
     own: !saved && !shared && node.is_root !== true && node.site == null && node.space == null && artifact !== "site" && artifact !== "page"
       && (str(node.provider) || str(node.library_provider) || "native") === "native",
     saved,

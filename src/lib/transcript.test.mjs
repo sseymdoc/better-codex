@@ -235,7 +235,7 @@ test("the shell and script come out of the shlex-joined argv", () => {
 });
 
 test("command purposes stay plain and fall back when absent or blank", () => {
-  assert.equal(commandDescription("  运行 codex-ui 的全部测试  "), "运行 codex-ui 的全部测试");
+  assert.equal(commandDescription("  运行 better-codex 的全部测试  "), "运行 better-codex 的全部测试");
   assert.equal(commandDescription("\u001b[31m检查类型\u001b[0m\n并列出\tcodex.ts 的改动"), "检查类型 并列出 codex.ts 的改动");
   assert.equal(commandDescription("检查\u202e类型"), "检查 类型");
   assert.equal(commandDescription("<b>测试</b>"), "<b>测试</b>");
@@ -446,7 +446,7 @@ test("@path mentions in your message link files: a folder, or a known extension 
 
 test("agentChapters reads completed mark_chapter calls; chapterList orders them with the pins", async () => {
   const { agentChapters, chapterList } = await import("./transcript.ts");
-  const call = (id, args, status = "completed") => ({ type: "mcpToolCall", id, server: "codex_ui_desktop", tool: "mark_chapter", status, arguments: args, error: null });
+  const call = (id, args, status = "completed") => ({ type: "mcpToolCall", id, server: "better_codex_desktop", tool: "mark_chapter", status, arguments: args, error: null });
   const turns = [
     { id: "t1", items: [] },
     { id: "t2", items: [call("c1", { title: " Fix ", summary: " why " }), call("c2", { title: "x" }, "failed")] },

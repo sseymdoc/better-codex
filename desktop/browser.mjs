@@ -1,4 +1,4 @@
-// Native Browser pane with Codex UI's Electron/CDP executor.
+// Native Browser pane with Better Codex's Electron/CDP executor.
 import { WebContentsView, session, dialog, shell, clipboard } from "electron";
 import { randomUUID, createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, realpathSync, statSync, watchFile, unwatchFile } from "node:fs";
@@ -170,7 +170,7 @@ export function createDesktopBrowser({ getWindow, getSettings, saveSettings, isO
     });
   }
   async function admit(ctx, raw, model) {
-    if (isOwnOrigin(raw)) throw new Error("浏览器页面不能访问 Codex UI 的内部服务。");
+    if (isOwnOrigin(raw)) throw new Error("浏览器页面不能访问 Better Codex 的内部服务。");
     const url = browserUrl(raw);
     // Claude Desktop lzaSYO3Q fN: local development previews do not need per-port site grants.
     if (!model || isLoopbackHost(url.hostname) || ctx.toolOrigins.has(url.origin) || settings().allowedOrigins.includes(url.origin)) {
@@ -541,7 +541,7 @@ export function createDesktopBrowser({ getWindow, getSettings, saveSettings, isO
         }
         if (typeof args.addOrigin === "string") {
           const url = browserUrl(args.addOrigin.includes("://") ? args.addOrigin : `https://${args.addOrigin}`);
-          if (isOwnOrigin(url.href)) throw new Error("不能授权 Codex UI 的内部服务。");
+          if (isOwnOrigin(url.href)) throw new Error("不能授权 Better Codex 的内部服务。");
           saveSettings({ allowedOrigins: [...new Set([...settings().allowedOrigins, url.origin])] });
         }
         if (typeof args.openLinks === "boolean") saveSettings({ openLinks: args.openLinks });

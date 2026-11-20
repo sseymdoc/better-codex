@@ -20,7 +20,7 @@ export const MAX_PREVIEW_BYTES = 41943040;
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-/** codex-ui's own version, as the page has it (__APP_VERSION__ is package.json's). */
+/** better-codex's own version, as the page has it (__APP_VERSION__ is package.json's). */
 export const APP_VERSION = (() => {
   try { return JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version ?? ""; } catch { return ""; }
 })();
@@ -76,7 +76,7 @@ export function evaluateStatsig(payload) {
 const SYSTEMS = { win32: "Windows", darwin: "macOS", linux: "Linux" };
 
 /**
- * The bootstrap's request, filled in truthfully as codex-ui and never as the desktop app: no
+ * The bootstrap's request, filled in truthfully as better-codex and never as the desktop app: no
  * brand_name or build_flavor, window_type only in the desktop shell. The server takes it; were it
  * refused, the library would stay hidden with its reason, never dressed up.
  */
@@ -427,7 +427,7 @@ function failed(error, uncertain) {
  * `{done, libraryFileId}` or `{error, code, retryable, uncertain?}`.
  */
 export async function upload({ body, name, type, directoryId, json, put, stream, emit = () => {}, signal, max = MAX_UPLOAD_BYTES, dir = tmpdir(), sleep = delay, now = Date.now }) {
-  const file = path.join(dir, `codex-ui-upload-${randomUUID()}`);
+  const file = path.join(dir, `better-codex-upload-${randomUUID()}`);
   let processing = false, spool;
   try {
     const spooled = counter(max, () => failure("file_too_large", "too large"));
@@ -442,7 +442,7 @@ export async function upload({ body, name, type, directoryId, json, put, stream,
           directory_id: directoryId ?? null,
           file_name: name,
           file_size: spooled.bytes,
-          // The type the page declares: codex-ui has no extension table of its own (PRr / mime lookup).
+          // The type the page declares: better-codex has no extension table of its own (PRr / mime lookup).
           client_resolved_mime_type: type || undefined,
           mime_resolution_source: type ? "declared_mime" : "none",
           ...(type ? { mime_type: type } : {}),

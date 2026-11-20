@@ -4,7 +4,7 @@
 // bracket, an apostrophe inside or after a word ('90s, 'em, rock 'n' roll), primes kept straight
 // for feet and inches (5'10") and for f'(x), and `=` before a quote leaves an attribute alone. Each
 // block starts fresh; inline code, images and autolinks break the run. Claude's skipping of its
-// streaming marker (U+FDEE) is left out: codex-ui never inserts one.
+// streaming marker (U+FDEE) is left out: better-codex never inserts one.
 
 import type { Token, Tokens } from "marked";
 

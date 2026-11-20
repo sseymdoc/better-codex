@@ -1,4 +1,4 @@
-// node cites.mjs <file...>: "chunk name" lines for every Claude function a codex-ui comment cites
+// node cites.mjs <file...>: "chunk name" lines for every Claude function a better-codex comment cites
 // ("c227f4d5e `bQ`", "shared-5 Kd / wg", "cc43287c9 kP, Lp"), deduplicated.
 import fs from "node:fs";
 const out = new Set();

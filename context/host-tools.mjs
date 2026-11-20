@@ -1,7 +1,7 @@
-// codex_ui_desktop's host and folder tools, after Claude 4.4212's ccd_host (open_in_editor,
+// better_codex_desktop's host and folder tools, after Claude 4.4212's ccd_host (open_in_editor,
 // reveal_path, request_keep_awake, get_storage_usage, clean_up_worktrees, discard_kept_worktree)
 // and ccd_directory (request_directory, change_directory) (app.asar index.chunk-BReS2dO4 Eu / Es),
-// for this computer and Codex UI's worktrees. Paths arrive resolved by the host (server/desktop-tools.mjs). No I/O.
+// for this computer and Better Codex's worktrees. Paths arrive resolved by the host (server/desktop-tools.mjs). No I/O.
 
 import { change, declined, json, quote, read, tool, toolTable } from "./manage-tools.mjs";
 

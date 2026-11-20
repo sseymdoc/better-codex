@@ -131,7 +131,7 @@ function upcoming(rule, now) {
   if (!dtstart && interval === 1 && (freq === "DAILY" || freq === "WEEKLY") && byhour && byminute && [...keys].every((key) => FAST.includes(key))) {
     // Pl/Fl: the wall-clock time today, or on the next allowed day.
     // ponytail: ChatGPT reads an unwritten WEEKLY weekday (and, on the other paths, an unwritten time)
-    // off the real clock, rrule.js's dtstart = new Date(); codex-ui reads `now`, the same when now is Date.now().
+    // off the real clock, rrule.js's dtstart = new Date(); better-codex reads `now`, the same when now is Date.now().
     const days = byday ?? (freq === "WEEKLY" ? [new Date(now).getDay()] : null);
     return Math.min(...byhour.flatMap((hour) => byminute.map((minute) => (days ? onDays(now, hour, minute, days) : daily(now, hour, minute)))));
   }
@@ -183,7 +183,7 @@ function unfloat(at, now) {
 
 // ponytail: rrule.js semantics on the local wall clock for everything else. ChatGPT runs MONTHLY,
 // YEARLY, DAILY/WEEKLY with INTERVAL>1, MINUTELY+BYHOUR, partial BYDAY and DTSTART rules in UTC
-// (Asia/Shanghai's BYHOUR=9 monthly runs at 17:00); codex-ui keeps them on local time on purpose.
+// (Asia/Shanghai's BYHOUR=9 monthly runs at 17:00); better-codex keeps them on local time on purpose.
 function floating(rule, now) {
   const { freq, interval, byday, byhour, byminute, bymonth, bymonthday, count, dtstart, keys } = rule;
   const flat = now - new Date(now).getTimezoneOffset() * MIN; // now's wall clock, read as UTC
@@ -249,7 +249,7 @@ export function heartbeatInterval(rule) {
   if (rule.dtstart) return null;
   if (rule.freq === "MINUTELY") return only(rule, ["FREQ", "INTERVAL"]) ? rule.interval * MIN : null;
   // ponytail: ChatGPT reads an unwritten HOURLY BYMINUTE off the real clock here (an interval only
-  // at :00 UTC); codex-ui takes it as unwritten, which runs at the same times give or take seconds.
+  // at :00 UTC); better-codex takes it as unwritten, which runs at the same times give or take seconds.
   if (rule.freq !== "HOURLY" || !only(rule, ["FREQ", "INTERVAL", "BYDAY", "BYMINUTE"])) return null;
   if (rule.byminute && (rule.byminute.length !== 1 || rule.byminute[0] !== 0)) return null;
   return !rule.byday || rule.byday.length === 7 ? rule.interval * HOUR : null;

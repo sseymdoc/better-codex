@@ -1,5 +1,5 @@
 // Session rail ("Session details": cf74bc599 fO / rD as Claude Desktop 2.42304.0.0 shows it with
-// the session-presets flag on; the rest of codex-ui stays the flag-off Code tab). Cards beside the
+// the session-presets flag on; the rest of better-codex stays the flag-off Code tab). Cards beside the
 // chat: 环境, 目标, 上下文, 连接器, 输出, 更改 and 后台任务, in the bundle's order (c227f4d5e xZ, the
 // cards Codex has data for), then the ChatGPT app's 定时任务. The rail docks where the session
 // column has room (shared-18 My) and is a floating panel the toggle raises where it does not (jH). Cards and the lists in them stay as they
@@ -110,7 +110,7 @@ interface Sections {
   order: string[];
 }
 
-const SECTIONS_KEY = "codex-ui:rail-sections";
+const SECTIONS_KEY = "better-codex:rail-sections";
 
 function readSections(): Sections {
   const saved = readJson(SECTIONS_KEY) as Partial<Sections> | null;
@@ -149,7 +149,7 @@ const fits = (width: number, besidePane: boolean) => width >= (besidePane ? 771 
 
 function showRail(shown: boolean) {
   setState({ railShown: shown });
-  writePref("codex-ui:rail", shown ? "shown" : "hidden");
+  writePref("better-codex:rail", shown ? "shown" : "hidden");
 }
 
 export type RailState = ReturnType<typeof useRail>;
@@ -1643,7 +1643,7 @@ const SYNC_CONFLICT_ASK = "Syncing this worktree with its base branch stopped on
 
 type CreateMode = "create" | "draft" | "compose";
 /** The way 创建 PR goes, picked in the row's menu and kept across sessions (c227f4d5e _L). */
-const CREATE_KEY = "codex-ui:pr-create-mode";
+const CREATE_KEY = "better-codex:pr-create-mode";
 const CREATE_LABELS: Record<CreateMode | "commit", string> = { create: "创建 PR", draft: "创建草稿 PR", compose: "手动创建 PR", commit: "提交更改" };
 
 const ask = (threadId: string, text: string) => sendMessage(threadId, [{ type: "text", text, text_elements: [] }]).catch(fail("发送失败"));
@@ -1688,7 +1688,7 @@ function readOnce(key: string, read: () => Promise<void>): void {
 }
 
 /** gh's sign-in and SSO problems also toast, once in six hours (ca6174065 Qo). */
-const GH_WARNED_KEY = "codex-ui:gh-warned";
+const GH_WARNED_KEY = "better-codex:gh-warned";
 
 function noteProblem(key: string, problem: GhProblem | null) {
   if (!problem) return void prProblems.delete(key);
@@ -1709,7 +1709,7 @@ export const readPrInto = (cwd: string, key: string, url: string) =>
   });
 
 /** 移除 on the changes row (cb1afaa4b Xn): that folder and branch's row stays hidden, across restarts. */
-const DISMISSED_ROWS_KEY = "codex-ui:changes-dismissed";
+const DISMISSED_ROWS_KEY = "better-codex:changes-dismissed";
 const dismissedRows = () => new Set((readJson(DISMISSED_ROWS_KEY) as string[] | null) ?? []);
 
 function dismissRow(key: string) {
@@ -1721,7 +1721,7 @@ function dismissRow(key: string) {
 }
 
 /** 合并或关闭时自动归档 (ca6174065 Ji): by session; the session is archived once its PR is merged or closed. */
-const AUTO_ARCHIVE_KEY = "codex-ui:pr-auto-archive";
+const AUTO_ARCHIVE_KEY = "better-codex:pr-auto-archive";
 const autoArchives = () => (readJson(AUTO_ARCHIVE_KEY) ?? {}) as Record<string, boolean>;
 const archivedFor = new Set<string>();
 

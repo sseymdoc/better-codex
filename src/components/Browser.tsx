@@ -1,4 +1,4 @@
-// Browser pane backed by Codex UI's native Electron browser executor.
+// Browser pane backed by Better Codex's native Electron browser executor.
 import { use, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { attachBrowserContext, browserRequest, browserUrl, useBrowser, type BrowserEvent, type BrowserServerConfig } from "../lib/browser";
 import { innerClose, togglePane } from "../lib/panes";

@@ -70,7 +70,7 @@
 
 /* With the rail the lead opens on the empty origin slot (c73f45bc3 t_, origin null: shared-6 Yf
    max(0, 1rem − the chat tile's padding and border)), 15 where no tile holds the titlebar: lifted
-   in Claude, and always here (codex-ui draws no chat tile). */
+   in Claude, and always here (better-codex draws no chat tile). */
 .header-lead {
   display: flex;
   align-items: center;
@@ -172,7 +172,7 @@
 }
 
 /* The start card (StartCard.tsx) is Claude's markup with Claude's rules (claude.generated.css).
-   Kept here: codex-ui's Popover wraps a menu row in .popover-root, which must not narrow it. */
+   Kept here: better-codex's Popover wraps a menu row in .popover-root, which must not narrow it. */
 [data-testid="epitaxy-start-card"] .popover-root {
   display: block;
 }
@@ -227,7 +227,7 @@
   width: var(--session-rail-w);
   min-height: 0;
   margin-inline-end: var(--session-rail-end);
-  /* Claude's pb-0.75 sits inside its tile frame's 8px bottom pad; codex-ui has no frame, so the
+  /* Claude's pb-0.75 sits inside its tile frame's 8px bottom pad; better-codex has no frame, so the
      8 joins the rail's own pad to keep the last card 12 above the window's edge as there. */
   padding: 12px 0 11px;
   outline: none;
@@ -3592,7 +3592,7 @@ button.rail-row:active {
 }
 
 /* The titlebar gives way from the right: the controls shrink, the search first (Claude's PageHeader
-   keeps the title; codex-ui has no second row for the search). Under 640 the filter chips go: the
+   keeps the title; better-codex has no second row for the search). Under 640 the filter chips go: the
    filter button's accent and label say what is on. */
 .library-bar {
   container: library-bar / inline-size;
@@ -3982,7 +3982,7 @@ button.rail-row:active {
 
 /* The list (Rt in Ec rows: gap-x-md, py-xs over a min-h-10 text column, the trailing columns
    footnote tabular-nums secondary): 名称, the date (160) and 大小 (88), the last two gone under 512.
-   The headers as codex-ui's other Claude tables (c51c45b79 th: h-control footnote medium over a
+   The headers as better-codex's other Claude tables (c51c45b79 th: h-control footnote medium over a
    1px rule). */
 .library-list {
   margin-inline: calc(-1 * var(--cds-pad-md));

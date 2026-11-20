@@ -74,9 +74,9 @@ async function titleModel(call, fallbackModel) {
 /** A private worker owns the entire naming lifecycle, without the page's browser binding. */
 export async function generateTitle({ command, codexArgs = [], description, model, signal }) {
   signal?.throwIfAborted();
-  const cwd = await mkdtemp(path.join(tmpdir(), "codex-ui-title-"));
+  const cwd = await mkdtemp(path.join(tmpdir(), "better-codex-title-"));
   const env = { ...process.env };
-  delete env.CODEX_UI_BROWSER_TOKEN;
+  delete env.BETTER_CODEX_BROWSER_TOKEN;
   const child = spawn(command.command, spawnArgs(command, [...command.args, "app-server", ...codexArgs]), {
     cwd, env, shell: command.shell ?? false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"],
   });
@@ -123,14 +123,14 @@ export async function generateTitle({ command, codexArgs = [], description, mode
     child.stdin.write(JSON.stringify({ id, method, params }) + "\n");
   });
   void (async () => {
-    await call("initialize", { clientInfo: { name: "codex_ui_title", version: "1" }, capabilities: { experimentalApi: true } });
+    await call("initialize", { clientInfo: { name: "better_codex_title", version: "1" }, capabilities: { experimentalApi: true } });
     child.stdin.write(JSON.stringify({ method: "initialized" }) + "\n");
     const [{ config }, selection] = await Promise.all([
       call("config/read", { includeLayers: false }),
       titleModel(call, model),
     ]);
     const startThread = (choice) => call("thread/start", {
-      ephemeral: true, threadSource: "codex_ui_title", cwd, model: choice.model,
+      ephemeral: true, threadSource: "better_codex_title", cwd, model: choice.model,
       ...(choice.serviceTier ? { serviceTier: choice.serviceTier } : {}),
       sandbox: "read-only", approvalPolicy: "never", baseInstructions: TITLE_INSTRUCTIONS, developerInstructions: "",
       config: {

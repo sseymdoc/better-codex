@@ -821,7 +821,7 @@ function ShortcutsDialog() {
 // 设置 → 通用 → 外观 → Ctrl+Tab 切换最近会话). The sessions opened most recently come first, 30
 // kept for the window's life (sessionStorage, as cmdk-navigation-history).
 
-const RECENTS_KEY = "codex-ui:recents";
+const RECENTS_KEY = "better-codex:recents";
 const RECENTS_KEPT = 30;
 /** Ne: how long Ctrl+Tab waits before the list shows, so a quick press just switches. */
 const SWITCHER_DELAY_MS = 150;

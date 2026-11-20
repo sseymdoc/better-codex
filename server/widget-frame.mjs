@@ -64,7 +64,7 @@ ${Object.entries(RAMPS).map(([name, stops]) => ramp(name, stops)).join("\n")}`;
 // Runs in the frame. Scripts in the code run in order (a library's <script src> before what uses it).
 const SCRIPT = `(() => {
   const root = document.getElementById("root");
-  const post = (message) => parent.postMessage({ codexUiWidget: true, ...message }, "*");
+  const post = (message) => parent.postMessage({ betterCodexWidget: true, ...message }, "*");
   // The parent checks its own user activation (a click here reaches it), not anything sent here.
   window.sendPrompt = (text) => { if (typeof text === "string" && text.trim()) post({ type: "sendPrompt", text: text.slice(0, 4000) }); };
   window.openLink = (url) => post({ type: "openLink", url: String(url) });

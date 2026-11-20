@@ -20,7 +20,7 @@ export function recheckRuns(): void {
 export function checkRun(threadId: string, item: WorkflowItem): void {
   if (item.status !== "running" || checked.has(item.runId)) return;
   checked.add(item.runId);
-  const supported = getState().server.info?.codexUiWorkflows === true;
+  const supported = getState().server.info?.betterCodexWorkflows === true;
   const live = supported
     ? callExperimental<{ running: string[] }>("thread/workflows/list", { threadId }).then((response) => response.running.includes(item.runId), () => false)
     : Promise.resolve(false);
@@ -28,7 +28,7 @@ export function checkRun(threadId: string, item: WorkflowItem): void {
 }
 
 /** The backend asks for a run through request_user_input with these (core/src/workflow/handler.rs). */
-export const WORKFLOW_APPROVAL_PREFIX = "codex_ui_workflow_approval:";
+export const WORKFLOW_APPROVAL_PREFIX = "better_codex_workflow_approval:";
 export const WORKFLOW_ONCE = "Run workflow";
 export const WORKFLOW_SESSION = "Allow for this session";
 export const WORKFLOW_DECLINE = "Decline";
@@ -38,7 +38,7 @@ export function isWorkflowApproval(request: ServerRequest): request is Extract<S
 }
 
 /** 始终允许 for a saved workflow, by name, on this machine (Claude's Workflow(<name>) allow rule). */
-const ALLOW_KEY = "codex-ui:workflow-allow";
+const ALLOW_KEY = "better-codex:workflow-allow";
 export function workflowAlwaysAllowed(name: string): boolean {
   const names = readJson(ALLOW_KEY);
   return Array.isArray(names) && names.includes(name);

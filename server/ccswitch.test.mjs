@@ -11,7 +11,7 @@ const relayToml = (url = "https://relay.example/v1") =>
 
 /** cc-switch's database with `settings` / `meta` as its current Codex provider, and Codex's live config.toml. */
 function homes({ settings = { auth: { OPENAI_API_KEY: "sk-relay" }, config: relayToml() }, meta = {}, live = relayToml(), proxy = false } = {}) {
-  const root = mkdtempSync(path.join(tmpdir(), "codex-ui-ccswitch-"));
+  const root = mkdtempSync(path.join(tmpdir(), "better-codex-ccswitch-"));
   const dir = path.join(root, ".cc-switch");
   const codexHome = path.join(root, ".codex");
   mkdirSync(dir);
@@ -44,7 +44,7 @@ const newApi = script({ templateType: "newapi", code: 'url: "{{baseUrl}}/api/use
 
 test("reads cc-switch's provider only while Codex's config.toml still selects it", async () => {
   const none = fakeFetch({});
-  assert.deepEqual(await ccSwitchQuota({ dir: mkdtempSync(path.join(tmpdir(), "codex-ui-ccswitch-")), fetch: none.fetch }), { report: null });
+  assert.deepEqual(await ccSwitchQuota({ dir: mkdtempSync(path.join(tmpdir(), "better-codex-ccswitch-")), fetch: none.fetch }), { report: null });
   // Another tool rewrote config.toml, to another provider or another address.
   assert.deepEqual(await ccSwitchQuota({ ...homes({ live: relayToml().replace('"custom"', '"other"') }), fetch: none.fetch }), { report: null });
   assert.deepEqual(await ccSwitchQuota({ ...homes({ live: relayToml("https://elsewhere.example/v1") }), fetch: none.fetch }), { report: null });

@@ -577,7 +577,7 @@ function Fallback({ file, title = "无法预览", description, retry }: { file: 
   );
 }
 
-/** Past 40 MiB, or inflating past 200 MiB (libraryFilePreview.tooLargeTitle, its description in codex-ui's words). */
+/** Past 40 MiB, or inflating past 200 MiB (libraryFilePreview.tooLargeTitle, its description in better-codex's words). */
 function TooLarge({ file }: { file: LibraryNode }) {
   const acts = useContext(Acts);
   return <Fallback file={file} title="文件过大，无法预览" description={acts.openInApp ? "你仍可下载此文件，或在系统应用中打开" : "你仍可下载此文件"} />;
@@ -1659,7 +1659,7 @@ const dateTime = (ms: number | null) => (ms === null ? "—" : new Date(ms).toLo
 
 /**
  * FileInfoPanel: the name and where it sits, then 文件类型, 最近更新, 创建时间, 文件大小 and the chat
- * that made it (关联聊天, by its title only: codex-ui does not open ChatGPT chats).
+ * that made it (关联聊天, by its title only: better-codex does not open ChatGPT chats).
  */
 function FileInfo({ node, onClose }: { node: LibraryNode; onClose(): void }) {
   const info = useLoad(node.id, () => fetchLibraryFileInfo(node));

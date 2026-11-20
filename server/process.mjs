@@ -80,7 +80,7 @@ export function stop(child, force) {
 /**
  * Args for spawn(): a shell launch (npm's .cmd shim through cmd.exe) gets each one quoted as
  * CommandLineToArgvW reads it back, so -c values keep their quotes. cmd.exe leaves quoted text alone
- * except %; none of codex-ui's args carry one.
+ * except %; none of better-codex's args carry one.
  */
 export function spawnArgs(command, args) {
   if (!command.shell) return args;

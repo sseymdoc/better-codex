@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { WAITING_LINE, blockedBox, dismissWrapUp, nextStep, wrapReceipt } from "./wrap-up.ts";
 
-const wrapUp = (id, args, extra = {}) => ({ type: "mcpToolCall", id, server: "codex_ui_desktop", tool: "wrap_up", status: "completed", arguments: args, result: null, error: null, ...extra });
+const wrapUp = (id, args, extra = {}) => ({ type: "mcpToolCall", id, server: "better_codex_desktop", tool: "wrap_up", status: "completed", arguments: args, result: null, error: null, ...extra });
 const said = (text) => ({ type: "userMessage", id: `u-${text}`, clientId: null, content: [{ type: "text", text, text_elements: [] }] });
 const turn = (items, status = "completed") => ({ id: `t-${items.map((item) => item.id).join("-")}`, status, items });
 const ASK = { recap: "Fixed the parser. Nothing committed.", ask: "Commit it?", actions: [{ label: "Yes", message: "Commit the parser fix." }, { label: "Not now" }] };
@@ -27,7 +27,7 @@ test("app actions show only while they hold; an unavailable lead keeps the words
 });
 
 test("a waiting proposal holds the box back unless it is blocked, and a blocked box has no dismissal", () => {
-  const propose = { type: "mcpToolCall", id: "p", server: "codex_ui_desktop", tool: "start_session", status: "completed", arguments: { initiation: "own_initiative" }, result: { content: [], structuredContent: null, _meta: { codexUiSession: { outcome: "proposed", taskId: "task_0000aaaa", title: "x" } } }, error: null };
+  const propose = { type: "mcpToolCall", id: "p", server: "better_codex_desktop", tool: "start_session", status: "completed", arguments: { initiation: "own_initiative" }, result: { content: [], structuredContent: null, _meta: { betterCodexSession: { outcome: "proposed", taskId: "task_0000aaaa", title: "x" } } }, error: null };
   const items = [propose, wrapUp("w", ASK)];
   assert.equal(nextStep(turn(items), "thread-c", [{ id: "task_0000aaaa" }], []), null);
   assert.ok(nextStep(turn(items), "thread-c", [], []));

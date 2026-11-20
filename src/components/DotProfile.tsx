@@ -22,7 +22,7 @@ const TASK_TEXT: Record<DotTask["status"], string> = { running: "处理中", suc
 const COMPUTER_TEXT: Record<string, string> = { running: "已连接", ready: "已连接", connected: "已连接", starting: "正在建立连接…", offline: "离线", stopped: "已断开连接" };
 
 /** Desktop notifications for a dot's new messages (only where the desktop shell can send them). */
-export const dotsNotify = () => readPref("codex-ui:dots-notify", ["on", "off"] as const, "off") === "on";
+export const dotsNotify = () => readPref("better-codex:dots-notify", ["on", "off"] as const, "off") === "on";
 
 function Card({ title, summary, children }: { title: string; summary?: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useState(true);
@@ -220,7 +220,7 @@ export function DotProfilePanel({ dot, activity, overlay, toggleRef, onDismiss }
             <span className="rail-icon"><Icon name="Info" size="sm" /></span>
             <span className="rail-label">{name} 有新消息时通知我</span>
             <Toggle checked={notify} label="桌面通知" onChange={(on) => {
-              writePref("codex-ui:dots-notify", on ? "on" : "off");
+              writePref("better-codex:dots-notify", on ? "on" : "off");
               setNotify(on);
             }} />
           </label>

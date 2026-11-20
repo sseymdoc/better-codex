@@ -7,9 +7,9 @@ import { parseArgs } from "./bridge.mjs";
 import { createOrchestrator } from "./orchestrator.mjs";
 import { serve } from "./serve.mjs";
 
-const USAGE = `Usage: codex-ui [--port 7477] [--codex PATH] [--cwd DIR] [-c key=value]... [--no-open]
+const USAGE = `Usage: better-codex [--port 7477] [--codex PATH] [--cwd DIR] [-c key=value]... [--no-open]
 
-Serves Codex UI on 127.0.0.1 and starts one \`codex app-server\` per browser tab.
+Serves Better Codex on 127.0.0.1 and starts one \`codex app-server\` per browser tab.
 
   --port N        port to listen on (default 7477, next free port if taken)
   --codex PATH    codex binary (default: $CODEX_BIN, codex-rs/target/{release,debug}, PATH, then
@@ -39,7 +39,7 @@ try {
   console.error(error.message);
   process.exit(1);
 }
-console.log(`Codex UI is running at ${server.url}`);
+console.log(`Better Codex is running at ${server.url}`);
 if (options.open !== false) openBrowser(server.url);
 
 for (const signal of ["SIGINT", "SIGTERM"]) {

@@ -56,7 +56,7 @@ import {
 
 const DESKTOP = typeof window !== "undefined" && !!window.codexDesktop;
 // Whether the last session ended signed in (the boot skeleton leaves the sidebar out if not).
-const SIGNED_IN_KEY = "codex-ui:signed-in";
+const SIGNED_IN_KEY = "better-codex:signed-in";
 
 /** At most `max` characters on one line, the last one an ellipsis when cut (lzaSYO3Q WKn / kz). */
 function clip(text: string, max: number): string {

@@ -1,6 +1,6 @@
 # 本地环境与桌面项目兼容
 
-**入口**：新建会话页的“选择环境”或输入框下方的环境胶囊 → 新建环境；环境行悬停时末尾的设置键（或按 →）、会话环境卡片的齿轮打开“编辑环境”。对话框照用户 Claude 现行版本（live bundle 10-25，`ca690a791` 的 `EpitaxyEnvironmentDialog`）的本地环境做：只有本地一种会话类型时，Claude 不显示“会话类型”标签，codex-ui 目前也不显示。
+**入口**：新建会话页的“选择环境”或输入框下方的环境胶囊 → 新建环境；环境行悬停时末尾的设置键（或按 →）、会话环境卡片的齿轮打开“编辑环境”。对话框照用户 Claude 现行版本（live bundle 10-25，`ca690a791` 的 `EpitaxyEnvironmentDialog`）的本地环境做：只有本地一种会话类型时，Claude 不显示“会话类型”标签，better-codex 目前也不显示。
 
 **对话框**：
 
@@ -11,7 +11,7 @@
 - 环境变量：点入子页，以 .env 格式编辑（解析、引号与转义规则移植自 Claude `c44400d5b`，与原函数 20 万例随机对拍一致）。`PATH` 和 Codex 自己为命令设置的 `CODEX_*` 变量不能覆盖。
 - 有改动时关闭会先问“要创建此环境吗？”或“保存更改？”；删除环境时，如果该环境有会话，可选择保留会话或“同时删除 # 个会话”。
 
-**数据**：环境保存为 Codex app-server 的 `project/create` 记录：原生 `name`、`roots`（启动文件夹 + 附加文件夹）和 `idempotencyKey`；工作树、分支和环境变量写在 `metadata["codexUi.environment"]`（JSON）。`project/update` 会整体替换 metadata，所以保存时保留桌面版写入的其他键（如 `appearance.*`、`codex.*`）。环境变量以明文存在 `CODEX_HOME` 的项目库里，官方桌面版也能读到。
+**数据**：环境保存为 Codex app-server 的 `project/create` 记录：原生 `name`、`roots`（启动文件夹 + 附加文件夹）和 `idempotencyKey`；工作树、分支和环境变量写在 `metadata["betterCodex.environment"]`（JSON）。`project/update` 会整体替换 metadata，所以保存时保留桌面版写入的其他键（如 `appearance.*`、`codex.*`）。环境变量以明文存在 `CODEX_HOME` 的项目库里，官方桌面版也能读到。
 
 **启动会话**：只有明确选中的环境才按它的设置启动；落在某个环境文件夹里的普通文件夹会话仍归属该环境，并带上它的环境变量。
 
@@ -20,20 +20,20 @@
 3. `thread/start` 带 `runtimeWorkspaceRoots: [启动目录, ...附加文件夹]`，附加文件夹因此进入工作区根，workspace-write 下可写（与 Claude 的 `--add-dir` 一致）。
 4. 环境变量作为 `config["shell_environment_policy.set"]` 传入；配置层按表合并，与 config.toml 的 `set` 共存、同名以环境为准。覆盖不随会话持久化，所以冷启动恢复和分叉时同样下发。
 
-Git 操作由 codex-ui bridge 自己完成（`server/git.mjs`，在 `server/orchestrator.mjs` 拦截 `codexUi/git/branches`、`codexUi/git/switch`、`codexUi/worktree/create`、`codexUi/worktree/bind`），不经过 app-server，也不改 Codex 后端。
+Git 操作由 better-codex bridge 自己完成（`server/git.mjs`，在 `server/orchestrator.mjs` 拦截 `betterCodex/git/branches`、`betterCodex/git/switch`、`betterCodex/worktree/create`、`betterCodex/worktree/bind`），不经过 app-server，也不改 Codex 后端。
 
 ## SSH 环境
 
-**门控**：SSH 依赖自编译后端的扩展，按 AGENTS.md 绑定“实验型后端”开关。后端只在 `CODEX_UI_EXPERIMENTAL_BACKEND=1`（即 `Config.experimental_backend`）且客户端声明 experimentalApi 时，在 `initialize` 里报告 `codexUiStdioEnvironments: true`，并接受两个新方法；否则这两个方法直接报错“requires the Codex UI experimental backend”，也不注册任何环境。codex-ui 只在收到该标志时显示“会话类型”标签（本地 / SSH）；已有的 SSH 环境在菜单里置灰，启动或恢复其会话时提示需要开启实验型后端。
+**门控**：SSH 依赖自编译后端的扩展，按 AGENTS.md 绑定“实验型后端”开关。后端只在 `BETTER_CODEX_EXPERIMENTAL_BACKEND=1`（即 `Config.experimental_backend`）且客户端声明 experimentalApi 时，在 `initialize` 里报告 `betterCodexStdioEnvironments: true`，并接受两个新方法；否则这两个方法直接报错“requires the Better Codex experimental backend”，也不注册任何环境。better-codex 只在收到该标志时显示“会话类型”标签（本地 / SSH）；已有的 SSH 环境在菜单里置灰，启动或恢复其会话时提示需要开启实验型后端。
 
 - `environment/addStdio {environmentId, program, args, env?, cwd?}`：注册一个以本机子进程（stdio）为 exec-server 的环境，内部复用 `environments.toml` 中 `program` 条目的传输方式（`codex-rs/exec-server` 新增公开的 `StdioEnvironmentOptions` / `upsert_stdio_environment`），惰性连接。
 - `environment/readDirectory {environmentId, path}`：经该环境的文件系统列目录，`path` 按环境自己的路径语法。
 
-**连接**：SSH 连接（名称、`user@host` 或 `~/.ssh/config` 别名、端口、密钥）保存在 codex-ui 的本地存储中（Claude 存在其用户设置里）；添加 / 编辑对话框照 Claude 的校验规则（拒绝 `ssh://` 前缀、选项式写法、非法主机名和用户名、越界端口），可“测试连接”。会话启动时注册为 `codexui-ssh-<连接 ID>`：`ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new [-p 端口] [-i 密钥] -- 主机 "sh -lc 'exec codex exec-server --listen stdio'"`。stdin 被协议占用，只支持密钥或 ssh-agent；远端需装有 codex。后端只在内存中保存这些环境，所以冷恢复和分叉 SSH 会话前会按需重新注册。
+**连接**：SSH 连接（名称、`user@host` 或 `~/.ssh/config` 别名、端口、密钥）保存在 better-codex 的本地存储中（Claude 存在其用户设置里）；添加 / 编辑对话框照 Claude 的校验规则（拒绝 `ssh://` 前缀、选项式写法、非法主机名和用户名、越界端口），可“测试连接”。会话启动时注册为 `bettercodex-ssh-<连接 ID>`：`ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new [-p 端口] [-i 密钥] -- 主机 "sh -lc 'exec codex exec-server --listen stdio'"`。stdin 被协议占用，只支持密钥或 ssh-agent；远端需装有 codex。后端只在内存中保存这些环境，所以冷恢复和分叉 SSH 会话前会按需重新注册。
 
 **文件夹与启动**：SSH 环境的项目 `roots` 为空，主机与远端文件夹写在 metadata 的 `ssh` 字段。“添加”菜单可“选择…”（远端文件夹浏览，经 `environment/info` 取默认目录、`environment/readDirectory` 列目录）或“输入路径…”（必须是以 / 开头的绝对路径）。不选文件夹时用主机的默认文件夹。`thread/start` 带 `environments: [{environmentId, cwd: 第一个文件夹, runtimeWorkspaceRoots: 全部文件夹}]`，模型的命令、改文件和读文件都在远端执行；环境变量同样经 `shell_environment_policy.set` 下发。SSH 文件夹暂不提供工作树勾选（Claude 由单独的开关控制）。会话环境卡片显示主机上的文件夹，不提供“在终端中打开”。
 
-**验证**：`codex-rs/app-server/tests/suite/v2/codex_ui_stdio_environments.rs` 覆盖开关缺失或为 0 时两个方法被拒且不注册、开启时注册与列目录、空程序和未知环境的报错及 `initialize` 标志；用新编译的 codex 以 `exec-server --listen stdio` 代替 ssh 实测：注册后 `pending`，`environment/info` 连上后 `ready`，列目录与带 `environments` 的 `thread/start` 成功，关闭开关时全部拒绝。codex-ui 单测覆盖主机只注册一次、远端文件夹与默认文件夹、未开开关时不起会话。
+**验证**：`codex-rs/app-server/tests/suite/v2/better_codex_stdio_environments.rs` 覆盖开关缺失或为 0 时两个方法被拒且不注册、开启时注册与列目录、空程序和未知环境的报错及 `initialize` 标志；用新编译的 codex 以 `exec-server --listen stdio` 代替 ssh 实测：注册后 `pending`，`environment/info` 连上后 `ready`，列目录与带 `environments` 的 `thread/start` 成功，关闭开关时全部拒绝。better-codex 单测覆盖主机只注册一次、远端文件夹与默认文件夹、未开开关时不起会话。
 
 ## 云端环境（Codex Cloud）
 
@@ -52,7 +52,7 @@ Git 操作由 codex-ui bridge 自己完成（`server/git.mjs`，在 `server/orch
 照 Claude 的无文件夹启动（live 10-28 `cc43287c9` 文件夹菜单的“无文件夹”项、`shared-11` 的 scratchLabel；主进程 `index.chunk-Uk7wsaDw.js` 的 `createScratchWorkspace` / `startScratchWorkspaceSweep`）：
 
 - **默认无文件夹**：新会话页不再预填启动目录（桌面版原先是用户主目录）。只有用 `--cwd` 显式指定时，bridge 才在 hello 里带 `folder`，作为新会话的文件夹。选“本电脑”会清空文件夹，文件夹胶囊显示“选择…”，文件夹菜单顶部的“无文件夹”打勾。
-- **临时工作区**：在“本电脑”且没有文件夹时发送，bridge 的 `POST /api/scratch` 会在 `<CODEX_HOME>/codex-ui/scratch-workspaces/` 下新建 `scratch-<日期>-<6 位十六进制>`，作为这个会话的 cwd。每个会话一个，不复用。Claude 放在自己的 userData 下并按账户 / 组织分目录；这里放在 CODEX_HOME 下，和定时任务目录并列。心跳任务的“此任务的新会话”在无文件夹时同样新建临时工作区。
+- **临时工作区**：在“本电脑”且没有文件夹时发送，bridge 的 `POST /api/scratch` 会在 `<CODEX_HOME>/better-codex/scratch-workspaces/` 下新建 `scratch-<日期>-<6 位十六进制>`，作为这个会话的 cwd。每个会话一个，不复用。Claude 放在自己的 userData 下并按账户 / 组织分目录；这里放在 CODEX_HOME 下，和定时任务目录并列。心跳任务的“此任务的新会话”在无文件夹时同样新建临时工作区。
 - **显示**：会话环境卡片显示“无文件夹”，不显示路径，也没有“保存”。侧边栏按文件夹分组时，归入“不在项目中工作”。最近文件夹列表不收它。
 - **清理**：页面在连接后 2 分钟清理一次，之后每 6 小时一次。`GET /api/scratch` 列出空了 1 小时、或一周内树里没有任何改动的工作区。页面用 `thread/list`（`cwd` 过滤，归档与未归档都查，`modelProviders: []`，包含全部来源）排除仍有会话在用的，其余逐个 `POST /api/scratch/remove`。bridge 删除前会再核对：目录直属根目录、名称合规、仍然过期。查询失败时什么都不删。会话换到别的文件夹后，原临时工作区里的文件不会复制过去（Claude 会复制），一周后被清理。
 - **验证**：`server/scratch.test.mjs` 覆盖新建、两种过期判定、删除前的核对，以及只有 `--cwd` 才给 `folder`；`src/lib/scratch.test.mjs` 覆盖清理时排除有会话在用的（含翻页和已归档的）、查询失败不删。真实 codex 0.163 实测：会话发过首条消息后，`thread/list` 的 cwd 过滤能按原路径、正斜杠写法和大写写法找到它，归档后用 `archived: true` 也能找到；刚 `thread/start`、还没发消息的会话列不出来，但这时工作区是空的，最多被删掉一个空文件夹。浏览器 + 真实 codex + 假 Responses 实测：新会话页显示“本电脑 · 选择…”；两次发送各建一个工作区，会话 cwd 即为它，环境卡片显示“本电脑 / 无文件夹”；清理时删掉了孤立的过期工作区，有会话在用的过期工作区和新建的都保留。

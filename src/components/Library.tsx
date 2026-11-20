@@ -91,7 +91,7 @@ const DATE_HEADINGS: Record<DateKind, string> = { suggested: "最近活动时间
 const NO_FILTERS = { categories: [] as LibraryCategory[], sources: [] as LibrarySource[] };
 /** storage_cleanup's order: the largest first. */
 const BY_SIZE: LibrarySort = { key: "size", direction: "desc" };
-const STORAGE_DISMISSED = "codex-ui:library-storage-dismissed";
+const STORAGE_DISMISSED = "better-codex:library-storage-dismissed";
 const WEEK = 6048e5;
 const UPGRADE_URL = "https://chatgpt.com/#pricing";
 
@@ -719,7 +719,7 @@ function SelectionBar({ picked, pending, onDeselect, onClear }: { picked: Librar
     const onKey = (event: globalThis.KeyboardEvent) => {
       const target = event.target;
       if (event.key !== "Escape" || event.defaultPrevented || event.isComposing || !(target instanceof Element)) return;
-      // The page (its scroller, and its titlebar, which codex-ui lifts out of it), the toolbar, or nothing.
+      // The page (its scroller, and its titlebar, which better-codex lifts out of it), the toolbar, or nothing.
       const doc = target.ownerDocument;
       const search = target.id === "library-search";
       const scroller = page.area.current?.closest(".plugins-scroll");
@@ -1445,7 +1445,7 @@ function Item({ node, className, shape, open, onOpen, children }: { node: Librar
 /**
  * La's items, in its order: 恢复 and 永久删除 (the trash); 重命名, 下载; 添加到收藏夹 or 从收藏夹中移除;
  * 移至文件夹 at the root, else 移动; 删除 (删除文件夹 for a folder, which goes for good with what it
- * holds). Sites, sharing and saved chats are not codex-ui's.
+ * holds). Sites, sharing and saved chats are not better-codex's.
  */
 function ItemMenu({ node, close }: { node: LibraryNode; close(): void }) {
   const page = usePage();

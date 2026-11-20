@@ -36,7 +36,7 @@ export function parseArgs(argv, env = process.env) {
   const options = {
     codex: env.CODEX_BIN || undefined,
     codexArgs: [],
-    token: env.CODEX_UI_TOKEN || undefined,
+    token: env.BETTER_CODEX_TOKEN || undefined,
     cwd: env.INIT_CWD || process.cwd(),
   };
   for (let i = 0; i < argv.length; i++) {
@@ -79,9 +79,9 @@ export function createBridge(orchestrator, { token, orbit = createOrbitFiles(), 
   function handle(req, res, next) {
     const url = new URL(req.url ?? "/", "http://localhost");
     const host = LOOPBACK_HOST.exec(req.headers.host ?? "");
-    if (!host) return deny(res, 403, "Codex UI only answers on loopback hosts.");
+    if (!host) return deny(res, 403, "Better Codex only answers on loopback hosts.");
     // Cookies ignore ports, so scope the name to ours.
-    const cookieName = `codex_ui_${host[2] ?? "80"}`;
+    const cookieName = `better_codex_${host[2] ?? "80"}`;
 
     if (url.pathname === "/api/browser-mcp" || url.pathname === "/api/desktop-mcp") {
       const desktop = url.pathname === "/api/desktop-mcp";
@@ -112,7 +112,7 @@ export function createBridge(orchestrator, { token, orbit = createOrbitFiles(), 
     if (!sameSecret(readCookie(req.headers.cookie, cookieName) ?? "", secret)) {
       return deny(res, 401, "Open the tokenized URL printed by the server.");
     }
-    if (orchestrator.closed) return deny(res, 503, "Codex UI is closing.");
+    if (orchestrator.closed) return deny(res, 503, "Better Codex is closing.");
     if (url.pathname === "/api/title") {
       if (req.method !== "POST") return void res.writeHead(405, { Allow: "POST" }).end();
       return void title(req, res);
@@ -121,7 +121,7 @@ export function createBridge(orchestrator, { token, orbit = createOrbitFiles(), 
     // Scratch workspaces (server/scratch.mjs): POST makes one, GET lists the sweepable ones, remove drops one of those.
     if (url.pathname === "/api/scratch" && (req.method === "POST" || req.method === "GET")) return void answer(res, url.searchParams.get("c"), req.method === "POST" ? scratch.create : scratch.stale);
     if (url.pathname === "/api/scratch/remove" && req.method === "POST") return void answer(res, url.searchParams.get("c"), () => scratch.remove(url.searchParams.get("path")));
-    // 存储 (server/storage.mjs): what Codex takes on this computer; removing session worktrees Codex UI made.
+    // 存储 (server/storage.mjs): what Codex takes on this computer; removing session worktrees Better Codex made.
     if (url.pathname === "/api/storage" && req.method === "GET") return void answer(res, url.searchParams.get("c"), (_id, signal) => storage.usage({ root: url.searchParams.get("root"), refresh: url.searchParams.has("refresh") }, signal));
     if (url.pathname === "/api/storage/worktrees/remove" && req.method === "POST") {
       return void answer(res, url.searchParams.get("c"), async (_id, signal) => {
@@ -233,7 +233,7 @@ export function createBridge(orchestrator, { token, orbit = createOrbitFiles(), 
 
   /**
    * Scheduled tasks for a page's own connection: GET the list, POST a verb. A change goes to every page
-   * here as codexUi/automations/changed; pages of the other bridge process (desktop and browser mode share
+   * here as betterCodex/automations/changed; pages of the other bridge process (desktop and browser mode share
    * the folder) find the stamp moved at their next claim.
    */
   async function scheduled(req, res, url) {
@@ -261,7 +261,7 @@ export function createBridge(orchestrator, { token, orbit = createOrbitFiles(), 
     // that failed partway after a change still tells.
     const stamp = automations.stamp();
     if (stamp === before) return;
-    const line = JSON.stringify({ method: "codexUi/automations/changed", params: { stamp } });
+    const line = JSON.stringify({ method: "betterCodex/automations/changed", params: { stamp } });
     for (const page of pages) page.message(line);
   }
 

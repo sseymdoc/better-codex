@@ -20,7 +20,7 @@ import { EnvironmentMenu, chooseFolder, environmentIcon, setComposerDraft, useRe
 import { Button, Icon, Popover, type IconName } from "./ui";
 
 /** Dismissed next steps (cc43287c9 Wie startCardDismissals). */
-const DISMISSED_KEY = "codex-ui:start-card";
+const DISMISSED_KEY = "better-codex:start-card";
 
 type Ask = "question" | "permission" | "error";
 // P5: 已提出问题 / 需要权限 / 遇到错误.
@@ -29,7 +29,7 @@ const ASKS: Record<Ask, string> = { question: "已提出问题", permission: "�
 type SessionStep = { kind: "session"; id: string; title: string; ask: Ask; at: number };
 type Step = SessionStep | { kind: "continue"; folder: string; branch: string; files: number };
 
-// O5 / z5: the step's key (codex-ui's own spelling, which stored dismissals use), and the stamp a
+// O5 / z5: the step's key (better-codex's own spelling, which stored dismissals use), and the stamp a
 // dismissal is held against.
 const stepKey = (step: Step) => (step.kind === "session" ? `session:${step.id}` : `continue:${step.folder}\u0000${step.branch}`);
 const stepStamp = (step: Step) => String(step.kind === "session" ? step.at : step.files);

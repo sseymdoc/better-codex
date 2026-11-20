@@ -166,7 +166,7 @@ export function fileTypeLabel(node: Pick<LibraryNode, "name" | "extension" | "ca
 /**
  * A file by id when no list has it (library-file-metadata d): …/node (the bare files/<id> answers
  * 404); an own image with no type takes its newest version's. ponytail: no shared canonical id
- * (tat) and no page-by-page search of the library: codex-ui has no sharing.
+ * (tat) and no page-by-page search of the library: better-codex has no sharing.
  */
 export async function fetchLibraryNode(id: string): Promise<LibraryNode> {
   const node = parseNode(await call<unknown>("GET", `${filePath(id)}/node`));

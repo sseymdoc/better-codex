@@ -1,4 +1,4 @@
-# codex-ui 复刻审核（Claude Desktop 3.1623 · Code 标签页）
+# better-codex 复刻审核（Claude Desktop 3.1623 · Code 标签页）
 
 初审 2026-10-19（2.42304.0.0），复核 2026-10-22（3.1623.4.0，见下文「〇、3.1623 复核」），2026-10-23 起按类别逐项深查（见「四、分类深查」），2026-11-02 对照 macOS 上的 4.4212.0 补齐缺口（见「五、4.4212 复核」）。范围只含 Code 标签页：不含 Chat 模式，也没有左上角的 Claude / Code 切换控件。
 
@@ -26,7 +26,7 @@
 
 除注明的一项外，都不受服务端开关控制。
 
-| 区域 | 3.1623 行为（出处） | codex-ui |
+| 区域 | 3.1623 行为（出处） | better-codex |
 | --- | --- | --- |
 | 侧栏 | 分组头菜单：「全部折叠 / 全部展开」「全部归档」始终显示，不可用时置灰并写明原因；「全选」的原因换新文案（shared-46 `JO` / `QO` / `rk`；`__gb__873492543` 是杀开关，未下发时为开） | `Sidebar.tsx` 分组头菜单、`ReasonTip` |
 | 侧栏 | 「全部归档」确认：说明运行中的会话会被停止、尚未加载的不会归档（shared-46 `VD` / `BD`） | 同上 |
@@ -47,10 +47,10 @@
 
 ### 本轮跟进里与 3.1623 不同的地方
 
-- 浏览器：自动打开不含 PDF（面板标签的请求过滤是否放行 Chromium 的 PDF 查看器没有验证，代码里有 `ponytail:`）；Claude 还会告诉模型「文件已在面板显示」，这要后端配合，按 AGENTS.md 没做；子代理写的文件不触发。选择元素按钮的标题保留「选择元素」：Claude 的「选择元素或添加标注」在选择模式里能直接标注，codex-ui 的不能。
+- 浏览器：自动打开不含 PDF（面板标签的请求过滤是否放行 Chromium 的 PDF 查看器没有验证，代码里有 `ponytail:`）；Claude 还会告诉模型「文件已在面板显示」，这要后端配合，按 AGENTS.md 没做；子代理写的文件不触发。选择元素按钮的标题保留「选择元素」：Claude 的「选择元素或添加标注」在选择模式里能直接标注，better-codex 的不能。
 - 用量弹层：套餐名取 ChatGPT 的 planType 或路由提供方名称；没有加载骨架和「无法加载」态。
 - 上下文卡片：记忆文件列表里的两行（AGENTS.md / Codex 记忆）是汇总项，不可点；没有「自定义智能体」类别。
-- 侧栏：没有「标为已完成」（Codex 没有这个状态）；全部归档确认的「{分区}：{标题}」不出现（codex-ui 只有分组一层）；toast 暂停结束后重新计时，带操作按钮的 toast 被别的 toast 挡住时不暂停（`ponytail:`）；批量失败提示不带出错原因（Claude 也只报个数）。
+- 侧栏：没有「标为已完成」（Codex 没有这个状态）；全部归档确认的「{分区}：{标题}」不出现（better-codex 只有分组一层）；toast 暂停结束后重新计时，带操作按钮的 toast 被别的 toast 挡住时不暂停（`ponytail:`）；批量失败提示不带出错原因（Claude 也只报个数）。
 - 退出确认：选「仍要退出」时一并取消先前的等待（Claude 不清）；没有远程控制会话那一种确认，也不做 60 秒复查（计数只靠渲染进程上报）。
 
 ### 本轮没有跟
@@ -65,9 +65,9 @@
 
 ### 1. 基线：服务端开关一律取关闭值
 
-真机很多界面由 GrowthBook 开关决定。读取函数（shared-25 `Zs` → `evalFeature`）对服务端没有下发的特性返回 `on:false`。codex-ui 没有 Anthropic 账号，拿不到任何下发，所以复刻的是**所有未知开关都关闭**时的 Code 标签页。这是一个自洽的真实形态，不是拼出来的。
+真机很多界面由 GrowthBook 开关决定。读取函数（shared-25 `Zs` → `evalFeature`）对服务端没有下发的特性返回 `on:false`。better-codex 没有 Anthropic 账号，拿不到任何下发，所以复刻的是**所有未知开关都关闭**时的 Code 标签页。这是一个自洽的真实形态，不是拼出来的。
 
-| 开关 | 真机读取位置 | 关闭时的真机行为 | codex-ui |
+| 开关 | 真机读取位置 | 关闭时的真机行为 | better-codex |
 | --- | --- | --- | --- |
 | `claudeai_cc_epitaxy_session_presets_main` | shared-11 `Qo` / `$o`、`rc()`（经 `nc` 锁存）；cc43287c9 `P_` / `Y_` | 首页是问候语而不是启动卡片（shared-20 `oh`）；没有「会话详情」侧栏（cc43287c9 `an2` / `on2`、`railToggle`）；提问卡停靠在输入框上方（c12c146ad presentation 默认 `"dock"`）；侧栏走 classic 列表（shared-20 `SS()` → `cd()`） | 一致；唯「会话详情」侧栏按用户要求单独取开关开启时的形态（`Rail.tsx`） |
 | `__gb__1669033294` | c2771e1f6 `B2 = Wr()` | 旧版命令面板：页脚提示、Tab 进入命令模式、没有行操作卡 | 后续按用户截图明确改为新版搜索形态，不显示分类栏；见 [搜索](search.md) |
@@ -77,7 +77,7 @@
 
 ### 2. 各区域落点
 
-| 区域 | 主要依据 | codex-ui | 要点 |
+| 区域 | 主要依据 | better-codex | 要点 |
 | --- | --- | --- | --- |
 | 桌面壳 | app.asar `index.chunk-lzaSYO3Q.js` | `desktop/main.mjs`、`preload.cjs`、`quick.html` | 窗口 1200×800（最小 600×400，登录前 600×600），标题栏让位 `ceil(140 / zoom)`，缩放 25%–500%；应用菜单不显示为菜单栏（菜单按钮、单按 Alt 或 F10 打开）；托盘、Quick Entry（606×470）、跳转列表、通知、运行时防休眠、开机启动 |
 | 页面外壳 | shared-19 / shared-20 | `App.tsx`、`shell.css` | Windows 36px 标题栏（菜单、侧边栏开关、返回 / 前进，提示在下方）；启动骨架；加载失败自动重试（0 / 15 / 30 s，±20%，180 s 内）；查找条；toast 在右下 |
@@ -107,7 +107,7 @@
 - 更改面板默认显示「本轮更改」。真机默认「所有更改」，但 Codex 的 `gitDiffToRemote` 在仓库没有远端时会报错，所以「所有更改」作为可选范围。
 - 侧栏按环境分组时用文件夹名，不从仓库地址解析 owner/name。
 - 后台任务没有「已完成」分组：Codex 只列出运行中的进程。
-- 提问卡去掉了「Codex 不会等待您回答」：codex-ui 不会自动回答非阻塞问题，这句话不成立。
+- 提问卡去掉了「Codex 不会等待您回答」：better-codex 不会自动回答非阻塞问题，这句话不成立。
 - 卡片出现后 400ms 内的按键直接忽略（真机是放行但不执行）；「窗口重新获焦且没有指针操作时忽略」这条规则没有照搬。
 - 命令向运行中进程写入的 stdin（`item/commandExecution/terminalInteraction`）不显示：真机命令卡没有这一行。initialize 里已退订该通知；终端回显开着时，写入的内容仍会出现在命令输出里。
 - 插件分享（c0ad2fd1b 的分享面板，按经典样式 c5e7d44b0 `k` 绘制）：协议没有成员目录，面板只列出已有的人，不能邀请，也不能改角色。「常规访问」用 Codex 的三档可见范围代替真机的两档：仅限受邀用户 / 工作区中拥有链接的人 / 工作区中的所有人。新建分享只能选前两档（`plugin/share/save` 不接受 `LISTED`）；改范围时把原有成员原样交回 `updateTargets`。「停止分享」「已分享」列表和「取回到本地」是 Codex 专有；「设为私密」确认（c0ad2fd1b `Xt`）只在离开「工作区中的所有人」且无法再发布时出现。「上传新版本」也是 Codex 专有：已分享且插件文件夹在这台电脑上时，`plugin/share/save` 只带 `pluginPath` 与 `remotePluginId`（带了它就不能再传 `discoverability` / `shareTargets`），把本地改动推到原有分享；真机唯一的更新路径是组织库发布（c63fee29b `Ge` 的 `isUpdate`，带发布说明和安装方式），它要等服务端下发文案（`5b2kir`），开关全关时不出现。
@@ -115,17 +115,17 @@
 
 **近似处理**（代码里有 `ponytail:` 注释写明上限）：
 
-- 多块布局里，真机的聊天块也在 8px 外圈之内，并配合 `data-chat-gutter-*` 调整左右留白。codex-ui 的聊天列只在顶部内收（9px，标题栏抬起时 5px），左右与底部的外圈和 `data-chat-gutter-*` 没做。
+- 多块布局里，真机的聊天块也在 8px 外圈之内，并配合 `data-chat-gutter-*` 调整左右留白。better-codex 的聊天列只在顶部内收（9px，标题栏抬起时 5px），左右与底部的外圈和 `data-chat-gutter-*` 没做。
 - 子菜单用 160ms 的指针方向宽限代替 Base UI 的 safe polygon。
 - 防休眠在回合结束后立即释放（真机会再等一会）。
 - 托盘图标是在代码里画的 `</>`（Claude 自带图标文件）；缩放、主题和桌面设置存在 `window-state.json`；Quick Entry 关闭后不把焦点还给之前的应用（需要原生模块）。
-- Anthropic 的字体文件（含图标字体 Anthropicons）不随 codex-ui 分发（字形归 Anthropic 所有）：服务端在运行时从本机安装的 Claude Desktop（Windows 的 MSIX 包 `WindowsApps\Claude_*`，取最新版本）读出主窗口样式表里的 `@font-face` 与字体文件，经 `/claude-fonts.css`、`/claude-fonts/*` 提供，「字体许可」读同一安装里的 `third-party-notices.txt`。没装 Claude Desktop 时 `/claude-fonts.css` 改给 `public/fonts` 里开源授权的替身，字体族名不变：图标是 Phosphor Icons（MIT）放到 Anthropicons 码位上生成的可变字体（`src/fonts/build-icons.py`，wght 400–700 的笔画粗细对齐 Anthropicons，Claude 独有的十来个图形换成最接近的 Phosphor 图形），Anthropic Sans / Mono 换成 Geist / Geist Mono（OFL，按 Anthropic 的行高度量），衬线体落到真机同款按度量校准的 Georgia，OpenDyslexic 一并内置；「字体许可」改读 codex-ui 自己的 `public/third-party-notices.txt`。
+- Anthropic 的字体文件（含图标字体 Anthropicons）不随 better-codex 分发（字形归 Anthropic 所有）：服务端在运行时从本机安装的 Claude Desktop（Windows 的 MSIX 包 `WindowsApps\Claude_*`，取最新版本）读出主窗口样式表里的 `@font-face` 与字体文件，经 `/claude-fonts.css`、`/claude-fonts/*` 提供，「字体许可」读同一安装里的 `third-party-notices.txt`。没装 Claude Desktop 时 `/claude-fonts.css` 改给 `public/fonts` 里开源授权的替身，字体族名不变：图标是 Phosphor Icons（MIT）放到 Anthropicons 码位上生成的可变字体（`src/fonts/build-icons.py`，wght 400–700 的笔画粗细对齐 Anthropicons，Claude 独有的十来个图形换成最接近的 Phosphor 图形），Anthropic Sans / Mono 换成 Geist / Geist Mono（OFL，按 Anthropic 的行高度量），衬线体落到真机同款按度量校准的 Georgia，OpenDyslexic 一并内置；「字体许可」改读 better-codex 自己的 `public/third-party-notices.txt`。
 - 界面字体选「系统」时引号不悬挂：真机只在 macOS 上按系统字体的度量悬挂。
 
 **真机有、这次没有做**：
 
 - 面板：移动到左 / 右 / 上 / 下与 Fill / Tile 菜单（受开关控制）；关闭后记住原位置；面板的打开状态在重启后不恢复（比例会保存）；更改面板的未提交更改、对比分支、Commits、审查发现步进条、按文件夹分组和词级高亮；文件面板的文件树与编辑；终端的选择 shell、溢出菜单和拖动排序；计划面板自动打开（受开关控制）。
-- 转录：词级高亮、代码块的「Open in terminal」、ANSI 着色（目前只剥离转义码）、「正在启动会话…」占位（`thread/start` 返回前 codex-ui 挂出的是待发送行「正在建立会话…」）。
+- 转录：词级高亮、代码块的「Open in terminal」、ANSI 着色（目前只剥离转义码）、「正在启动会话…」占位（`thread/start` 返回前 better-codex 挂出的是待发送行「正在建立会话…」）。
 - 输入框：Ctrl+R 历史搜索、在分叉会话中发送、发送并留在此页、`/copy` `/theme` `/export` `/cd` `/resume`；非图片附件（桌面桥没有 `getPathForFile`，菜单保持「添加图片」）；自动模式的「推荐」徽标（Codex 没有这个推荐来源）。
 - 首页：Pull requests 区（Codex 没有 PR / CI 状态）。
 - 命令面板：`jump_to_*` 命令（含 3.1623 新增的 `jump_to_last_message`）；项目结果（已归档搜索后续已补齐，见[搜索](search.md)）；设置项级深链。
@@ -139,8 +139,8 @@
 
 ### 4. 静态分析核实不了的部分
 
-- 真实账号下服务端开关的取值（例如 Step 版工具行、文件 diff 预览、托盘用量行）。codex-ui 一律取关闭值；某个账号如果开着，它看到的真机会和 codex-ui 不同。
-- 窄窗口下真机面板是否改为浮层（`[data-pane-overlay]`、`--tile-overlay-*`）以及浮层的尺寸。codex-ui 在 860px 以下把面板列改为右侧浮层。
+- 真实账号下服务端开关的取值（例如 Step 版工具行、文件 diff 预览、托盘用量行）。better-codex 一律取关闭值；某个账号如果开着，它看到的真机会和 better-codex 不同。
+- 窄窗口下真机面板是否改为浮层（`[data-pane-overlay]`、`--tile-overlay-*`）以及浮层的尺寸。better-codex 在 860px 以下把面板列改为右侧浮层。
 - 聊天块在多块布局里的上下留白（见上文「近似处理」）。
 - MCP Apps 小组件（c6f6cf4c2、c98ac6b4b 里有 iframe 宿主）是否会出现在 Code 标签页。
 
@@ -218,7 +218,7 @@
 | `item/tool/requestUserInput` | 停靠提问卡 |
 | `mcpServer/elicitation/request` | MCP 表单（含 `openai/form`）与链接请求 |
 | `currentTime/read`（实验） | 自动回复本机当前时间（配置选了外部时钟时才会发） |
-| `item/tool/call`、`account/chatgptAuthTokens/refresh`、`attestation/generate` | 回错误：codex-ui 没有注册动态工具，不用外部令牌模式，initialize 声明了 `requestAttestation: false`（v1 遗留的 `applyPatchApproval`、`execCommandApproval` 已从协议删除） |
+| `item/tool/call`、`account/chatgptAuthTokens/refresh`、`attestation/generate` | 回错误：better-codex 没有注册动态工具，不用外部令牌模式，initialize 声明了 `requestAttestation: false`（v1 遗留的 `applyPatchApproval`、`execCommandApproval` 已从协议删除） |
 
 ### 已处理的通知（66 个）
 
@@ -262,7 +262,7 @@
 | `command/exec/write`、`…/terminate`、`…/resize` | 终端用 `process/*`，`!` 命令用 `thread/shellCommand`；`command/exec` 只用于一次性只读查询 |
 | `config/value/write` | `config/batchWrite` |
 | `fuzzyFileSearch/sessionStart`、`…/sessionUpdate`、`…/sessionStop` | 单次 `fuzzyFileSearch` 加取消令牌 |
-| `thread/realtime/appendAudio`、`…/appendText`、`…/appendSpeech` | WebSocket 传输的替代通道；codex-ui 走 WebRTC，音频直接进浏览器 |
+| `thread/realtime/appendAudio`、`…/appendText`、`…/appendSpeech` | WebSocket 传输的替代通道；better-codex 走 WebRTC，音频直接进浏览器 |
 
 **C. 真机没有对应界面（22 个）**：按「如有」的要求不做。
 
@@ -272,7 +272,7 @@
 | `plugin/skill/read` | 安装前预览远端插件的技能正文，真机没有对应入口 |
 | `fs/createDirectory`、`fs/getMetadata` | 真机用系统原生文件夹对话框 |
 | `thread/timeline/list`、`thread/realtime/listVoices` | 语音转写历史与音色选择；真机 Code 标签页没有语音对话 |
-| `account/gatewayOAuth/read`、`…/login`、`…/cancel` | 网关提供方专用；codex-ui 不声明 `explicitGatewayOauth`，服务端会自己打开浏览器登录 |
+| `account/gatewayOAuth/read`、`…/login`、`…/cancel` | 网关提供方专用；better-codex 不声明 `explicitGatewayOauth`，服务端会自己打开浏览器登录 |
 | `modelProvider/capabilities/read` | 真机没有按提供方隐藏能力的界面 |
 | `environment/add`、`environment/info`、`environment/status` | 远端执行环境；真机的 SSH / 云端环境机制不同，属 Claude 专有部分 |
 | `account/bedrock/discover`、`…/setup`、`…/checkGovCloudRequirements` | 真机的 Bedrock 配置在第三方推理设置里，不在 Code 标签页 |
@@ -332,7 +332,7 @@
 
 ## 四、分类深查（2026-10-23 起）
 
-把审核拆成上面的 12 个区域，每轮查一两类；深色、密度、窄屏和键盘焦点随各类一起查。原子组件用渲染对照：离屏 Electron 里一边渲染 3.1623 ion-dist 的组件（`shared-frame` 导出，套 CDS 根 Provider），一边渲染 codex-ui 的对应组件，内容相同、两种密度、浅色与深色各一遍。状态用 CDP 强制 hover / active / focus-visible；菜单和提示气泡用真实指针悬停（它们按指针移动高亮或打开，不看 `:hover`）。每格逐像素比，同时比计算样式。
+把审核拆成上面的 12 个区域，每轮查一两类；深色、密度、窄屏和键盘焦点随各类一起查。原子组件用渲染对照：离屏 Electron 里一边渲染 3.1623 ion-dist 的组件（`shared-frame` 导出，套 CDS 根 Provider），一边渲染 better-codex 的对应组件，内容相同、两种密度、浅色与深色各一遍。状态用 CDP 强制 hover / active / focus-visible；菜单和提示气泡用真实指针悬停（它们按指针移动高亮或打开，不看 `:hover`）。每格逐像素比，同时比计算样式。
 
 | 类别 | 状态 |
 | --- | --- |
@@ -360,7 +360,7 @@
 
 已改：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 深色字重轴 | 深色下正文走 `"wght" 360`，medium 460、semibold 540、bold 560；设字重的类同时设轴，b / strong 用 bold 轴，th 由 font-weight 驱动（c6a992d55 `:where(.cds-root)`、`.font-*`、`.text-*`） | 只有 `.fw-*`、实心按钮和回复正文设了轴，其余正文是 400。现在 body 设 regular 轴，72 处 font-weight 声明配上对应的轴（图标字体不动）；浅色下这些令牌都是 normal，外观不变 |
 | Tooltip 字重 | 文字在 dark scope 里，浅色下也是 360（shared-frame `um`） | 400 |
@@ -384,11 +384,11 @@
 - mock 预览深色模式下扫描了首页、会话菜单、带 Markdown 的转录和设置页 8 个标签，没有字重与轴对不上的文字。
 
 还有的差异，以及留给别的类别的：
-- 文字抗锯齿：菜单与 Tooltip 在 Claude 是灰度抗锯齿（菜单列表常驻 `scroll-fade-y` 遮罩，Tooltip 定位层单独合成），codex-ui 是彩色子像素。要对齐菜单得把 `.popover` 拆成「外壳 + 带遮罩的列表」两层，改动面大，暂不跟。同一原因，被窗口限高、整体滚动的 `.popover` 两端没有淡出（`.menu-scroll` 有）。
-- 对话框初始焦点：codex-ui 默认把带焦点环的初始焦点放主按钮（照 ConfirmDialog）；Claude 的通用 Dialog 交给 Base UI，落在第一个可聚焦元素、不显示焦点环。逐个对话框留到「命令面板与对话框」核对。
+- 文字抗锯齿：菜单与 Tooltip 在 Claude 是灰度抗锯齿（菜单列表常驻 `scroll-fade-y` 遮罩，Tooltip 定位层单独合成），better-codex 是彩色子像素。要对齐菜单得把 `.popover` 拆成「外壳 + 带遮罩的列表」两层，改动面大，暂不跟。同一原因，被窗口限高、整体滚动的 `.popover` 两端没有淡出（`.menu-scroll` 有）。
+- 对话框初始焦点：better-codex 默认把带焦点环的初始焦点放主按钮（照 ConfirmDialog）；Claude 的通用 Dialog 交给 Base UI，落在第一个可聚焦元素、不显示焦点环。逐个对话框留到「命令面板与对话框」核对。
 - Toast：已在「外壳」一轮查完（见下）。
 - ShrinkWrap 在 Claude 还用于 shared-2 里一个可编辑消息块（疑似用户消息气泡），留到「转录条目」。
-- 尺寸 sm 的输入框 codex-ui 没有，现有界面也没用到，不加。
+- 尺寸 sm 的输入框 better-codex 没有，现有界面也没用到，不加。
 
 校验：`pnpm typecheck` 0 错误，`pnpm test` 340/340。其中一次运行里，有个服务端用例的随机端口撞上 fetch 的禁用端口，报 `bad port`；重跑通过，与本轮改动无关。
 
@@ -400,11 +400,11 @@
 - 启动占位、Windows 标题栏、会话标题栏的半透明底。
 - Toast：外观、类型、时长、位置。
 
-Toast 用渲染对照：Claude 一侧用 shared-19 的 ToastProvider（`PO`）和 `IO().add`，codex-ui 一侧用 store 的 `toast()`。共 7 种：单行、带说明、warning、danger、合并计数、长文本、三张叠放；浅色与深色各一遍，逐像素比。
+Toast 用渲染对照：Claude 一侧用 shared-19 的 ToastProvider（`PO`）和 `IO().add`，better-codex 一侧用 store 的 `toast()`。共 7 种：单行、带说明、warning、danger、合并计数、长文本、三张叠放；浅色与深色各一遍，逐像素比。
 
 已改：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | Toast 密度 | 视口挂在应用的 CDS 根上；用鼠标时根不设 `data-density`，即 compact：13 / 19，上下 8、左右 12（shared-frame `io`、shared-50 `nw`） | 落在 `:root` 的 comfortable：14 / 20，上下 12、左右 16 |
 | Toast 图标位 | 图标外层随 20px 的图标高，单行 toast 高 36（shared-19 `wO`） | 定成一行高，单行高 35 |
@@ -418,20 +418,20 @@ Toast 用渲染对照：Claude 一侧用 shared-19 的 ToastProvider（`PO`）�
   - 根为 `surface-1`（shared-50 `LT`）。
   - Surface panel 为 `surface-2`，popover 与对话框为 `surface-3`（shared-frame `Wh` / `Ny` / `Zf`）。
   - 提示气泡在深色作用域里，取深色的 `surface-0`。
-  - codex-ui 的 `:root`、`.pane`、`.popover`、`.dialog` 取值相同。提示气泡里没有用到页面底色的挖空效果，不设。
+  - better-codex 的 `:root`、`.pane`、`.popover`、`.dialog` 取值相同。提示气泡里没有用到页面底色的挖空效果，不设。
 - **窗框背景**：
   - 桌面端 `.dframe-root` 用 web 变体（shared-22 `RL`：`Ea()==="web"`）。
   - 内容区底为 `surface-1`。侧栏浅色为 `surface-0` 与 `surface-1` 各半，深色为页面底色 80% 混黑。分隔线是 0.5px `border`。
-  - codex-ui 一致。3.1623 新增的 `--df-page-ground` 只给启动占位取色用。
+  - better-codex 一致。3.1623 新增的 `--df-page-ground` 只给启动占位取色用。
 - **启动占位**：
-  - 3.1623 会记下上次的页面、侧栏和分隔线颜色（`reportBootPlaceholderColors`），下次启动按它画占位。codex-ui 直接用当前主题的令牌画，颜色相同。
+  - 3.1623 会记下上次的页面、侧栏和分隔线颜色（`reportBootPlaceholderColors`），下次启动按它画占位。better-codex 直接用当前主题的令牌画，颜色相同。
   - 占位形状仍是默认形状，没有跟随真实侧栏的形状（`reportSidebarPlaceholder`，2.42304 起就有）。
-- **Windows 标题栏**：3.1623 的 `ML` 与 2.42304 的 `LN` 结构、类名相同，codex-ui 不变。
-- **会话标题栏半透明底**：只在 `panels` 开关打开时启用（shared-4 `Gp` / `Kp`）。基线为关，codex-ui 用不透明底正确。
+- **Windows 标题栏**：3.1623 的 `ML` 与 2.42304 的 `LN` 结构、类名相同，better-codex 不变。
+- **会话标题栏半透明底**：只在 `panels` 开关打开时启用（shared-4 `Gp` / `Kp`）。基线为关，better-codex 用不透明底正确。
 
 还有的差异：
 - Toast 让位只在 toast 出现、窗口或停靠区尺寸变化时重算。toast 显示期间打开对话框或切换会话，它不会跟着变（代码里有 `ponytail:`）；Claude 用 ResizeObserver 与 MutationObserver 持续跟踪。
-- 跨类别：codex-ui 的 `:root` 是 comfortable，Claude 的根是 compact。
+- 跨类别：better-codex 的 `:root` 是 comfortable，Claude 的根是 compact。
   - 对话框：Claude 大多显式包了 comfortable（cc43287c9、shared-20、shared-21、shared-22 等），所以目前一致。
   - 其余直接挂在根上的浮层，留到「命令面板与对话框」逐个核对。
 
@@ -452,21 +452,21 @@ Toast 用渲染对照：Claude 一侧用 shared-19 的 ToastProvider（`PO`）�
   - shared-19 `rP`（页脚用户按钮）。
 - 新增 `Frame.tsx`：`div.dframe-root > [标题栏、aside、main.dframe-content > div.dframe-content-inner]`。侧栏把宽度和 `data-collapsed` / `data-phone-sheet` / `data-hovering` / `data-peeked` / `data-session-dragging` 写回窗框根节点（shared-22 `FL`）。
 - 样式不再手写。`scripts/claude-css.mjs` 从 c6a992d55 与 shared-styles 里，抽出选择器所含类名全部出现在 `Sidebar.tsx` / `Frame.tsx` 中的规则，生成 `styles/claude.generated.css`：共 497 条，去掉 @layer，保留原顺序；`--check` 检查生成文件是否过期。
-- `shell.css` 删掉旧侧栏和标题栏规则约 1160 行，只留 codex-ui 自己的部件：字标、菜单、拖动提示、头像、页面拖动带、浮层不可拖。
+- `shell.css` 删掉旧侧栏和标题栏规则约 1160 行，只留 better-codex 自己的部件：字标、菜单、拖动提示、头像、页面拖动带、浮层不可拖。
 
-Claude 组件与 codex-ui 组件的差异，这样补齐：
+Claude 组件与 better-codex 组件的差异，这样补齐：
 
 | 项目 | 做法 |
 | --- | --- |
-| 图标 | Claude 的 Icon 是带内联 `font-size` 的 span。抽取时把 `span[style*=font-size]` 改写成 `span[data-cds="Icon"]`（新建圆圈 13px 粗体、标题栏按钮 16px）。折叠态触发按钮里，Claude 显式指定的 sm 图标不随 lg 按钮放大，codex-ui 用 `--btn-icon` 固定为 16 |
-| 弹层触发 | codex-ui 的 Popover 会在触发按钮外包一层 `.popover-root`。页脚用户按钮要占满整行，所以给这层包装加 `display: flex` |
+| 图标 | Claude 的 Icon 是带内联 `font-size` 的 span。抽取时把 `span[style*=font-size]` 改写成 `span[data-cds="Icon"]`（新建圆圈 13px 粗体、标题栏按钮 16px）。折叠态触发按钮里，Claude 显式指定的 sm 图标不随 lg 按钮放大，better-codex 用 `--btn-icon` 固定为 16 |
+| 弹层触发 | better-codex 的 Popover 会在触发按钮外包一层 `.popover-root`。页脚用户按钮要占满整行，所以给这层包装加 `display: flex` |
 | 深色 | 窗框规则看 `[data-mode=dark]`。`theme-init.js` 和 `applyTheme` 在设 `.dark` 的同时写 `data-mode` |
 | 令牌 | 补上 Claude 名下的 `--cds-gray-10/900`、`--_gray-10/850`（HSL 分量）、`--cds-neutral-50/60/70/150/900`（浅 / 深）、`--cds-panel-line`、`--cds-toolbar-line` |
 | 抽取范围 | 只靠 `:not(.x)` 命中的全局规则不收（例如 base 层的 `button:not(.hide-focus-ring):focus-visible` 描边，否则全站按钮都会被它覆盖）；模板字符串 `${…}` 里的类名也算 |
 
 改写后与原来不同、现在随 Claude 的地方：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 分组头按钮 | 先「筛选」后「+」（wC）；静止时是 muted，悬停分组头时变 secondary（shared-styles `--df-heading-ink`） | 先 + 后筛选，+ 为 secondary |
 | 搜索框快捷键 | 键帽（gz 用 `Kbd`） | 纯文字 |
@@ -488,7 +488,7 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 同日补上首轮没跟的几项：
 
-| 项目 | Claude（出处） | codex-ui |
+| 项目 | Claude（出处） | better-codex |
 | --- | --- | --- |
 | 折叠时的左边缘 | 宽窗口折叠后，窗框起始边有一条 CDS ResizeHandle（shared-21 `RM`：`dframe-sidebar-edge`，浏览器 8px，桌面 12px 裁成 8px）。提示「显示侧边栏 · Ctrl+B」，第二行「拖动以调整大小」，跟着指针高度走（`trackCursorAxis: "y"`）。单击展开；拖出超过最窄宽度的一半（100px）就停靠，宽度跟随指针，松手后记住（`LM`、shared-16 `Ac`）；键盘 → / Enter 展开。靠近时的提示条和磁吸浮出受 `__gb__741807810` 控制（`iv()`，未下发为关），默认不画，设置 → 通用 → 外观 →「侧边栏边缘提示」可打开（lib/edgeMagnet.ts 移植 cec084e62 EdgeMagnetPeek，减弱动效时为 shared-21 `MM` 的静态提示）；边缘本身的开关 `__gb__3775304746` 是杀开关，按显示 | 新增 `SidebarEdge`。提示层支持 `data-tip-track="y"`，侧栏缩放把手也用上；拖动期间 `.dframe-root[data-resizing]` 保持 col-resize 指针、不选中文字（Claude 的拖动会话，shared-11 `yc`） |
 | 折叠态触发按钮的位置 | 用 ResizeObserver 实测按钮右缘；与 CSS 推导值不同时写 `--df-trigger-right` / `--df-nav-extent`（shared-21 `nI`） | 新增 `CollapsedChrome`，同样实测 |
@@ -518,14 +518,14 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 | 项目 | 做法 |
 | --- | --- |
 | 提示 | 提示层新增三个属性：`data-tip-align="start"`（与触发元素起点对齐）、`data-tip-wide`（最宽 480，cc5c56f5c `t`）、`data-tip-path`（路径只在分隔符后换行，cc5c56f5c `n`） |
-| preflight | Claude 的标记依赖 Tailwind 的 preflight，以及 CDS 根上的边框色（c6a992d55 `@layer base`），codex-ui 没有全局加载这些。给侧栏、标题栏、启动卡片这几处 Claude 标记补一份零优先级的替身：外边距、内边距、边框归零，列表不带圆点，边框色取 `--cds-border` |
-| 弹层包装 | codex-ui 的 Popover 会在菜单行外包一层，在卡片里设为 block，免得行被压窄 |
+| preflight | Claude 的标记依赖 Tailwind 的 preflight，以及 CDS 根上的边框色（c6a992d55 `@layer base`），better-codex 没有全局加载这些。给侧栏、标题栏、启动卡片这几处 Claude 标记补一份零优先级的替身：外边距、内边距、边框归零，列表不带圆点，边框色取 `--cds-border` |
+| 弹层包装 | better-codex 的 Popover 会在菜单行外包一层，在卡片里设为 block，免得行被压窄 |
 | 令牌 | 补 `--cds-neutral-30`（浅色 `#f6f6f4`，深色 gray-870） |
 | 路径 | 用户主目录下的路径写成 `~` 开头（shared-46 `sL`），新增 `homeRelative`，带测试 |
 
 改写后与原来不同、现在随 Claude 的地方：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 环境行提示 | 路径以 `~` 开头，只在分隔符后换行；提示在行的上方，与行首对齐，最宽 480（`_5` / `LF` / `IF`） | 原样路径，居中，最宽 240 |
 | 后续步骤提示 | 对齐方式和最大宽度同上 | 居中 |
@@ -560,9 +560,9 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 - 计划卡片。
 - 聊天列的宽度与留白。
 
-做法：codex-ui 的这些部分当初照 2.42304 实现，这轮的重点是找 3.1623 的增量。3.1623 改用 React Compiler 生成的缓存写法，函数体无法逐行比对。所以先按字符串字面量的重合度，把 codex-ui 注释里引用的约 40 个 2.42304 函数配上 3.1623 的对应函数，再比较两边的类名词元和文案 id。TurnStatus 所在的 c734f318c 整个 chunk 一起比。
+做法：better-codex 的这些部分当初照 2.42304 实现，这轮的重点是找 3.1623 的增量。3.1623 改用 React Compiler 生成的缓存写法，函数体无法逐行比对。所以先按字符串字面量的重合度，把 better-codex 注释里引用的约 40 个 2.42304 函数配上 3.1623 的对应函数，再比较两边的类名词元和文案 id。TurnStatus 所在的 c734f318c 整个 chunk 一起比。
 
-结论：在 Code 会话里，这些部分 3.1623 与 2.42304 相同。变化只有以下几处，都不影响 codex-ui：
+结论：在 Code 会话里，这些部分 3.1623 与 2.42304 相同。变化只有以下几处，都不影响 better-codex：
 - 滚动区（c4a70913c `x`）多了 `topFade` / `bottomFade` 开关，默认都开；「滚动到底部」按键多了 stacks 变体，该开关为关。
 - 转录外框（`nat` → `Ntt`）多了总览信息流和协调者会话的属性（`Q7`），Code 会话用不到。
 - 行间距（`Snt` → `H7e`）多了 host 消息的分支，其余类名逐个一致。
@@ -571,13 +571,13 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 已改：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 聊天列留白 | 会话格（`@container/tile-slot`，shared-20）宽 ≤ 560 时，留白由 32 收为 16（shared-6 `ag`）。侧栏或窗格把会话格挤窄时也会收 | 视口宽 ≤ 640 时才收。现在 `.main-col` 设为 tile-slot 容器，转录和新会话页都按会话格宽度判断 |
 | 新会话页的列 | 卡片所在的列用聊天列的留白（shared-6 `cg`） | `px-4`（16） |
 
 没跟：
-- 滚动区的 `[contain:strict]`：codex-ui 的转录里还有直接用 `position: fixed` 的元素（右键菜单的锚点、图片预览）。加上后它们会改以滚动区定位，而视觉上没有差别，所以不加。
+- 滚动区的 `[contain:strict]`：better-codex 的转录里还有直接用 `position: fixed` 的元素（右键菜单的锚点、图片预览）。加上后它们会改以滚动区定位，而视觉上没有差别，所以不加。
 
 留到「转录条目」：
 - 用户消息行（`fz` → `bI`：发送中的 CheckDouble 状态去掉，新增「已排队」）。
@@ -607,9 +607,9 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 已改：
 
-| 项目 | Claude 3.1623（出处） | 原来的 codex-ui |
+| 项目 | Claude 3.1623（出处） | 原来的 better-codex |
 | --- | --- | --- |
-| 工具行的 +N −N 胶囊 | 改用 CDS DiffIndicator（c227f4d5e `Mw`），胶囊样式与 codex-ui 按行设计画的一致。增量有三处：计数整体 `dir="ltr"`；两个数字 `aria-hidden`；另给读屏一句「新增 N，删除 M」（`AUUK+jFHU3`） | 没有 `dir`，读屏念「+1 −1」 |
+| 工具行的 +N −N 胶囊 | 改用 CDS DiffIndicator（c227f4d5e `Mw`），胶囊样式与 better-codex 按行设计画的一致。增量有三处：计数整体 `dir="ltr"`；两个数字 `aria-hidden`；另给读屏一句「新增 N，删除 M」（`AUUK+jFHU3`） | 没有 `dir`，读屏念「+1 −1」 |
 | 文件卡片头部的计数 | `dir="ltr"`（c44d00c7f `pa`） | 没有 |
 | 任务列表 | `<ul role="list">`（cb6930dae `Lu` → `bd`） | 计划卡片和计划面板都没有 `role` |
 | 错误行 | 标题 `break-words`，标题行 `max-w-full`（c96d752d0 `AK`，原 `Wq`）：长串在 480 列内换行 | 长串撑出列宽 |
@@ -617,13 +617,13 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 没跟（Code 会话里用不到）：
 - 频道消息的表情回应（`epitaxy-message-reactions`）。Code 会话没有频道。
-- 用户消息行的「已排队」，以及远程、排队消息的读屏文字（`fz` → `bI`）。codex-ui 的排队消息留在输入框上方的队列里，不进转录。2.42304 发送中的 CheckDouble 状态，codex-ui 原本就没画。
+- 用户消息行的「已排队」，以及远程、排队消息的读屏文字（`fz` → `bI`）。better-codex 的排队消息留在输入框上方的队列里，不进转录。2.42304 发送中的 CheckDouble 状态，better-codex 原本就没画。
 - 回复根节点的 `data-cds-reply-type` 和气泡堆叠（`data-cds-bubble-stack-items`）。对应开关为关。
-- 文件卡片头部的评审标记与评论数。codex-ui 没有差异评审。
+- 文件卡片头部的评审标记与评论数。better-codex 没有差异评审。
 - 代码块的「无底色」模式（透明底，复制键靠尾）。只在特定卡片里用，默认代码块没变。
 - 链接：claude.ai `/chat/<uuid>` 链接在应用内打开；本地预览服务器链接的分支（判断恒为假）。
 - 图片的「ask」模式（加载外部图片前先问）。只在设了链接策略的不可信内容里生效，Code 会话的回复没有。
-- 用户消息编辑框里的 Alt+Enter 换行和 `dir="auto"`（`UX` → `O2`）。codex-ui 没有消息编辑；气泡正文本来就是 `unicode-bidi: plaintext`。
+- 用户消息编辑框里的 Alt+Enter 换行和 `dir="auto"`（`UX` → `O2`）。better-codex 没有消息编辑；气泡正文本来就是 `unicode-bidi: plaintext`。
 - 工作行的 SSH 重连（`T8` → `K6`），以及记忆工具的分组摘要（c24951e9f `Z` 的 `memory_recall` / `memory_save`）。Codex 没有对应的能力。
 - 差异面板里的三处 `.diff-stat`（`Panes.tsx`）属于「面板」，留到那一轮。
 
@@ -656,7 +656,7 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 已改：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 听写时的占位文字 | 听写录音时，空草稿的占位文字换成斜体的「正在聆听…」（`fFXFXLn7w9`），优先于其他占位文字（c227f4d5e `uM` → `kM`，shared-5 `eN`）。2.42304 就有，不是 3.1623 的增量 | 听写只体现在按钮上，占位文字不变 |
 | 上下文弹层的限额段 | 标题右侧去设置的入口，从 ArrowRight 链接换成套餐弹层那个 UsageGaugeMiddle 量表按钮（ghost、xxs、仅图标、贴右，c1564829c `E` / `T`）。限额行不变，只是挪进了 c1564829c | ArrowRight 链接（`usage-link`，已删） |
@@ -664,13 +664,13 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 没跟：
 - 语音模式的占位文字：新增「思考中…」、听写「正在连接…」（shared-7 `NN`）。它们只用在聊天页的输入框（shared-9），Code 标签页的编辑器只认听写录音。
 - 选择器行里新增的 `mx-xs gap-1`：所在分支的判断恒为 null，实际仍是 `gap-xs`。
-- 斜杠 / @ 弹层的最大宽度：由 `max-w-lg` 改为 `max-w-[min(32rem,calc(100vw-16px))]`。codex-ui 的弹层以输入卡宽度为上限，本来就不会超出视口。
+- 斜杠 / @ 弹层的最大宽度：由 `max-w-lg` 改为 `max-w-[min(32rem,calc(100vw-16px))]`。better-codex 的弹层以输入卡宽度为上限，本来就不会超出视口。
 - ChatComposer 和 chin 新增的 `size="lg"`（正文字号、sm 按钮）：没有调用方传 `lg`，Code 输入框是 `md`。chin 新读的 `panels` 开关在基线里为关。根节点新增的 `data-composer-size` / `data-end-column` 只是标记，没有样式用到。
-- 地点胶囊的 `caret`：只在云端自动环境存在时显示 CaretDown，codex-ui 只有本地。
-- 模型胶囊：努力程度在 CDS 实验性配色下显示 primary 的分支被删掉了；codex-ui 本来就用 muted，这次只更新了注释。
-- 模型菜单「更多模型」的几种新展示配置。codex-ui 已按用户要求去掉「更多模型」。
+- 地点胶囊的 `caret`：只在云端自动环境存在时显示 CaretDown，better-codex 只有本地。
+- 模型胶囊：努力程度在 CDS 实验性配色下显示 primary 的分支被删掉了；better-codex 本来就用 muted，这次只更新了注释。
+- 模型菜单「更多模型」的几种新展示配置。better-codex 已按用户要求去掉「更多模型」。
 - 「+」菜单的插件：新增带搜索的构建器（「搜索插件」「N 个 Skills」），只走云端插件；本地分支与 2.42304 相同。
-- c227f4d5e 里用量限额的几条提示换了新 id，英文没变；codex-ui 的限额提示按 Codex 的限额类型写，不用这几条。SSH、WSL、任务列表、MCP OAuth 的新文案与输入框无关。
+- c227f4d5e 里用量限额的几条提示换了新 id，英文没变；better-codex 的限额提示按 Codex 的限额类型写，不用这几条。SSH、WSL、任务列表、MCP OAuth 的新文案与输入框无关。
 
 复测（mock 预览）：
 - 「统一按钮圆角」会话里，在页面内把 `getUserMedia` 换成 Web Audio 生成的假音频流，点「语音输入」进入录音。占位文字从「输入 / 以使用命令」变为「正在聆听…」，`font-style: italic`，颜色仍是占位色；按钮变为「停止听写」。刷新后恢复。
@@ -705,7 +705,7 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 已改：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 计划卡片上的文件拖放 | 计划卡片外壳的 `onDragEnter/Over/Leave/Drop` 都会拒绝文件：`dropEffect = "none"`，并阻止冒泡，页面级的拖放接不到（c96d752d0 `aDe` `q`，3.1623 提成 cc32965c2 `ys`）。2.42304 就有，不是 3.1623 的增量 | 文件拖到计划卡片上，会出页面级的拖放遮罩，松手后加进输入框的附件 |
 
@@ -757,23 +757,23 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 已改：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
-| 终端设置的「光标闪烁」 | 减弱动态效果开启时置灰，悬停说明原因（cccc2cf0a `HO` → `$N`，`disabledReason` `PxWbNu0OlD`）。这条官方中文缺译，按 codex-ui 现有用词写作：「减弱动态效果开启时无法使用。如需使用，请在系统设置中关闭减弱动态效果，并在设置中将“动效”设为“系统”。」 | 照常可点。减弱动态效果时光标本来就不闪，开关却看不出无效 |
+| 终端设置的「光标闪烁」 | 减弱动态效果开启时置灰，悬停说明原因（cccc2cf0a `HO` → `$N`，`disabledReason` `PxWbNu0OlD`）。这条官方中文缺译，按 better-codex 现有用词写作：「减弱动态效果开启时无法使用。如需使用，请在系统设置中关闭减弱动态效果，并在设置中将“动效”设为“系统”。」 | 照常可点。减弱动态效果时光标本来就不闪，开关却看不出无效 |
 | 任务列表 | `<ul role="list">`（cb6930dae `Lu` → `bd`），计划窗格同样适用，已在「转录条目」一轮补上 | — |
 
 待定：
 - **后台任务窗格的分组。** 3.1623 的任务行（cccc2cf0a `hD` → `tM`）新增了 `childCount` / `nested` / `steps`。家族分组去掉了 2.42304 的卡片外壳（`relative isolate my-1 rounded-card p-xs` 加分隔线），改为无外壳的 `role="group"`：子任务放在单独的容器里，嵌套行用 `me-outset`，有说明时加 `pt-xs`。2.42304 家族里「已完成 N 项」的折叠行（`CE`）也去掉了。同时有停止和展开时，悬停停止键会给整行加底色。
-- 用户决定先不动（2026-10-23）。codex-ui 的后台任务窗格是自己的画法：分「运行中 / 状态未知 / 已完成」、行带底线、子任务用左侧竖线缩进、家族内有「已完成 N」折叠。它和两版都不同；任务列表本身（`SE` → `dXe`）两版一致。要跟 3.1623 就得按它的结构重做这个窗格，这次没动，留给用户决定。
+- 用户决定先不动（2026-10-23）。better-codex 的后台任务窗格是自己的画法：分「运行中 / 状态未知 / 已完成」、行带底线、子任务用左侧竖线缩进、家族内有「已完成 N」折叠。它和两版都不同；任务列表本身（`SE` → `dXe`）两版一致。要跟 3.1623 就得按它的结构重做这个窗格，这次没动，留给用户决定。
 
 没跟：
 - 窗格快捷键表只多了 PR 评论的上一条 / 下一条（Alt+F9 / Shift+Alt+F9）。更改窗格新增的未解决评论导航、`11jd482` 那段（受 `__gb__2060353499` 控制）也一样：Codex 没有 PR 评论。
-- 标题栏窗格开关（cc43287c9 `uW` → `pW`）新增 `startingId`，会话还在创建时可以先挂在「启动中」的会话上。codex-ui 先建线程再开窗格，没有这个过渡态。
+- 标题栏窗格开关（cc43287c9 `uW` → `pW`）新增 `startingId`，会话还在创建时可以先挂在「启动中」的会话上。better-codex 先建线程再开窗格，没有这个过渡态。
 - 标签条新增 `maxLabelWidth`（`basisChromePx: 52`，标签宽度随文字），只有「侧边对话」传了 320，终端标签不受影响。
 - 浏览器窗格：
-  - 「返回浏览器」只在预览服务器加载失败时出现，codex-ui 没有预览服务器。
+  - 「返回浏览器」只在预览服务器加载失败时出现，better-codex 没有预览服务器。
   - 远程主机文件的几条提示属于 SSH 会话。
-  - 「选择元素或添加标注」：codex-ui 没有标注模式，按钮仍叫「选择元素」（已有注释）。
+  - 「选择元素或添加标注」：better-codex 没有标注模式，按钮仍叫「选择元素」（已有注释）。
 - 只读共享会话、终端「需要更新版本的 Claude 桌面应用」、侧边对话相关文案，都不适用。
 
 复测（mock 预览）：
@@ -809,7 +809,7 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 已改：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 键盘移动时的滚动 | 选中行滚进视野改为 `behavior: "instant"`（c2771e1f6 `hp` → `dg`） | `smooth` |
 | 「设置 → 使用情况」的图标 | 设置页 `usage` 一行用 UsageGaugeMiddle，其余设置行仍用齿轮（c2771e1f6 `gs` → `Ss`：`r.id==="usage"?ys:vs`） | 齿轮 |
@@ -817,7 +817,7 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 没跟：
 - 快捷键面板新增「上一条 / 下一条未解决的评论」（PR 评论）。Codex 没有。
 - 「下一个 / 上一个会话」在 `xe()` 为真时不列 Ctrl+Tab（c518a31cc `Ce`）。`xe()` 含 GrowthBook 开关 `__gb__320800483`。用户本机 2026-10-25 读到为开，所以现在做成了设置 → 通用 → 外观 →「Ctrl+Tab 切换最近会话」，默认开：Ctrl+Tab 打开最近会话切换器（c4681072f HistorySwitcher），快捷键表另列「在最近打开的项之间切换」，下一个 / 上一个会话不再列 Ctrl+Tab。关掉开关时恢复原来的列法。
-- 回退确认（cc43287c9 `_7` → `nle`）在有文件可恢复时显示「N 个文件 · +N −N」。codex-ui 的回退只截断对话、不还原文件（走 `none` 分支），没有这一行。
+- 回退确认（cc43287c9 `_7` → `nle`）在有文件可恢复时显示「N 个文件 · +N −N」。better-codex 的回退只截断对话、不还原文件（走 `none` 分支），没有这一行。
 - 行里 Artifact 类型图标的新写法（ce8be540f 的 `palette` 上下文）。Codex 没有 Artifact。
 
 复测（mock 预览，同样用 iframe 加 rAF 垫片启动）：
@@ -848,23 +848,23 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
   - 行与分区（shared-1 `gx` / `xx` / `hx`）、连接器状态（2.42304 `Ko` → 3.1623 `Oo`，只多了管理员分配的两种情况）、登录起始页（`xm` → `of`）。
   - 分享对话框（c5e7d44b0）、插件详情的已有部分。
 - 设置弹窗的根组件挪到了 shared-46（`Kh`），外框是 shared-19 `eg`。
-- 「Claude Code」页（2.42304 `c71860c77-Bl2Tfe3A`）的行拆到了 `c71860c77-DUrdZF0U` 和新的 c8b630735。只有「插件」一行（「管理 Claude Code 插件、代理、钩子和连接器」）被删掉，codex-ui 本来就没有这一行。
+- 「Claude Code」页（2.42304 `c71860c77-Bl2Tfe3A`）的行拆到了 `c71860c77-DUrdZF0U` 和新的 c8b630735。只有「插件」一行（「管理 Claude Code 插件、代理、钩子和连接器」）被删掉，better-codex 本来就没有这一行。
 
 已改：
 
-| 项目 | Claude 3.1623（出处） | 原来的 codex-ui |
+| 项目 | Claude 3.1623（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 窄屏（≤767px）的设置弹窗 | 不再用设置专用外框，改成普通对话框（shared-46 `Kh` → shared-19 `eg` 的 `stacked` 分支）：<br>· `Dialog.Popup size="lg" fullHeight`：宽 720，满高减去对话框边距，弹层底色，`shadow-panel-lg`，整体在 `p-xl` 内容区里滚动并带渐隐<br>· 顶部是对话框标准标题「设置」和关闭按钮<br>· 下面是一条 `pb-md` 的标签条（shared-46 `Lh` / `Rh`：`-mx-px px-px`、`scroll-fade-x`、不显示滚动条）<br>· 页面自己不滚动、不加左右内边距（cc011544b `jn` 的 `popupScrolls`） | 沿用 2.42304 的窄屏写法（shared-19 `Zk` / `Qk`）：设置外框，加 surface-1 底的自定义标题栏（15px 中粗），标签条在 12px 内边距里、底部一条分隔线，页面仍自己滚动 |
 | 设置搜索的「另有 N 项」 | 除「Skills / 连接器 / 插件」三个自定义页外（shared-156 `lh`），点它不再跳页，而是在结果里就地列出该页的全部匹配，焦点留在搜索框，并用 `role="status"` 宣读「正在显示 {section} 中的另外 {count} 个匹配项」（`X9YCIEhPuo`）。清空、按 Tab、或搜索词实质变化时收回（cc011544b、`pn` 的 `n?.has(id) ? 全部 : 3`） | 一律关掉搜索并跳到该页 |
 
-窄屏的做法：把设置专用外框的规则（尺寸、surface-2、隐藏标题、绝对定位的关闭按钮、内容区不滚动）限定在 ≥768px，窄屏回落到 codex-ui 的通用对话框（「令牌与原子组件」一轮已按 CDS Dialog 对齐），再补满高、宽 720、页面不自滚这几条。侧栏导航的 `scroll-fade-y` 换成两个方向都管的 `scroll-fade`：桌面上它只纵向溢出，效果不变；窄屏横向滚动时有两端渐隐。
+窄屏的做法：把设置专用外框的规则（尺寸、surface-2、隐藏标题、绝对定位的关闭按钮、内容区不滚动）限定在 ≥768px，窄屏回落到 better-codex 的通用对话框（「令牌与原子组件」一轮已按 CDS Dialog 对齐），再补满高、宽 720、页面不自滚这几条。侧栏导航的 `scroll-fade-y` 换成两个方向都管的 `scroll-fade`：桌面上它只纵向溢出，效果不变；窄屏横向滚动时有两端渐隐。
 
 没跟：
-- 登录页的「使用您的 Claude API 账户」/「使用其他方式登录」/「设置 Bedrock、Vertex AI、Foundry 或网关」，以及几条失败提示（c632c9594 `Sm` → `sf`）。它们要桌面端提供 `showApiKeySignIn`，还要配置里明确允许 API 登录，普通用户在两版里都看不到。codex-ui 的「或使用 API 密钥登录」是给 Codex 的 API 密钥登录做的对应，保持不变。
+- 登录页的「使用您的 Claude API 账户」/「使用其他方式登录」/「设置 Bedrock、Vertex AI、Foundry 或网关」，以及几条失败提示（c632c9594 `Sm` → `sf`）。它们要桌面端提供 `showApiKeySignIn`，还要配置里明确允许 API 登录，普通用户在两版里都看不到。better-codex 的「或使用 API 密钥登录」是给 Codex 的 API 密钥登录做的对应，保持不变。
 - 「Claude Code」页新增的云环境、安全机制触发时自动切换模型。Claude 专有。
-- 「此电脑 → 系统」页存储占用的「计算时间 / 正在刷新 / 将在进行中的操作完成后停止」。codex-ui 的系统页没有存储占用。
+- 「此电脑 → 系统」页存储占用的「计算时间 / 正在刷新 / 将在进行中的操作完成后停止」。better-codex 的系统页没有存储占用。
 - 插件详情新增的插件设置表单（「需要设置」、必填字段、已保存的值）。Codex 插件没有这类设置项。
-- 新版分享面板（share-sheet，c0ad2fd1b `Vt`）里「停止共享」的确认。codex-ui 画的是经典分享对话框（c5e7d44b0，两版文案相同），离开组织范围时也已先确认。
+- 新版分享面板（share-sheet，c0ad2fd1b `Vt`）里「停止共享」的确认。better-codex 画的是经典分享对话框（c5e7d44b0，两版文案相同），离开组织范围时也已先确认。
 - 设置行可见性新增的电脑操作、账单条件（ca25db325 `O`）。
 
 复测（mock 预览，iframe 加 rAF 垫片）：
@@ -885,11 +885,11 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 ### 标题栏（按用户截图对照 3.6556，2026-10-23）
 
-用户给了一张截图，上下两条分别是 codex-ui 和本机 Claude（此时已更新到 3.6556.2）的标题栏，要求统一。逐项对照了 3.1623.0 与 3.6556.2 的打包代码：外框标题栏 shared-22 `ML` → `eR`、菜单按钮 shared-1 `lG` → `nK`、箭头 shared-20 `Zf` → `Cm`、窗格开关 cc43287c9 `fW` → `PW`、开关表 c73f45bc3 `mv` → `x_`、溢出菜单 `zv` → `K_` 及其菜单正文 cf74bc599 `iA` → `DA`。它们在两版里类名和文案都相同，所以下面几处都是 codex-ui 原本就有的偏差，不是 3.6556 的新改动。
+用户给了一张截图，上下两条分别是 better-codex 和本机 Claude（此时已更新到 3.6556.2）的标题栏，要求统一。逐项对照了 3.1623.0 与 3.6556.2 的打包代码：外框标题栏 shared-22 `ML` → `eR`、菜单按钮 shared-1 `lG` → `nK`、箭头 shared-20 `Zf` → `Cm`、窗格开关 cc43287c9 `fW` → `PW`、开关表 c73f45bc3 `mv` → `x_`、溢出菜单 `zv` → `K_` 及其菜单正文 cf74bc599 `iA` → `DA`。它们在两版里类名和文案都相同，所以下面几处都是 better-codex 原本就有的偏差，不是 3.6556 的新改动。
 
 已改：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 菜单、侧栏开关的图标 | 按钮拿到的是 `size="sm"` 的 Icon，在任何按钮里都固定 16px；返回 / 前进传的是图标名，按按钮尺寸画成 20px（lG、ML、Zf） | 四个图标都被按钮的 `--btn-icon` 放大成 20px |
 | 窗格开关的顺序 | 终端、更改、浏览器（`preview`，桌面端显示为「浏览器」）、文件（`mv` / `x_`：`[...终端, 更改, ...preview, ...ios, ...android, ...file]`） | 文件排在浏览器前面 |
@@ -897,7 +897,7 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 | 按会话保持唤醒 | 会话的 `manualKeepAwake` 打开后，即使会话空闲也算一条唤醒请求，只受组织策略约束，与「工作时保持唤醒」和电池设置无关；会话归档、切换账户时清除，并随会话保存（app.asar 主进程 `ue` / `de` / `fe`、`CU`） | 只有全局的「Codex 工作时保持计算机唤醒」 |
 
 实现：
-- store 的 `keepAwake` 按会话 id 保存在 localStorage（`codex-ui:keep-awake`）；收到 `thread/archived` / `thread/deleted` 时清除。
+- store 的 `keepAwake` 按会话 id 保存在 localStorage（`better-codex:keep-awake`）；收到 `thread/archived` / `thread/deleted` 时清除。
 - App 用新的 `holdAwake(n)` 把开着的会话数报给桌面壳。
 - 主进程 `syncKeepAwake` 在 `manualAwake > 0` 时直接保持唤醒，不看全局设置和电池。
 
@@ -919,7 +919,7 @@ Claude 组件与 codex-ui 组件的差异，这样补齐：
 
 已改：
 
-| 项目 | Claude（出处） | 原来的 codex-ui |
+| 项目 | Claude（出处） | 原来的 better-codex |
 | --- | --- | --- |
 | 弹层 | 可搜索弹层，最小宽 260，强制紧凑密度；顶部是无边框、无底色、无焦点环的搜索框「搜索环境…」，下面一条贯通全宽的细线（`yT` 页眉、`HC`、`fe density="compact"`） | 固定宽 320，跟随锚点密度，没有搜索 |
 | 分组 | 只有「本地」一组：「本电脑」、最近用过的 1 个环境（`C8`/`Cn = 1`）、「更多」子菜单（Laptop 图标，右侧是其余数量，子菜单最小宽 220，`D8`），然后分隔线和「新建环境」（`V6`，Add 图标） | 「环境」组列出全部项目，再接「最近」文件夹、打开文件夹、新建环境和项目管理项 |
@@ -960,7 +960,7 @@ Codex 与 Claude 模型不同的地方：Codex 中，位于某个项目源文件
 原因：
 - Chromium 里 `app-region` 是继承属性。窗口的拖动形状按 DOM 顺序叠加每个带 region 的盒子：drag 并入，no-drag 减去。
 - 3.1623 的外框根节点是 `dframe-root draggable-none`（shared-22，Claude 也是如此）。它的 `main.dframe-content` 覆盖整个窗口、包括顶部 36px，继承了 no-drag，又排在 `.dframe-chrome-bar.draggable` 之后，于是把整条标题栏减掉了。
-- Claude 不受影响：c6a992d55 的基础规则 `*{…;app-region:initial}` 给每个元素重置了这个属性，只有显式设了 `.draggable` / `.draggable-none` 或可交互元素的盒子才算 region。codex-ui 移植 3.1623 外框时（545d255520，1.2.20 起的安装包）漏了这条。
+- Claude 不受影响：c6a992d55 的基础规则 `*{…;app-region:initial}` 给每个元素重置了这个属性，只有显式设了 `.draggable` / `.draggable-none` 或可交互元素的盒子才算 region。better-codex 移植 3.1623 外框时（545d255520，1.2.20 起的安装包）漏了这条。
 
 改法：`base.css` 的 `*` 规则加上 `app-region: initial`，与 c6a992d55 相同。可交互元素的 no-drag 仍按原来的做法，只限定在标题栏、会话标题栏和窗格头部内，见「三 · 与真机不同的地方」。
 
@@ -980,7 +980,7 @@ Codex 与 Claude 模型不同的地方：Codex 中，位于某个项目源文件
 原因：
 - 会话栏后台任务卡里的任务行会调用 `openBackgroundTask`，窗格随后把该行 `scrollIntoView({block:"start"})`。Claude 的任务窗格也是这样做的（cccc2cf0a，`[data-task-id]` 行 `block:"start"`）。
 - `scrollIntoView` 会滚动途经的每一个滚动容器。外框的 `main.dframe-content` 设的是 `overflow: hidden`（shared-styles 原样），而 `hidden` 仍可以被脚本滚动。
-- 在 Claude 里它的内容不会超出边界，可滚动余量为 0；codex-ui 里只要有东西伸出窗口底边，这段余量就会被拿来把整页往上推。mock 里伸出的是输入框底栏 `.chin`（2px），用户的会话里伸出了更多。
+- 在 Claude 里它的内容不会超出边界，可滚动余量为 0；better-codex 里只要有东西伸出窗口底边，这段余量就会被拿来把整页往上推。mock 里伸出的是输入框底栏 `.chin`（2px），用户的会话里伸出了更多。
 - 复现：mock 会话 t-2 打开后台任务窗格并聚焦任务 → `main.dframe-content.scrollTop` 为 2。在 `.main` 底下多放 200px 溢出后再聚焦，滚动量是 106px，和截图一致。
 
 改法：
@@ -995,7 +995,7 @@ Codex 与 Claude 模型不同的地方：Codex 中，位于某个项目源文件
 
 ### 后端（2026-10-23）
 
-这一类不比 Claude，比的是 Codex 后端与 codex-ui 是否对得上，共五项：
+这一类不比 Claude，比的是 Codex 后端与 better-codex 是否对得上，共五项：
 1. 按分叉 HEAD 重新清点协议。
 2. 核对通知的处理与退订。
 3. 核对桥接层依赖的 Codex 数据格式。
@@ -1010,7 +1010,7 @@ Codex 与 Claude 模型不同的地方：Codex 中，位于某个项目源文件
   - 会话栏拉取请求卡的 `thread/attachment/add`、`thread/attachment/remove`。
   - 只读 `gh pr view` 与 git 快照用的 `command/exec`。
   - 桥接层取令牌的 `getAuthStatus`。
-- `schema_fixtures` 测试通过，说明 codex-ui 编译所用的 TS 类型与 Rust 源码一致。`ThreadItem` 的 19 种条目，codex-ui 都有处理。
+- `schema_fixtures` 测试通过，说明 better-codex 编译所用的 TS 类型与 Rust 源码一致。`ThreadItem` 的 19 种条目，better-codex 都有处理。
 - 上游 openai/codex 在分叉点之后新增了 `feedback/save`、`thread/memory/read`、`thread/sample`、`thread/sample/cancel`。要等分叉合入上游才能用，本轮不做。
 
 **2. 通知**：`guardianWarning` 从 0b9b838450 起就有意不进转录，但一直没有退订，现在加进 `initialize` 的退订列表（`OPT_OUT`）。在临时 CODEX_HOME 下对真实 codex 0.163.0 做 `initialize`，服务端接受这份列表。
@@ -1029,7 +1029,7 @@ Codex 与 Claude 模型不同的地方：Codex 中，位于某个项目源文件
 - 其余接口（额度、cc-switch、听写、PDF、文件）依赖的 `model_provider` / `model_providers.<id>.base_url` 和 `getAuthStatus` 都还在。
 
 **4. 门控审查**。逐个看了分叉在 codex-rs 下的 17 个提交，按能力归类。总开关本身没有问题：
-- `CODEX_UI_EXPERIMENTAL_BACKEND` 只在 `core/src/config/mod.rs` 读一次，值必须严格等于 `"1"`。
+- `BETTER_CODEX_EXPERIMENTAL_BACKEND` 只在 `core/src/config/mod.rs` 读一次，值必须严格等于 `"1"`。
 - 不是 config.toml 的键，`CODEX_BIN` 和版本号也不参与判断。
 
 以下能力在工具声明、运行时入口和自动调度三面都已门控，启用、禁用、禁用时直接请求三类测试也都有：后台完成唤醒、yield 引导、回合准备耗时、Windows 上的 Git Bash、连接器发现与工具加载、`backgrounded` 字段、git attribution 预取、skills 渲染快照复用。
@@ -1041,7 +1041,7 @@ Codex 与 Claude 模型不同的地方：Codex 中，位于某个项目源文件
 | 命令用途 `description`（52ab00e6f5、fd5e4bbc8e、a240629ccd）完全没有门控：禁用时 `exec_command` 仍声明这个必填参数，运行时照收，并写进 CommandExecution、Begin/End 事件和审批 | 只在实验型后端声明（`required` 也跟着变）；禁用时模型照传也会在入口丢弃。测试：`shell_spec_tests::experimental_backend_controls_command_description`；禁用时的规格恢复为上游原样；启动失败测试分成 `native_drops_description` / `experimental_records_description` 两种；原生下的远程进程事件断言 `description` 为空 |
 | 协议 `ConfiguredHookHandler.asyncRewake` 在禁用时也会输出 | 值为 false 时不输出（`skip_serializing_if`，和上游同类布尔字段一样），TS 类型变为 `asyncRewake?: boolean`，重新生成了 schema 夹具，Python SDK 类型照生成器格式手改（本机没有 `uv`）。仍然存在的情况：托管配置显式写了 `asyncRewake: true` 时会原样报告；Hook 引擎在禁用时本来就忽略它 |
 | Hook 信任哈希在禁用时也算入 `asyncRewake`，原生忽略这个键，导致原生已信任的 Hook 变成“已修改” | 禁用时归一化为 false 再算哈希。测试：`discovery::tests::async_rewake_counts_toward_the_trust_hash_only_when_enabled`。测试辅助 `trust_discovered_hooks` 跟着按 `config.experimental_backend` 算哈希，`background_wakeup` 里三处配置改为先设开关、再信任 Hook |
-| 工作区版本号 `0.164.0-alpha.3+codex-ui`（3b14787cf1）由构建决定，不随开关切换 | 按用户决定登记为例外，写进 AGENTS.md：这是为移动端 Remote 兼容设置的构建身份；连带变化（本地构建不再强制把凭据存为文件、上报的客户端版本）一并接受 |
+| 工作区版本号 `0.164.0-alpha.3+better-codex`（3b14787cf1）由构建决定，不随开关切换 | 按用户决定登记为例外，写进 AGENTS.md：这是为移动端 Remote 兼容设置的构建身份；连带变化（本地构建不再强制把凭据存为文件、上报的客户端版本）一并接受 |
 | 后台唤醒提交（5c69cc11e5）顺带改了原生回合调度 | 按用户决定全部门控：续跑的准入检查与预留输入、带预留的启动、登记时被替换后放弃、邮箱改在锁内取出、关停中拒绝续跑、命令结束事件等待首次调用收尾，在禁用时都回到上游路径。`wake_reservation` 的 `task_registration` 用例改在实验型后端下跑，`context_construction` 仍按原生跑。只在存在后台唤醒输入时才起作用的部分（取消唤醒、`has_waking_input`、Stop Hook 标记）在禁用时与上游一致，没有另加分支 |
 
 分叉改过的 42 个场景快照里，7 个只差在 `exec_command` 多出的 `description` 参数上，35 个只差在工具定义哈希上。修复后按禁用状态重新生成，42 个全部回到与分叉点 ce0323f2f2 逐字节相同，场景快照不再有分叉差异。
@@ -1057,7 +1057,7 @@ Codex 与 Claude 模型不同的地方：Codex 中，位于某个项目源文件
 - codex-hooks：179 项，172 通过，新增的信任哈希测试通过。
   - 7 项失败都是实际起进程的 `command_runner` / engine 用例。只把 `discovery.rs` 换回 HEAD 再跑，同样 7 项失败，属于本机环境问题，与本轮改动无关。
 - codex-app-server-protocol：316 项全部通过，含 schema 夹具一致性检查。
-- codex-ui：tsc 无错误，`node --test` 342 项全部通过，`claude-css.mjs --check` 通过。
+- better-codex：tsc 无错误，`node --test` 342 项全部通过，`claude-css.mjs --check` 通过。
 - 两个本机测试的坑：
   - 上游测试库把 `INSTA_WORKSPACE_ROOT` 设成 `\\?\D:\…`，insta 在 Windows 上读不了，快照被静默跳过。必须显式设成普通路径 `D:\Visual_Studio\codex\codex-rs`，快照才会比较。
   - 做基线对照时用 `Copy-Item` 恢复文件会保留旧的修改时间，cargo 因此不重新编译，跑的仍是 HEAD 代码。恢复后要刷新时间戳。本节结果是刷新后重跑的。
@@ -1068,24 +1068,24 @@ Codex 与 Claude 模型不同的地方：Codex 中，位于某个项目源文件
 
 ### 缺口与处理
 
-| 区域 | 4.4212（出处） | codex-ui |
+| 区域 | 4.4212（出处） | better-codex |
 | --- | --- | --- |
 | 会话管理工具 | `ccd_session_mgmt`：列出 / 查看 / 搜索会话与事件、归档、停止、删除、改模型 / 强度 / 权限 / 快速模式、用量、导出 | `context/manage-tools.mjs`；`set_session_title`、`send_message` 扩到其他会话，不另建同名工具。`clear_session` 没有对应的 Codex 接口，不做 |
 | 侧栏、视图、窗口工具 | `ccd_sidebar`（`W_`）、`ccd_view`（`Ov`）、`ccd_window`（`Db`） | 分组的增删改与归入、置顶、未读、标记为已完成、侧栏视图、关闭面板、对话记录视图、折叠侧栏。`*_section` 属 presets 布局，不做 |
 | 连接器、定时任务工具 | `ccd_connectors`（`tt`）；`list_scheduled_tasks` 一组 | 三个连接器工具；`automation_update` 加 `run` / `runs` 两个 mode，不另建工具 |
 | 本机与文件夹工具 | `ccd_host`（`Eu` / `Dc` / `Ls`）、`ccd_directory`（`Qo`） | `context/host-tools.mjs`：在编辑器中打开、在访达中显示、保持唤醒、存储用量、清理工作树、请求目录、换目录 |
-| 内联可视化 | `visualize`（`getImagineServerDef`）；渲染 c96d752d0 `qX` | `show_widget` / `read_me`。指南是 codex-ui 自己写的（Claude 的不随仓库发行），全部模块约 12 KB，低于 Codex 1 万 token 的工具输出截断。`read_widget_context` 没核实到小组件侧接口，不做 |
-| 文件面板 | c9bd7af9c 文件树与 `?` 搜索；c0a74d72b `Pi` / `Oi` 编辑 | 文件树、内容搜索（rg）、面板内编辑。编辑器是 textarea，不引 CodeMirror；唯一的写入口 `codexUi/files/write` 校验路径与哈希 |
+| 内联可视化 | `visualize`（`getImagineServerDef`）；渲染 c96d752d0 `qX` | `show_widget` / `read_me`。指南是 better-codex 自己写的（Claude 的不随仓库发行），全部模块约 12 KB，低于 Codex 1 万 token 的工具输出截断。`read_widget_context` 没核实到小组件侧接口，不做 |
+| 文件面板 | c9bd7af9c 文件树与 `?` 搜索；c0a74d72b `Pi` / `Oi` 编辑 | 文件树、内容搜索（rg）、面板内编辑。编辑器是 textarea，不引 CodeMirror；唯一的写入口 `betterCodex/files/write` 校验路径与哈希 |
 | 更改面板 | c9bd7af9c `Kw` / `OT`、cbbf81135、c44d00c7f `Nu` | 未提交 / 比较对象 / 提交三种范围、按文件夹分组、测试与生成文件分开、字词高亮、标记为已查看、行评论发给 Codex。「在更改中查找」与图片前后对比不做 |
 | 输入框 | cc183b3ab 斜杠命令；c518a31cc、c227f4d5e 快捷键；c4a9ee384 `Td` 附件 | 斜杠命令 `/copy` `/cd` `/add-dir` `/theme` `/help` `/tasks` `/autocompact` `/resume` `/storage` `/btw`，以及仅 Windows 有的 `/sandbox`；Ctrl+R、Ctrl+Enter、Ctrl+Alt+Enter；任意文件附件（Ctrl+U）；长粘贴占位 |
 | 侧边聊天 | cc183b3ab `btw`；ca2ef848d 浮层；c9bd7af9c 多标签 | 每个会话一个浮层，在临时只读分叉里回答，可追问、清除、在新会话中继续。Claude 代码标签页的多标签与固定不做 |
 | 转录与终端 | c966e2bd9 ANSI；c19e90103 `n_`；c9bd7af9c `Q2jUneEhyD` | ANSI 着色、代码块在终端中运行、选择 shell、拖动排序、拖入文件插路径、关闭确认。溢出菜单与键盘重排不做 |
-| 侧栏与设置 | ce4f4374c `J2D0+ihfKQ` / `Pe`、cb63ed069、cbc28252c、c71860c77 存储 | 标记为已完成、打开方式、移到顶层、Ctrl+数字提示、行菜单导出与视图、代码字号、工作树位置、命令面板设置项、存储页。分支前缀不做（codex-ui 建工作树用 `--detach`） |
+| 侧栏与设置 | ce4f4374c `J2D0+ihfKQ` / `Pe`、cb63ed069、cbc28252c、c71860c77 存储 | 标记为已完成、打开方式、移到顶层、Ctrl+数字提示、行菜单导出与视图、代码字号、工作树位置、命令面板设置项、存储页。分支前缀不做（better-codex 建工作树用 `--detach`） |
 
 ### 门控与信任边界
 
-- 新的模型工具都挂在 `codex_ui_desktop` 上，随 `desktopEnabled`（实验型后端且 desktop UI）门控。`server/desktop-tools.test.mjs` 对每组都测了三种情形：启用时列出、禁用时为空、禁用时直接调用被拒且不到页面。侧边聊天、附件等只用原生 app-server 接口的界面功能不涉及后端门控。
-- 写盘与删除：`codexUi/files/write`（realpath 在会话目录内、普通文件、≤8 MiB、哈希一致）、`server/storage.mjs`（只删桶里的链接工作树，默认跳过有未提交更改的）都有测试。
+- 新的模型工具都挂在 `better_codex_desktop` 上，随 `desktopEnabled`（实验型后端且 desktop UI）门控。`server/desktop-tools.test.mjs` 对每组都测了三种情形：启用时列出、禁用时为空、禁用时直接调用被拒且不到页面。侧边聊天、附件等只用原生 app-server 接口的界面功能不涉及后端门控。
+- 写盘与删除：`betterCodex/files/write`（realpath 在会话目录内、普通文件、≤8 MiB、哈希一致）、`server/storage.mjs`（只删桶里的链接工作树，默认跳过有未提交更改的）都有测试。
 - `/api/attachments` 单个 45 MiB，超出 413。
 - `/widget-frame` 响应头 CSP 为 `sandbox allow-scripts`，不同源，只放行四个 CDN，`frame-ancestors 'self'`。页面只采信帧的高度，以及用户在帧内点击触发的 `sendPrompt`（每秒一次、≤4000 字）和 http(s) 链接。Electron 拒绝子帧的权限申请，子帧也不能导航出应用自己的页面。
 

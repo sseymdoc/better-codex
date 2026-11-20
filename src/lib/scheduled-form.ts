@@ -114,7 +114,7 @@ export function draftOf(task: Automation | null, seed: ScheduledSeed | null, her
 }
 
 function taskPlace(task: Automation, projects: readonly Project[]): Place {
-  // A project target read in from the ChatGPT app's file (codex-ui writes folders only).
+  // A project target read in from the ChatGPT app's file (better-codex writes folders only).
   if (task.target?.type === "project") {
     const { projectId } = task.target;
     return { kind: "project", projectId, cwd: projects.find((p) => p.id === projectId)?.roots[0]?.path ?? task.cwds?.[0] ?? "" };

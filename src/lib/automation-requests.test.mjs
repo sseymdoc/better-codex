@@ -156,7 +156,7 @@ test("a call names the task it is about: the result's, else the one its id has h
   assert.equal(callTaskName("cloud_task_update", { mode: "update", id: "c1", title: "改名周报" }, null), "周报");
   assert.equal(callTaskName("automation_update", { mode: "update", id: "w", name: "Renamed" }, null), "Watch");
   // Saved (or declined), the result says which.
-  const saved = { content: [], _meta: { codexUiAutomationTask: { id: "c1", name: "改名周报" } } };
+  const saved = { content: [], _meta: { betterCodexAutomationTask: { id: "c1", name: "改名周报" } } };
   assert.equal(callTaskName("cloud_task_update", { mode: "update", id: "c1", title: "改名周报" }, saved), "改名周报");
   // A create has no id; an id this page does not know falls back to the call's own name.
   assert.equal(callTaskName("automation_update", { mode: "create", name: "New" }, null), "New");

@@ -108,7 +108,7 @@ const HIDDEN = /[\p{Cf}\u2028\u2029]|[\x00-\x08\x0b-\x1f\x7f]/u;
  * where a terminal can start (`[data-can-run]`, content.tsx).
  */
 function runKey(text: string, language: string): string {
-  // Codex UI's terminals are PowerShell on Windows (codex.ts openTerminal).
+  // Better Codex's terminals are PowerShell on Windows (codex.ts openTerminal).
   const windows = getState().server.info?.platformOs === "windows";
   const runnable = SHELL_LANGS.has(language) || (windows && POWERSHELL_LANGS.has(language)) || (!language && plainCommand(text));
   if (!runnable || !text.trim() || HIDDEN.test(text)) return "";

@@ -1,4 +1,4 @@
-// codex_ui_desktop's settings tools: the Codex UI preferences the model may read and, with the
+// better_codex_desktop's settings tools: the Better Codex preferences the model may read and, with the
 // user's consent each time, change. Permissions, tool access, the backend and anything else that
 // widens what Codex may do are not on the list. Schemas, argument and receipt checks, result text.
 
@@ -24,10 +24,10 @@ export const MODEL_SETTINGS = Object.freeze({
 export const SETTING_KEYS = Object.freeze(Object.keys(MODEL_SETTINGS));
 
 export const SETTINGS_TOOLS = [
-  { name: "get_settings", description: "List the Codex UI preferences set_setting may change: key, label as the Settings page shows it, current value and allowed values. Read-only. Permissions, tool access, the backend and other settings that change what Codex may do are not listed and are changed by the user in Settings only.",
+  { name: "get_settings", description: "List the Better Codex preferences set_setting may change: key, label as the Settings page shows it, current value and allowed values. Read-only. Permissions, tool access, the backend and other settings that change what Codex may do are not listed and are changed by the user in Settings only.",
     inputSchema: { type: "object", additionalProperties: false, properties: {} },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
-  { name: "set_setting", description: "Change one Codex UI preference from get_settings to one of its allowed values. Every change first waits on a card where the user allows or declines it, so call it only when the user asks for that change, one setting per call; once allowed it applies at once. The result says whether it changed, was already set, or was declined.",
+  { name: "set_setting", description: "Change one Better Codex preference from get_settings to one of its allowed values. Every change first waits on a card where the user allows or declines it, so call it only when the user asks for that change, one setting per call; once allowed it applies at once. The result says whether it changed, was already set, or was declined.",
     inputSchema: { type: "object", additionalProperties: false, required: ["key", "value"], properties: {
       key: { type: "string", enum: [...SETTING_KEYS], description: "A key from get_settings." },
       value: { type: "string", maxLength: 40, description: "One of that setting's allowed values." } } },
