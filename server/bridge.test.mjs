@@ -1593,6 +1593,18 @@ test("a library file saved for a chat: under CODEX_HOME/attachments by its ids o
       assert.equal((await detach(file)).status, 204);
       assert.ok(!existsSync(path.dirname(file)));
       assert.equal((await detach(file)).status, 404);
+      // A file from the user's disk (Ctrl+U in a browser): saved the same way, and as easily dropped.
+      const upload = (name, body, extra = {}) => request(port, { method: "POST", path: `/api/attachments?${new URLSearchParams({ c, name })}`, headers: { ...headers, ...extra }, body });
+      const sent = await upload("../notes.md", "# hi");
+      assert.equal(sent.status, 200);
+      const mine = JSON.parse(sent.text);
+      assert.equal(path.dirname(path.dirname(mine.path)), path.join(home, "attachments"));
+      assert.equal(path.basename(mine.path), "notes.md");
+      assert.equal(readFileSync(mine.path, "utf8"), "# hi");
+      assert.equal((await upload("big.bin", "x", { "content-length": String(47185920 + 1), connection: "close" })).status, 413);
+      assert.equal((await request(port, { method: "POST", path: `/api/attachments?${new URLSearchParams({ c, name: "a" })}`, headers, body: "x" })).status, 200);
+      assert.equal((await request(port, { method: "POST", path: `/api/attachments?${new URLSearchParams({ c: "nope", name: "a" })}`, headers, body: "x" })).status, 410);
+      assert.equal((await detach(mine.path)).status, 204);
     });
   } finally {
     if (previous === undefined) delete process.env.CODEX_HOME;
@@ -1735,3 +1747,18 @@ async function withPage(port, auth, run) {
   });
   await work;
 }
+
+test("show_widget's frame is served without a token, sandboxed by its own CSP, GET only", async () => {
+  await withBridge(async (port, auth) => {
+    const page = await request(port, { path: "/widget-frame", headers: { host: auth.host } });
+    assert.equal(page.status, 200);
+    const csp = page.headers["content-security-policy"];
+    assert.match(csp, /^sandbox allow-scripts;/);
+    assert.match(csp, /frame-ancestors 'self'/);
+    assert.match(csp, /connect-src https:\/\/cdnjs\.cloudflare\.com https:\/\/cdn\.jsdelivr\.net https:\/\/unpkg\.com https:\/\/esm\.sh;/);
+    assert.doesNotMatch(csp, /allow-same-origin|'self' 'unsafe|script-src 'self'/);
+    assert.equal(page.headers["x-content-type-options"], "nosniff");
+    assert.match(page.text, /window\.sendPrompt/);
+    assert.equal((await request(port, { method: "POST", path: "/widget-frame", headers: { host: auth.host }, body: "x" })).status, 405);
+  });
+});

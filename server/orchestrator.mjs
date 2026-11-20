@@ -16,7 +16,8 @@ import { createExecutor } from "./executor.mjs";
 import { cloudAllowed, cloudFetch } from "./cloud.mjs";
 import { UUID, attach, available, cached, resolveContent, stableId, statsigBody, upload } from "./library.mjs";
 import { imagesAvailable as imagesGates } from "./images.mjs";
-import { applyPatch, bindWorktree, createWorktree, gitBranches, gitDiffToRemote, switchBranch, syncWithBase } from "./git.mjs";
+import { applyPatch, bindWorktree, createWorktree, gitBranches, gitDiffAgainst, gitDiffToRemote, gitLog, gitShow, switchBranch, syncWithBase } from "./git.mjs";
+import { writeSessionFile } from "./files.mjs";
 import { appendDeveloperInstructions, hostContext } from "../context/index.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,10 @@ const UNSTABLE = "Under-development features enabled: ";
 const LOCAL_GIT = {
   gitDiffToRemote: (cwd, _params, signal) => gitDiffToRemote(cwd, signal),
   "codexUi/git/branches": (cwd, _params, signal) => gitBranches(cwd, signal),
+  "codexUi/git/diff": (cwd, params, signal) => gitDiffAgainst(cwd, params, signal),
+  "codexUi/git/log": (cwd, params, signal) => gitLog(cwd, params, signal),
+  "codexUi/git/show": (cwd, params, signal) => gitShow(cwd, params, signal),
+  "codexUi/files/write": (cwd, params) => writeSessionFile(cwd, params),
   "codexUi/git/switch": (cwd, { branch }, signal) => switchBranch(cwd, branch, signal).then(() => ({})),
   "codexUi/worktree/create": (cwd, { base, root }, signal) => createWorktree(cwd, base, root, signal),
   "codexUi/worktree/bind": (cwd, { threadId }, signal) => bindWorktree(cwd, threadId, signal).then(() => ({})),
@@ -798,6 +803,14 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
     return saved;
   }
 
+  /** A file the page sends from the user's disk (Ctrl+U in a browser), saved like a library file's copy. */
+  async function uploadAttachment(id, { name, size, open }, signal) {
+    connection(id);
+    const saved = await attach({ name, size, home: codexHome(), signal, open });
+    attachments.add(path.dirname(saved.path));
+    return saved;
+  }
+
   /** A saved attachment dropped: its folder (or the file in it), only one this process made under CODEX_HOME/attachments. */
   async function libraryDetach(id, target) {
     connection(id);
@@ -1136,7 +1149,7 @@ export function createOrchestrator({ codex, codexArgs = [], cwd = process.cwd(),
     hasConnection: (id) => connections.has(id ?? "") || durables.has(id ?? ""),
     connect, send, disconnect, prewarm, close, stopMaintenance,
     accountProfile, cloud, cloudStream, connectDurable, executorState, setExecutor, dotsAvailable, dotsUpload, dotsEvents, dotsContent,
-    libraryAvailable, libraryContent, libraryUpload, libraryAttach, libraryDetach, imagesAvailable,
+    libraryAvailable, libraryContent, libraryUpload, libraryAttach, libraryDetach, uploadAttachment, imagesAvailable,
     transcribe, title, authorizeBrowser, browserMessage, authorizeDesktop, desktopSession, closeDesktopSession, desktopMessage, desktopResult };
 }
 

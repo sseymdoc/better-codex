@@ -350,6 +350,15 @@ export interface Recap {
   turnId: string;
 }
 
+/** A session's side chat (/btw, Ctrl+;; codex.ts askSideChat): questions and answers that stay out of the session. */
+export interface SideChat {
+  open: boolean;
+  /** starting: its fork is being made; thinking: a question is out. */
+  status: "idle" | "starting" | "thinking";
+  messages: readonly { role: "user" | "assistant"; text: string }[];
+  error: string | null;
+}
+
 export interface NewChatPrefs {
   cwd: string;
   model: string | null;
@@ -532,6 +541,12 @@ export interface AppState {
   awayRecap: boolean;
   /** Per session: the latest away recap (codex.ts maybeRecap) and the turn it covers. */
   recaps: Record<string, Recap>;
+  /** Settings → 功能 → 内联可视化 (on by default): show_widget draws in the conversation (Widget.tsx). */
+  inlineVisuals: boolean;
+  /** Per session: its side chat; in memory only. */
+  sideChats: Record<string, SideChat>;
+  /** Comments on diff lines, by session (diffComments); in memory only. */
+  diffComments: Record<string, readonly DiffComment[]>;
   /** 标记为已完成: session → the stamp it was marked at (session.ts ackStamp); the mark holds while the stamp does. */
   completedAcks: Record<string, string>;
   /** Settings → 通用 → 外观: the Claude flags codex-ui draws both ways (CLAUDE_FLAGS). */
@@ -780,6 +795,23 @@ export const planComments = {
   },
 };
 
+/** A comment on one line of the changes pane's diff (Claude 4.4212 c44d00c7f Nu), until it is sent. */
+export interface DiffComment { id: string; path: string; line: number; side: "old" | "new"; text: string; comment: string; queued?: true }
+
+function setDiffComments(threadId: string, change: (comments: readonly DiffComment[]) => readonly DiffComment[]): void {
+  setState((s) => {
+    const next = { ...s.diffComments, [threadId]: change(s.diffComments[threadId] ?? []) };
+    if (!next[threadId].length) delete next[threadId];
+    return { diffComments: next };
+  });
+}
+
+export const diffComments = {
+  add: (threadId: string, comment: Omit<DiffComment, "id">) => setDiffComments(threadId, (all) => [...all, { ...comment, id: crypto.randomUUID() }]),
+  remove: (threadId: string, id: string) => setDiffComments(threadId, (all) => all.filter((entry) => entry.id !== id)),
+  queued: (threadId: string, id: string) => setDiffComments(threadId, (all) => all.map((entry) => (entry.id === id ? { ...entry, queued: true as const } : entry))),
+};
+
 export function setUnsentFeedback(key: string, text: string | undefined): void {
   setState((s) => {
     const next = { ...s.unsentFeedback };
@@ -984,8 +1016,11 @@ const initialState: AppState = {
   mergedModelPicker: readPref("codex-ui:merged-model-picker", ["true", "false"], "true") === "true",
   planCard: readPref("codex-ui:plan-card", ["true", "false"], "true") === "true",
   awayRecap: readPref("codex-ui:away-recap", ["true", "false"], "true") === "true",
+  inlineVisuals: readPref("codex-ui:inline-visuals", ["true", "false"], "true") === "true",
   recaps: record(readJson("codex-ui:recaps")) as Record<string, Recap>,
   completedAcks: record(readJson(COMPLETED_ACKS)) as Record<string, string>,
+  sideChats: {},
+  diffComments: {},
   claudeFlags: readFlags(),
   dialog: null,
   rewindMarks: {},
